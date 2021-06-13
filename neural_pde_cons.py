@@ -112,9 +112,7 @@ class OuterForward(nn.Module):
         super().__init__()
         self.stack = nn.Sequential(
             nn.Linear(4,64),
-            nn.ReLU(),
-            nn.Linear(64,64),
-            nn.ReLU(),
+            nn.Tanh(),
             nn.Linear(64,64),
             nn.ReLU(),
             nn.Linear(64,1)
@@ -154,10 +152,10 @@ if __name__ == '__main__':
     ii = 0
 
     inner = ODEFunc().to(device)# assign function to the computing device
-    outer = OuterForward()
+    outer = OuterForward().to(device)# assign outer function to the computing device
 
-    loss_func = nn.MSELoss()
-    params = list(inner.parameters()) + list(outer.parameters())
+    #loss_func = nn.MSELoss()
+    params = list(inner.parameters()) + list(outer.parameters()) # define the parameters for the combined model
     optimizer = optim.RMSprop(params, lr=0.001)# define the optimizer we use, and indicate what parameters we want to optimize
     end = time.time()# this is the current time
 
@@ -167,12 +165,12 @@ if __name__ == '__main__':
 
     # define a testing dataset for visualization
     s_test = (17*49)+np.sort(torch.from_numpy(np.random.choice(np.arange(49, dtype=np.int64), args.batch_size, replace=False)))
-    batch_y0_test  = torch.FloatTensor(np.ones([args.batch_size,1,1]))
-    batch_t_test = X_train[s_test,0]
+    batch_y0_test  = torch.FloatTensor(np.ones([args.batch_size,1,1])) # define some initial conditions for testing, just use 1's
+    batch_t_test = X_train[s_test,0] # define the testing times
     #batch_x = X_train[s,1]
     #batch_y = X_train[s,2]
-    batch_x_test = X_train[s_test]
-    batch_y_test = Y_train[s_test]
+    batch_x_test = X_train[s_test] # define the testing x,y,t's
+    batch_y_test = Y_train[s_test] # define the testing true y's
     #batch_y0, batch_t, batch_y = get_batch()# get a random batch of data
     # end of defining the dataset for visualization
 
