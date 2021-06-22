@@ -5,9 +5,10 @@ import matplotlib.pyplot as plt
 from scipy.integrate import odeint
 
 # initialization
-size = 1000 # number of data points
+size = int(1e6) # number of data points
 p0 = 100*np.abs(np.random.randn(size,1)) # define initial values
 p_f = np.random.randn(size,1) # initialize array to store values
+dt = 1e-3 # define step size of line integral
 
 # define dp/dg
 def dpdg(g,h,p):
@@ -32,7 +33,7 @@ def dhdt(y,t):
 
 # generation starts here
 if __name__ == '__main__':
-    dt = 1e-3 # define step size of line integral
+    
     g_0 = 0 # we start at (0,0) in the grid, so g(0)=0
     h_0 = 0 # we start at (0,0) in the grid, so h(0)=0
 
@@ -40,15 +41,15 @@ if __name__ == '__main__':
     g = odeint(dgdt, g_0, t) # calculate g(t) values
     h = odeint(dhdt, h_0, t) # calculate h(t) values
     p_current = p0
-    plt.plot(g,h)
-    plt.show()
+    #plt.plot(g,h)
+    #plt.show()
 
     #for num in range(size): # for each point
     #    p_current = p0[num] # initialization
     #    p_next = p0[num] # initialization
     #p_vis = np.random.randn(100000,1)
     #p_vis[0] = p_current
-    for iter in range(int(1e3)): # for each random value, integrate from 0 to 1
+    for iter in range(int(1/dt)): # for each random value, integrate from 0 to 1
         t_current = iter*dt # calculate the current time
         dgdt_current = dgdt(0,t_current) # calculate the current dg/dt
         dhdt_current = dhdt(0,t_current) # calculate the current dh/dt

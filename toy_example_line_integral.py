@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -39,13 +40,15 @@ def eval(g,h,p0):
 # define neural network for dg/dt
 class ODEFunc(nn.Module):# define ode function, this is what we train on
 
-    def __init__(self):
+    def __init__(self, input_size : int, width : int, output_size : int):
         super(ODEFunc, self).__init__()
 
         self.net = nn.Sequential(
-            nn.Linear(1, 40),
+            nn.Linear(input_size, width),
             nn.ReLU(inplace=False),
-            nn.Linear(40, 1),
+            nn.Linear(width,width),
+            nn.ReLU(inplace=False),
+            nn.Linear(width, output_size),
         )
 
         for m in self.net.modules():
@@ -56,20 +59,38 @@ class ODEFunc(nn.Module):# define ode function, this is what we train on
     def forward(self, t, y):
         return self.net(t+torch.Tensor([[0.]]))
 
+
+def makedirs(dirname):
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+
+
+#if args.viz:
+if True:    
+    makedirs('png')# if there is not a png image already, create one
+    import matplotlib.pyplot as plt
+    fig = plt.figure(figsize=(12, 4), facecolor='white')
+    ax_traj = fig.add_subplot(131, frameon=False)
+    ax_phase = fig.add_subplot(132, frameon=False)
+    ax_vecfield = fig.add_subplot(133, frameon=False)
+    plt.show(block=False)
+
 # define visualization function
 def visualize(true_g, true_h, pred_g, pred_h):# define the visualization process
     
     #if args.viz:
     if True:
 #        makedirs('png')# if there is not a png image already, create one
-        import matplotlib.pyplot as plt
-        ax_traj = plt.subplot()
+        ax_traj.cla()
         ax_traj.set_title('Trajectories')
         ax_traj.set_xlabel('g(t)')
         ax_traj.set_ylabel('h(t)')
         ax_traj.plot(true_g,true_h, 'g-') # green is gound truth
         ax_traj.plot(pred_g.view([1000,1]).detach().numpy(), pred_h.view([1000,1]).detach().numpy(), 'b--') # blue is prediction
-        plt.show()
+        fig.tight_layout()
+        plt.savefig('png/{:03d}'.format(itr))
+        plt.draw()
+        plt.pause(0.001)
         #ax_traj.set_xlim(t.cpu().min(), t.cpu().max())
         #ax_traj.set_ylim(-2, 2)
         #ax_traj.legend()
@@ -101,14 +122,14 @@ if __name__ == '__main__':
     X_train = torch.FloatTensor(x_temp) # transform data into tensor format
     Y_train = torch.FloatTensor(y_temp) # transfrom data into tensor format
 
-    g_learn = ODEFunc() # define neural network for x-dimension route
-    h_learn = ODEFunc() # define neural network for y-dimension route
+    g_learn = ODEFunc(1,64,1) # define neural network for x-dimension route
+    h_learn = ODEFunc(1,64,1) # define neural network for y-dimension route
 
     params = list(g_learn.parameters()) + list(h_learn.parameters()) # define parameters for the combined model
     optimizer = optim.RMSprop(params, lr=0.001) # define optimizer
 
     iteration_num = 2000 # define the number of training iterations
-    batch_size = 20 # define batch size
+    batch_size = 50 # define batch size
     data_size = np.size(x_temp)
 
     g_0 = torch.Tensor([[0.]])
@@ -143,9 +164,9 @@ if __name__ == '__main__':
         loss = torch.mean(torch.abs(p_current - batch_y))### need more work here # calculate the loss
         loss.backward(retain_graph=True)# backpropagation
         torch.autograd.set_detect_anomaly(True)
-        print(loss)
+        print('Iter {:04d} | Total Loss {:.6f}'.format(itr, loss.item()))
         optimizer.step()# gradient descent
-        if False:
+        if True:
         # calculate the trained integration path for visualization
             t_prediction = torch.linspace(0., 1., int(1e3)) # define evaluation points
             g_prediction = odeint(g_learn, g_0, t_prediction).clone() # calculate g(t) values
