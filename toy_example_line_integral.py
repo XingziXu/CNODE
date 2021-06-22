@@ -4,7 +4,8 @@ import torch.optim as optim
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from torchdiffeq import odeint
+from torchdiffeq import odeint_adjoint as odeint
+from scipy.integrate import odeint as odeint_scipy
 
 # define dp/dg
 def dpdg(g,h,p):
@@ -55,9 +56,45 @@ class ODEFunc(nn.Module):# define ode function, this is what we train on
     def forward(self, t, y):
         return self.net(t+torch.Tensor([[0.]]))
 
+# define visualization function
+def visualize(true_g, true_h, pred_g, pred_h):# define the visualization process
+    
+    #if args.viz:
+    if True:
+#        makedirs('png')# if there is not a png image already, create one
+        import matplotlib.pyplot as plt
+        ax_traj = plt.subplot()
+        ax_traj.set_title('Trajectories')
+        ax_traj.set_xlabel('g(t)')
+        ax_traj.set_ylabel('h(t)')
+        ax_traj.plot(true_g,true_h, 'g-') # green is gound truth
+        ax_traj.plot(pred_g.view([1000,1]).detach().numpy(), pred_h.view([1000,1]).detach().numpy(), 'b--') # blue is prediction
+        plt.show()
+        #ax_traj.set_xlim(t.cpu().min(), t.cpu().max())
+        #ax_traj.set_ylim(-2, 2)
+        #ax_traj.legend()
 
+# define dg/dt ground truth
+def dgdt(y,t):
+    grad_g = t**2
+    return grad_g
+
+# define dh/dt ground truth
+def dhdt(y,t):
+    grad_h = np.sqrt(t)
+    return grad_h
 
 if __name__ == '__main__':
+
+    # calculate the ground truth trajectory for visualization
+    dt_true = 1e-3 # define step size of line integral
+    g_0_true = 0 # we start at (0,0) in the grid, so g(0)=0
+    h_0_true = 0 # we start at (0,0) in the grid, so h(0)=0
+    t_true = torch.linspace(0., 1., int(1e3)) # define evaluation points
+    g_true = odeint_scipy(dgdt, g_0_true, t_true) # calculate g(t) values
+    h_true = odeint_scipy(dhdt, h_0_true, t_true) # calculate h(t) values
+    
+    # load input and output data
     x_temp = np.load('input.npy') # load data
     y_temp = np.load('output.npy') # load data
 
@@ -77,9 +114,9 @@ if __name__ == '__main__':
     g_0 = torch.Tensor([[0.]])
     h_0 = torch.Tensor([[0.]])
 
-    t = torch.linspace(0., 1., int(1e3)) # define evaluation points
-    g = odeint(g_learn, g_0, t).clone() # calculate g(t) values
-    h = odeint(h_learn, h_0, t).clone() # calculate h(t) values
+    #t = torch.linspace(0., 1., int(1e3)) # define evaluation points
+    #g = odeint(g_learn, g_0, t).clone() # calculate g(t) values
+    #h = odeint(h_learn, h_0, t).clone() # calculate h(t) values
 
     for itr in range(1, iteration_num + 1):
         optimizer.zero_grad()# zero out the accumulated gradients
@@ -91,10 +128,14 @@ if __name__ == '__main__':
         for iter in range(int(1e3)): # for each random value, integrate from 0 to 1
             dt = 1e-3
             t_current = iter*dt*torch.ones((1)) # calculate the current time
+            # notice input 1 in g_learn in the line below is just a place holder
             dgdt_current = g_learn(1,torch.Tensor([[t_current]])) # calculate the current dg/dt
+            # notice input 1 in h_learn in the line below is just a place holder
             dhdt_current = h_learn(1,torch.Tensor([[t_current]])) # calculate the current dh/dt
+            g_current = odeint(g_learn, g_0, t_current)
+            h_current = odeint(h_learn, h_0, t_current)
             #p_current = p_current + dt*(dpdg(g[iter],h[iter],p_current)+dpdh(g[iter],h[iter],p_current))
-            p_current = p_current + dt*(dpdg(g[iter].clone(),h[iter].clone(),p_current)*dgdt_current +dpdh(g[iter].clone(),h[iter].clone(),p_current)*dhdt_current) # calculate the next p(g,h)
+            p_current = p_current + dt*(dpdg(g_current, h_current, p_current)*dgdt_current +dpdh(g_current, h_current ,p_current)*dhdt_current) # calculate the next p(g,h)
             #p_current = p_next
         #pred = p_current
         #for dnum in range(len(batch_t)):
@@ -104,3 +145,10 @@ if __name__ == '__main__':
         torch.autograd.set_detect_anomaly(True)
         print(loss)
         optimizer.step()# gradient descent
+        if False:
+        # calculate the trained integration path for visualization
+            t_prediction = torch.linspace(0., 1., int(1e3)) # define evaluation points
+            g_prediction = odeint(g_learn, g_0, t_prediction).clone() # calculate g(t) values
+            h_prediction = odeint(h_learn, h_0, t_prediction).clone() # calculate h(t) values
+            visualize(g_true, h_true, g_prediction, h_prediction)
+        
