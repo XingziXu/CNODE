@@ -24,6 +24,15 @@ def dpdh(g,h,p):
     partial_h = g1+h1+p1
     return partial_h
 
+# define dg/dt ground truth
+def dgdt(y,t):
+    grad_g = np.cos(t)
+    return grad_g
+
+# define dh/dt ground truth
+def dhdt(y,t):
+    grad_h = np.sin(t)
+    return grad_h
 """
 # define function for line integral evaluation
 def eval(g,h,p0):
@@ -45,7 +54,7 @@ class gODEFunc(nn.Module):# define ode function, this is what we train on
 
         self.net = nn.Sequential(
             nn.Linear(input_size, width),
-            nn.Tanh(),
+            nn.ReLU(),
             nn.Linear(width,width),
             nn.ReLU(),
             nn.Linear(width, output_size),
@@ -67,7 +76,7 @@ class hODEFunc(nn.Module):# define ode function, this is what we train on
 
         self.net = nn.Sequential(
             nn.Linear(input_size, width),
-            nn.Tanh(),
+            nn.ReLU(),
             nn.Linear(width,width),
             nn.ReLU(),
             nn.Linear(width, output_size),
@@ -122,17 +131,6 @@ def visualize(true_g, true_h, pred_g, pred_h, loss, num_eva):# define the visual
         plt.savefig('png/{:03d}'.format(itr))
         plt.draw()
         plt.pause(0.001)
-        
-
-# define dg/dt ground truth
-def dgdt(y,t):
-    grad_g = np.cos(t)
-    return grad_g
-
-# define dh/dt ground truth
-def dhdt(y,t):
-    grad_h = np.sin(t)
-    return grad_h
 
 if __name__ == '__main__':
     l_bound = 0. # define lower bound of line integral
@@ -160,7 +158,7 @@ if __name__ == '__main__':
     h_learn = hODEFunc(input_size, width, output_size) # define neural network for y-dimension route
 
     params = list(g_learn.parameters()) + list(h_learn.parameters()) # define parameters for the combined model
-    optimizer = optim.RMSprop(params, lr=5e-4) # define optimizer
+    optimizer = optim.RMSprop(params, lr=3e-4) # define optimizer
 
     iteration_num = 2000 # define the number of training iterations
     batch_size = 50 # define batch size
@@ -197,7 +195,7 @@ if __name__ == '__main__':
         #pred = p_current
         #for dnum in range(len(batch_t)):
         #    pred[dnum] = integrate.quad(total_func, args.l_lim, args.r_lim)
-        loss = torch.square(torch.mean(torch.abs(p_current - batch_y)))# + torch.abs(torch.mean(torch.abs(g_current-g_true.max()))) + torch.abs(torch.mean(torch.abs(h_current-h_true.max())))### need more work here # calculate the loss
+        loss = torch.square(torch.mean(torch.abs(p_current - batch_y))) + torch.abs(torch.mean(torch.abs(g_current-g_true.max()))) + torch.abs(torch.mean(torch.abs(h_current-h_true.max())))### need more work here # calculate the loss
         loss.backward(retain_graph=True)# backpropagation
         loss_vis.append(loss.item())
         torch.autograd.set_detect_anomaly(True)

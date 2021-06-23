@@ -6,7 +6,7 @@ from scipy.integrate import odeint
 
 # initialization
 size = int(1e6) # number of data points
-p0 = (1.)*np.abs(np.random.randn(size,1)) # define initial values
+p0 = (20.)*np.abs(np.random.randn(size,1)) # define initial values
 p_f = np.random.randn(size,1) # initialize array to store values
 g_0 = 0 # we start at (0,0) in the grid, so g(0)=0
 h_0 = 0 # we start at (0,0) in the grid, so h(0)=0
