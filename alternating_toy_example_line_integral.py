@@ -26,12 +26,12 @@ def dpdh(g,h,p):
 
 # define dg/dt ground truth
 def dgdt(y,t):
-    grad_g = np.sqrt(t)
+    grad_g = np.cos(t)
     return grad_g
 
 # define dh/dt ground truth
 def dhdt(y,t):
-    grad_h = np.tanh(t)
+    grad_h = np.sin(t)
     return grad_h
 """
 # define function for line integral evaluation
@@ -131,7 +131,7 @@ def visualize(true_g, true_h, pred_g, pred_h, loss, num_eva):# define the visual
 if __name__ == '__main__':
     l_bound = 0. # define lower bound of line integral
     u_bound = 1. # define upper bound of line integral
-    num_eval = 2. # define number of evaluations from lower bound to upper bound
+    num_eval = 20 # define number of evaluations from lower bound to upper bound
     # calculate the ground truth trajectory for visualization
     dt_true = (u_bound-l_bound)/num_eval # define step size of line integral
     g_0_true = 0. # we start at (0,0) in the grid, so g(0)=0
@@ -141,7 +141,7 @@ if __name__ == '__main__':
     h_true = odeint_scipy(dhdt, h_0_true, t_true) # calculate h(t) values
     input_size = 1 # define network input size
     output_size = 1 # define network output size
-    width = 64 # define network width
+    width = 32 # define network width
     
     # load input and output data
     x_temp = np.load('input.npy') # load data
@@ -153,13 +153,13 @@ if __name__ == '__main__':
     g_learn = gODEFunc(input_size, width, output_size) # define neural network for x-dimension route
     h_learn = hODEFunc(input_size, width, output_size) # define neural network for y-dimension route
 
-    params_g = list(g_learn.parameters())
+    params_g = list(g_learn.parameters()) 
     params_h = list(h_learn.parameters()) # define parameters for the combined model
-    optimizer_g = optim.RMSprop(params_g, lr=5e-4) # define optimizer
-    optimizer_h = optim.RMSprop(params_h, lr=5e-4)
+    optimizer_g = optim.SGD(params_g, lr=5e-4) # define optimizer
+    optimizer_h = optim.SGD(params_g, lr=5e-4)
 
     iteration_num = 2000 # define the number of training iterations
-    batch_size = 128 # define batch size
+    batch_size = 64 # define batch size
     data_size = np.size(x_temp)
 
     g_0 = torch.Tensor([[0.]])
@@ -201,9 +201,9 @@ if __name__ == '__main__':
         #for dnum in range(len(batch_t)):
         #    pred[dnum] = integrate.quad(total_func, args.l_lim, args.r_lim)
         loss_func = torch.mean(torch.abs(p_current - batch_y))### need more work here # calculate the loss
-        #loss_constr = torch.square(torch.mean(torch.abs(g_current-g_true.max()))) + torch.square(torch.mean(torch.abs(h_current-h_true.max())))
+        loss_constr = torch.mean(torch.abs(g_current-g_true.max())) + torch.mean(torch.abs(h_current-h_true.max()))
         loss_func.backward(retain_graph=True)# backpropagation
-        #loss_constr.backward(retain_graph=True)
+        loss_constr.backward(retain_graph=True)
         loss_vis.append(loss_func.item())
         torch.autograd.set_detect_anomaly(True)
         print('Iter {:04d} | Total Loss {:.6f} | Mean Truth Value {:.6f}'.format(itr, loss_func.item(), torch.mean(batch_y)))
