@@ -13,11 +13,11 @@ class Grad_net(nn.Module):
     def __init__(self):
         super().__init__()
         self.stack = nn.Sequential(
-            nn.Linear(3,50),
+            nn.Linear(12,50),
             nn.ReLU(),
             nn.Linear(50,50),
             nn.ReLU(),
-            nn.Linear(50,2)
+            nn.Linear(50,10)
         )
 
     def forward(self,x):
@@ -78,7 +78,7 @@ def train(args, model, path_net, grad_x_net, grad_y_net, device, train_loader, o
         optimizer.zero_grad()
 
         ####### neural path integral starts here #######
-        num_eval = 1e3
+        num_eval = 2
         l_bound = 0.
         u_bound = 1.
         dt = (u_bound-l_bound)/num_eval
@@ -88,9 +88,10 @@ def train(args, model, path_net, grad_x_net, grad_y_net, device, train_loader, o
             t_current = iter*dt*torch.ones((1)) # calculate the current time
             t_calc = iter*dt*torch.Tensor([0.,1.])
             dg_dh_dt_current = path_net(1,torch.Tensor([[t_current]])) # calculate the current dg/dt
-            g_h_current = torch.inner(torch.squeeze(odeint(path_net, g_h_0, t_calc, method='dopri5')),torch.tensor([0.,1.]))
-            p_current = p_current + dt*(torch.dot([grad_x_net(g_h_current, p_current), grad_y_net(g_h_current, p_current)],dg_dh_dt_current))
-
+            g_h_current = torch.squeeze(odeint(path_net, g_h_0, t_calc, method='dopri5')[1])
+            in_grad = torch.cat((p_current.view(64, 10), g_h_current.repeat([64,1]).view(64,2)), dim=1)
+            #p_current = p_current + dt*(torch.dot(torch.cat((grad_x_net(in_grad), grad_y_net(in_grad)),dim=1),dg_dh_dt_current))
+            p_current = p_current + dt*(grad_x_net(in_grad)*dg_dh_dt_current[0][0] + grad_y_net(in_grad)*dg_dh_dt_current[0][1])
         ####### neural path integral ends here #######
         
         loss = F.nll_loss(p_current, target)
@@ -180,7 +181,7 @@ def main():
     path_net = ODEFunc(input_size, width, output_size)
     grad_x_net = Grad_net()
     grad_y_net = Grad_net()
-    optimizer = optim.Adadelta(list(model.parameters())+list(path_net.parameters())+list(grad_net.parameters()), lr=args.lr)
+    optimizer = optim.Adadelta(list(model.parameters())+list(path_net.parameters())+list(grad_x_net.parameters())+list(grad_y_net.parameters()), lr=args.lr)
 
     scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
     for epoch in range(1, args.epochs + 1):
