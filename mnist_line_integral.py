@@ -48,12 +48,10 @@ class ODEFunc(nn.Module):# define ode function, this is what we train on
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(1, 32, 3, 1)
-        self.conv2 = nn.Conv2d(32, 64, 3, 1)
-        self.dropout1 = nn.Dropout(0.25)
-        self.dropout2 = nn.Dropout(0.5)
-        self.fc1 = nn.Linear(9216, 128)
-        self.fc2 = nn.Linear(128, 10)
+        self.conv1 = nn.Conv2d(1, 16, 3, 1)
+        self.conv2 = nn.Conv2d(16, 4, 3, 1)
+        self.fc1 = nn.Linear(576, 10)
+#        self.fc2 = nn.Linear(128, 10)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -61,12 +59,11 @@ class Net(nn.Module):
         x = self.conv2(x)
         x = F.relu(x)
         x = F.max_pool2d(x, 2)
-        x = self.dropout1(x)
         x = torch.flatten(x, 1)
         x = self.fc1(x)
-        x = F.relu(x)
-        x = self.dropout2(x)
-        x = self.fc2(x)
+#        x = F.relu(x)
+#        x = self.dropout2(x)
+#        x = self.fc2(x)
         output = F.log_softmax(x, dim=1)
         return output
 
@@ -78,7 +75,7 @@ def train(args, model, path_net, grad_x_net, grad_y_net, device, train_loader, o
         optimizer.zero_grad()
 
         ####### neural path integral starts here #######
-        num_eval = 2
+        num_eval = 20
         l_bound = 0.
         u_bound = 1.
         dt = (u_bound-l_bound)/num_eval
