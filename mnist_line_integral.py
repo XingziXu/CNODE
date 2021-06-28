@@ -10,21 +10,25 @@ from torchdiffeq import odeint_adjoint as odeint
 from scipy.integrate import odeint as odeint_scipy
 
 class Grad_net(nn.Module):
-    def __init__(self):
+    def __init__(self, input_size : int, width : int, output_size : int):
         super().__init__()
         self.stack = nn.Sequential(
-            nn.Linear(12,50),
+            nn.Linear(input_size,width),
             nn.ReLU(),
-            nn.Linear(50,50),
+            nn.Linear(width,width),
             nn.ReLU(),
-            nn.Linear(50,10)
+            nn.Linear(width,output_size),
+            nn.Tanh()
         )
 
     def forward(self,x):
         y_pred = self.stack(x)
         return y_pred
 
-model = Grad_net()
+#model = Grad_net()
+
+def norm(dim):
+    return nn.GroupNorm(min(32, dim), dim)
 
 class ODEFunc(nn.Module):# define ode function, this is what we train on
 
@@ -34,7 +38,10 @@ class ODEFunc(nn.Module):# define ode function, this is what we train on
         self.net = nn.Sequential(
             nn.Linear(input_size, width),
             nn.ReLU(),
+            nn.Linear(width,width),
+            nn.ReLU(),
             nn.Linear(width, output_size),
+            nn.ReLU()
         )
 
         for m in self.net.modules():
@@ -48,10 +55,10 @@ class ODEFunc(nn.Module):# define ode function, this is what we train on
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(1, 16, 3, 1)
-        self.conv2 = nn.Conv2d(16, 4, 3, 1)
-        self.fc1 = nn.Linear(576, 10)
-#        self.fc2 = nn.Linear(128, 10)
+        self.conv1 = nn.Conv2d(1, 32, 3, 1)
+        self.conv2 = nn.Conv2d(32, 64, 3, 1)
+        self.fc1 = nn.Linear(9216, 128)
+        self.fc2 = nn.Linear(128, 10)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -61,37 +68,40 @@ class Net(nn.Module):
         x = F.max_pool2d(x, 2)
         x = torch.flatten(x, 1)
         x = self.fc1(x)
-#        x = F.relu(x)
-#        x = self.dropout2(x)
-#        x = self.fc2(x)
-        output = F.log_softmax(x, dim=1)
-        return output
+        x = F.relu(x)
+        x = self.fc2(x)
+        return x
 
 
-def train(args, model, path_net, grad_x_net, grad_y_net, device, train_loader, optimizer, epoch):
-    model.train()
+def train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader, optimizer, epoch):
+    encoder.train()
+    path_net.train()
+    grad_x_net.train()
+    grad_y_net.train()
     for batch_idx, (data, target) in enumerate(train_loader):
+        #if batch_idx > 100:
+        #    break
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
 
         ####### neural path integral starts here #######
-        num_eval = 20
-        l_bound = 0.
-        u_bound = 1.
-        dt = (u_bound-l_bound)/num_eval
+        #num_eval = 1e3
+        #l_bound = 0.
+        #u_bound = 1.
+        dt = (args.u_bound-args.l_bound)/args.num_eval
         g_h_0 = torch.Tensor([[0.,0.]])
-        p_current = model(data)
-        for iter in range(1,int(num_eval)+1): # for each random value, integrate from 0 to 1
+        p_current = encoder(data)
+        for iter in range(1,int(args.num_eval)+1): # for each random value, integrate from 0 to 1
             t_current = iter*dt*torch.ones((1)) # calculate the current time
             t_calc = iter*dt*torch.Tensor([0.,1.])
             dg_dh_dt_current = path_net(1,torch.Tensor([[t_current]])) # calculate the current dg/dt
             g_h_current = torch.squeeze(odeint(path_net, g_h_0, t_calc, method='dopri5')[1])
-            in_grad = torch.cat((p_current.view(64, 10), g_h_current.repeat([64,1]).view(64,2)), dim=1)
+            in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_h_current.repeat([p_current.size()[0],1]).view(p_current.size()[0],2)), dim=1)
             #p_current = p_current + dt*(torch.dot(torch.cat((grad_x_net(in_grad), grad_y_net(in_grad)),dim=1),dg_dh_dt_current))
             p_current = p_current + dt*(grad_x_net(in_grad)*dg_dh_dt_current[0][0] + grad_y_net(in_grad)*dg_dh_dt_current[0][1])
+        p_current = torch.sigmoid(p_current)
         ####### neural path integral ends here #######
-        
-        loss = F.nll_loss(p_current, target)
+        loss = F.cross_entropy(p_current, target)
         loss.backward()
         optimizer.step()
         if batch_idx % args.log_interval == 0:
@@ -102,16 +112,27 @@ def train(args, model, path_net, grad_x_net, grad_y_net, device, train_loader, o
                 break
 
 
-def test(model, device, test_loader):
-    model.eval()
+def test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader):
+    encoder.eval()
     test_loss = 0
     correct = 0
     with torch.no_grad():
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
-            output = model(data)
-            test_loss += F.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
-            pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+            dt = (args.u_bound-args.l_bound)/args.num_eval
+            g_h_0 = torch.Tensor([[0.,0.]])
+            p_current = encoder(data)
+            for iter in range(1,int(args.num_eval)+1): # for each random value, integrate from 0 to 1
+                t_current = iter*dt*torch.ones((1)) # calculate the current time
+                t_calc = iter*dt*torch.Tensor([0.,1.])
+                dg_dh_dt_current = path_net(1,torch.Tensor([[t_current]])) # calculate the current dg/dt
+                g_h_current = torch.squeeze(odeint(path_net, g_h_0, t_calc, method='dopri5')[1])
+                in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_h_current.repeat([p_current.size()[0],1]).view(p_current.size()[0],2)), dim=1)
+                #p_current = p_current + dt*(torch.dot(torch.cat((grad_x_net(in_grad), grad_y_net(in_grad)),dim=1),dg_dh_dt_current))
+                p_current = p_current + dt*(grad_x_net(in_grad)*dg_dh_dt_current[0][0] + grad_y_net(in_grad)*dg_dh_dt_current[0][1])
+            p_current = torch.sigmoid(p_current)
+            test_loss += F.nll_loss(p_current, target, reduction='sum').item()  # sum up batch loss
+            pred = p_current.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum().item()
 
     test_loss /= len(test_loader.dataset)
@@ -128,10 +149,8 @@ def main():
                         help='input batch size for training (default: 64)')
     parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
                         help='input batch size for testing (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=14, metavar='N',
+    parser.add_argument('--epochs', type=int, default=2000, metavar='N',
                         help='number of epochs to train (default: 14)')
-    parser.add_argument('--lr', type=float, default=1.0, metavar='LR',
-                        help='learning rate (default: 1.0)')
     parser.add_argument('--gamma', type=float, default=0.7, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
@@ -144,6 +163,12 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
+    parser.add_argument('--lr', type=float, default=8e-3, metavar='LR',
+                        help='learning rate (default: 1.0)')
+    parser.add_argument('--l-bound', type=float, default=0., help='Lower bound of line integral t value')
+    parser.add_argument('--u-bound', type=float, default=1., help='Upper bound of line integral t value')
+    parser.add_argument('--num-eval', type=float, default=1e2, help='Number of evaluations along the line integral')
+    
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available()
 
@@ -171,23 +196,29 @@ def main():
     train_loader = torch.utils.data.DataLoader(dataset1,**train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
 
-    model = Net().to(device)
-    input_size = 1
-    width = 50
-    output_size = 2
-    path_net = ODEFunc(input_size, width, output_size)
-    grad_x_net = Grad_net()
-    grad_y_net = Grad_net()
-    optimizer = optim.Adadelta(list(model.parameters())+list(path_net.parameters())+list(grad_x_net.parameters())+list(grad_y_net.parameters()), lr=args.lr)
+    encoder = Net().to(device)
+    input_size_path = 1
+    width_path = 32
+    output_size_path = 2
+    input_size_grad = 12
+    width_grad = 32
+    output_size_grad = 10
+    path_net = ODEFunc(input_size_path, width_path, output_size_path)
+    grad_x_net = Grad_net(input_size_grad, width_grad, output_size_grad)
+    grad_y_net = Grad_net(input_size_grad, width_grad, output_size_grad)
+    optimizer = optim.SGD(list(encoder.parameters())+list(path_net.parameters())+list(grad_x_net.parameters())+list(grad_y_net.parameters()), lr=args.lr)
 
     scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
     for epoch in range(1, args.epochs + 1):
-        train(args, model, path_net, grad_x_net, grad_y_net, device, train_loader, optimizer, epoch)
-        test(model, device, test_loader)
+        train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader, optimizer, epoch)
+        test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader)
         scheduler.step()
 
     if args.save_model:
-        torch.save(model.state_dict(), "mnist_cnn.pt")
+        torch.save(encoder.state_dict(), "mnist_cnn.pt")
+        torch.save(path_net.state_dict(), "path_network.pt")
+        torch.save(grad_x_net.state_dict(), "grad_x_net.pt")
+        torch.save(grad_y_net.state_dict(), "grad_y_net.pt")
 
 
 if __name__ == '__main__':
