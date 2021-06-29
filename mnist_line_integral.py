@@ -50,7 +50,7 @@ class ODEFunc(nn.Module):# define ode function, this is what we train on
                 nn.init.constant_(m.bias, val=0)
 
     def forward(self, t, y):
-        use_cuda = False
+        use_cuda = True
         device = torch.device("cuda" if use_cuda else "cpu")
         return self.net((t+torch.Tensor([[0.]])).to(device))
 
