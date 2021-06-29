@@ -99,9 +99,10 @@ def train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader,
             in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_h_current.repeat([p_current.size()[0],1]).view(p_current.size()[0],2)), dim=1)
             #p_current = p_current + dt*(torch.dot(torch.cat((grad_x_net(in_grad), grad_y_net(in_grad)),dim=1),dg_dh_dt_current))
             p_current = p_current + dt*(grad_x_net(in_grad)*dg_dh_dt_current[0][0] + grad_y_net(in_grad)*dg_dh_dt_current[0][1])
-        p_current = torch.sigmoid(p_current)
+        soft_max = nn.Softmax(dim=1)
+        p_current = soft_max(p_current)
         ####### neural path integral ends here #######
-        loss = F.cross_entropy(p_current, target)
+        loss = F.nll_loss(p_current, target)
         loss.backward()
         optimizer.step()
         if batch_idx % args.log_interval == 0:
@@ -130,7 +131,8 @@ def test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader):
                 in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_h_current.repeat([p_current.size()[0],1]).view(p_current.size()[0],2)), dim=1)
                 #p_current = p_current + dt*(torch.dot(torch.cat((grad_x_net(in_grad), grad_y_net(in_grad)),dim=1),dg_dh_dt_current))
                 p_current = p_current + dt*(grad_x_net(in_grad)*dg_dh_dt_current[0][0] + grad_y_net(in_grad)*dg_dh_dt_current[0][1])
-            p_current = torch.sigmoid(p_current)
+            soft_max = nn.Softmax(dim=1)
+            p_current = soft_max(p_current)
             test_loss += F.nll_loss(p_current, target, reduction='sum').item()  # sum up batch loss
             pred = p_current.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum().item()
@@ -141,6 +143,44 @@ def test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader):
         test_loss, correct, len(test_loader.dataset),
         100. * correct / len(test_loader.dataset)))
 
+def validation(args, encoder, path_net, grad_x_net, grad_y_net, device, validation_loader):
+    encoder.eval()
+    test_loss = 0
+    correct = 0
+    with torch.no_grad():
+        for data, target in validation_loader:
+            data, target = data.to(device), target.to(device)
+            dt = (args.u_bound-args.l_bound)/args.num_eval
+            g_h_0 = torch.Tensor([[0.,0.]])
+            p_current = encoder(data)
+            for iter in range(1,int(args.num_eval)+1): # for each random value, integrate from 0 to 1
+                t_current = iter*dt*torch.ones((1)) # calculate the current time
+                t_calc = iter*dt*torch.Tensor([0.,1.])
+                dg_dh_dt_current = path_net(1,torch.Tensor([[t_current]])) # calculate the current dg/dt
+                g_h_current = torch.squeeze(odeint(path_net, g_h_0, t_calc, method='dopri5')[1])
+                in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_h_current.repeat([p_current.size()[0],1]).view(p_current.size()[0],2)), dim=1)
+                #p_current = p_current + dt*(torch.dot(torch.cat((grad_x_net(in_grad), grad_y_net(in_grad)),dim=1),dg_dh_dt_current))
+                p_current = p_current + dt*(grad_x_net(in_grad)*dg_dh_dt_current[0][0] + grad_y_net(in_grad)*dg_dh_dt_current[0][1])
+            soft_max = nn.Softmax(dim=1)
+            p_current = soft_max(p_current)
+            test_loss += F.nll_loss(p_current, target, reduction='sum').item()  # sum up batch loss
+            pred = p_current.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+            correct += pred.eq(target.view_as(pred)).sum().item()
+
+    test_loss /= len(validation_loader.dataset)
+
+    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+        test_loss, correct, len(validation_loader.dataset),
+        100. * correct / len(validation_loader.dataset)))
+
+def get_n_params(model):
+    pp=0
+    for p in list(model.parameters()):
+        nn=1
+        for s in list(p.size()):
+            nn = nn*s
+        pp += nn
+    return pp
 
 def main():
     # Training settings
@@ -149,7 +189,9 @@ def main():
                         help='input batch size for training (default: 64)')
     parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
                         help='input batch size for testing (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=2000, metavar='N',
+    parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
+                        help='input batch size for validation (default: 1000)')
+    parser.add_argument('--epochs', type=int, default=15, metavar='N',
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--gamma', type=float, default=0.7, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
@@ -163,12 +205,13 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
-    parser.add_argument('--lr', type=float, default=8e-3, metavar='LR',
+    parser.add_argument('--lr', type=float, default=0.1, metavar='LR',
                         help='learning rate (default: 1.0)')
     parser.add_argument('--l-bound', type=float, default=0., help='Lower bound of line integral t value')
     parser.add_argument('--u-bound', type=float, default=1., help='Upper bound of line integral t value')
     parser.add_argument('--num-eval', type=float, default=1e2, help='Number of evaluations along the line integral')
-    
+
+
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available()
 
@@ -178,12 +221,15 @@ def main():
 
     train_kwargs = {'batch_size': args.batch_size}
     test_kwargs = {'batch_size': args.test_batch_size}
+    validation_kwargs = {'batch_size': args.validation_batch_size}
+
     if use_cuda:
         cuda_kwargs = {'num_workers': 1,
                        'pin_memory': True,
                        'shuffle': True}
         train_kwargs.update(cuda_kwargs)
         test_kwargs.update(cuda_kwargs)
+        validation_kwargs.update(cuda_kwargs)
 
     transform=transforms.Compose([
         transforms.ToTensor(),
@@ -193,8 +239,12 @@ def main():
                        transform=transform)
     dataset2 = datasets.MNIST('../data', train=False, download=True,
                        transform=transform)
+
+    dataset3, dataset1 = torch.utils.data.random_split(dataset1, [10000,50000])
+
     train_loader = torch.utils.data.DataLoader(dataset1,**train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
+    validation_loader = torch.utils.data.DataLoader(dataset3, **validation_kwargs)
 
     encoder = Net().to(device)
     input_size_path = 1
@@ -207,12 +257,18 @@ def main():
     grad_x_net = Grad_net(input_size_grad, width_grad, output_size_grad)
     grad_y_net = Grad_net(input_size_grad, width_grad, output_size_grad)
     optimizer = optim.SGD(list(encoder.parameters())+list(path_net.parameters())+list(grad_x_net.parameters())+list(grad_y_net.parameters()), lr=args.lr)
+    
+    a=get_n_params(encoder)
+    b = get_n_params(path_net)
+    c = get_n_params(grad_x_net)
+    d = get_n_params(grad_y_net)
 
     scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
     for epoch in range(1, args.epochs + 1):
         train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader, optimizer, epoch)
         test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader)
         scheduler.step()
+    validation(args, encoder, path_net, grad_x_net, grad_y_net, device, validation_loader)
 
     if args.save_model:
         torch.save(encoder.state_dict(), "mnist_cnn.pt")
