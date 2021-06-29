@@ -101,7 +101,7 @@ def train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader,
             t_current = iter*dt*torch.ones((1)).to(device) # calculate the current time
             t_calc = iter*dt*torch.Tensor([0.,1.]).to(device)
             dg_dh_dt_current = path_net(1,torch.Tensor([[t_current]])).to(device) # calculate the current dg/dt
-            g_h_current = torch.squeeze(odeint(path_net, g_h_0, t_calc, method='dopri5')[1]).to(device)
+            g_h_current = torch.squeeze(odeint(path_net, g_h_0, t_calc, method='dopri5')[1])
             in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_h_current.repeat([p_current.size()[0],1]).view(p_current.size()[0],2)), dim=1).to(device)
             #p_current = p_current + dt*(torch.dot(torch.cat((grad_x_net(in_grad), grad_y_net(in_grad)),dim=1),dg_dh_dt_current))
             p_current = p_current + dt*(grad_x_net(in_grad)*dg_dh_dt_current[0][0] + grad_y_net(in_grad)*dg_dh_dt_current[0][1]).to(device)
@@ -140,7 +140,7 @@ def test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader):
                 t_current = iter*dt*torch.ones((1)).to(device) # calculate the current time
                 t_calc = iter*dt*torch.Tensor([0.,1.]).to(device)
                 dg_dh_dt_current = path_net(1,torch.Tensor([[t_current]])).to(device) # calculate the current dg/dt
-                g_h_current = torch.squeeze(odeint(path_net, g_h_0, t_calc, method='dopri5')[1]).to(device)
+                g_h_current = torch.squeeze(odeint(path_net, g_h_0, t_calc, method='dopri5')[1])
                 in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_h_current.repeat([p_current.size()[0],1]).view(p_current.size()[0],2)), dim=1).to(device)
                 #p_current = p_current + dt*(torch.dot(torch.cat((grad_x_net(in_grad), grad_y_net(in_grad)),dim=1),dg_dh_dt_current))
                 p_current = p_current + dt*(grad_x_net(in_grad)*dg_dh_dt_current[0][0] + grad_y_net(in_grad)*dg_dh_dt_current[0][1]).to(device)
@@ -177,7 +177,7 @@ def validation(args, encoder, path_net, grad_x_net, grad_y_net, device, validati
                 t_current = iter*dt*torch.ones((1)).to(device) # calculate the current time
                 t_calc = iter*dt*torch.Tensor([0.,1.]).to(device)
                 dg_dh_dt_current = path_net(1,torch.Tensor([[t_current]])).to(device) # calculate the current dg/dt
-                g_h_current = torch.squeeze(odeint(path_net, g_h_0, t_calc, method='dopri5')[1]).to(device)
+                g_h_current = torch.squeeze(odeint(path_net, g_h_0, t_calc, method='dopri5')[1])
                 in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_h_current.repeat([p_current.size()[0],1]).view(p_current.size()[0],2)), dim=1).to(device)
                 #p_current = p_current + dt*(torch.dot(torch.cat((grad_x_net(in_grad), grad_y_net(in_grad)),dim=1),dg_dh_dt_current))
                 p_current = p_current + dt*(grad_x_net(in_grad)*dg_dh_dt_current[0][0] + grad_y_net(in_grad)*dg_dh_dt_current[0][1]).to(device)
