@@ -76,10 +76,10 @@ class Net(nn.Module):
 
 
 def train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader, optimizer, epoch):
-    encoder = encoder.to(device)
-    path_net = path_net.to(device)
-    grad_x_net = grad_x_net.to(device)
-    grad_y_net = grad_y_net.to(device)
+#    encoder = encoder.to(device)
+#    path_net = path_net.to(device)
+#    grad_x_net = grad_x_net.to(device)
+#    grad_y_net = grad_y_net.to(device)
     encoder.train()
     path_net.train()
     grad_x_net.train()
@@ -120,10 +120,10 @@ def train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader,
 
 
 def test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader):
-    encoder = encoder.to(device)
-    path_net = path_net.to(device)
-    grad_x_net = grad_x_net.to(device)
-    grad_y_net = grad_y_net.to(device)
+#    encoder = encoder.to(device)
+#    path_net = path_net.to(device)
+#    grad_x_net = grad_x_net.to(device)
+#    grad_y_net = grad_y_net.to(device)
     encoder.eval()
     path_net.eval()
     grad_x_net.eval()
@@ -157,10 +157,10 @@ def test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader):
         100. * correct / len(test_loader.dataset)))
 
 def validation(args, encoder, path_net, grad_x_net, grad_y_net, device, validation_loader):
-    encoder = encoder.to(device)
-    path_net = path_net.to(device)
-    grad_x_net = grad_x_net.to(device)
-    grad_y_net = grad_y_net.to(device)
+#    encoder = encoder.to(device)
+#    path_net = path_net.to(device)
+#    grad_x_net = grad_x_net.to(device)
+#    grad_y_net = grad_y_net.to(device)
     encoder.eval()
     path_net.eval()
     grad_x_net.eval()
