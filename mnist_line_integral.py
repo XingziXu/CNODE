@@ -92,18 +92,18 @@ def train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader,
         #num_eval = 1e3
         #l_bound = 0.
         #u_bound = 1.
-        dt = (args.u_bound-args.l_bound)/args.num_eval
+        dt = ((args.u_bound-args.l_bound)/args.num_eval)
         g_h_0 = torch.Tensor([[0.,0.]]).to(device)
         p_current = encoder(data).to(device)
         for iter in range(1,int(args.num_eval)+1): # for each random value, integrate from 0 to 1
-            t_current = iter*dt*torch.ones((1)) # calculate the current time
+            t_current = iter*dt*torch.ones((1)).to(device) # calculate the current time
             t_calc = iter*dt*torch.Tensor([0.,1.]).to(device)
             dg_dh_dt_current = path_net(1,torch.Tensor([[t_current]])).to(device) # calculate the current dg/dt
             g_h_current = torch.squeeze(odeint(path_net, g_h_0, t_calc, method='dopri5')[1]).to(device)
             in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_h_current.repeat([p_current.size()[0],1]).view(p_current.size()[0],2)), dim=1).to(device)
             #p_current = p_current + dt*(torch.dot(torch.cat((grad_x_net(in_grad), grad_y_net(in_grad)),dim=1),dg_dh_dt_current))
             p_current = p_current + dt*(grad_x_net(in_grad)*dg_dh_dt_current[0][0] + grad_y_net(in_grad)*dg_dh_dt_current[0][1]).to(device)
-        soft_max = nn.Softmax(dim=1)
+        soft_max = nn.Softmax(dim=1).to(device)
         p_current = soft_max(p_current).to(device)
         ####### neural path integral ends here #######
         loss = F.nll_loss(p_current, target).to(device)
@@ -119,13 +119,19 @@ def train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader,
 
 def test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader):
     encoder = encoder.to(device)
+    path_net = path_net.to(device)
+    grad_x_net = grad_x_net.to(device)
+    grad_y_net = grad_y_net.to(device)
     encoder.eval()
+    path_net.eval()
+    grad_x_net.eval()
+    grad_y_net.eval()
     test_loss = 0
     correct = 0
     with torch.no_grad():
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
-            dt = (args.u_bound-args.l_bound)/args.num_eval
+            dt = ((args.u_bound-args.l_bound)/args.num_eval)
             g_h_0 = torch.Tensor([[0.,0.]]).to(device)
             p_current = encoder(data).to(device)
             for iter in range(1,int(args.num_eval)+1): # for each random value, integrate from 0 to 1
@@ -136,13 +142,13 @@ def test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader):
                 in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_h_current.repeat([p_current.size()[0],1]).view(p_current.size()[0],2)), dim=1).to(device)
                 #p_current = p_current + dt*(torch.dot(torch.cat((grad_x_net(in_grad), grad_y_net(in_grad)),dim=1),dg_dh_dt_current))
                 p_current = p_current + dt*(grad_x_net(in_grad)*dg_dh_dt_current[0][0] + grad_y_net(in_grad)*dg_dh_dt_current[0][1]).to(device)
-            soft_max = nn.Softmax(dim=1)
+            soft_max = nn.Softmax(dim=1).to(device)
             p_current = soft_max(p_current).to(device)
             test_loss += F.nll_loss(p_current, target, reduction='sum').item().to(device)  # sum up batch loss
-            pred = p_current.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+            pred = p_current.argmax(dim=1, keepdim=True).to(device)  # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum().item()
 
-    test_loss /= len(test_loader.dataset)
+    test_loss /= len(test_loader.dataset).to(device)
 
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
         test_loss, correct, len(test_loader.dataset),
@@ -150,7 +156,13 @@ def test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader):
 
 def validation(args, encoder, path_net, grad_x_net, grad_y_net, device, validation_loader):
     encoder = encoder.to(device)
+    path_net = path_net.to(device)
+    grad_x_net = grad_x_net.to(device)
+    grad_y_net = grad_y_net.to(device)
     encoder.eval()
+    path_net.eval()
+    grad_x_net.eval()
+    grad_y_net.eval()
     test_loss = 0
     correct = 0
     with torch.no_grad():
@@ -170,7 +182,7 @@ def validation(args, encoder, path_net, grad_x_net, grad_y_net, device, validati
             soft_max = nn.Softmax(dim=1)
             p_current = soft_max(p_current).to(device)
             test_loss += F.nll_loss(p_current, target, reduction='sum').item().to(device)  # sum up batch loss
-            pred = p_current.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+            pred = p_current.argmax(dim=1, keepdim=True).to(device)  # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum().item()
 
     test_loss /= len(validation_loader.dataset)
