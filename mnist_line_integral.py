@@ -74,6 +74,10 @@ class Net(nn.Module):
 
 
 def train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader, optimizer, epoch):
+    encoder = encoder.to(device)
+    path_net = path_net.to(device)
+    grad_x_net = grad_x_net.to(device)
+    grad_y_net = grad_y_net.to(device)
     encoder.train()
     path_net.train()
     grad_x_net.train()
@@ -89,20 +93,20 @@ def train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader,
         #l_bound = 0.
         #u_bound = 1.
         dt = (args.u_bound-args.l_bound)/args.num_eval
-        g_h_0 = torch.Tensor([[0.,0.]])
-        p_current = encoder(data)
+        g_h_0 = torch.Tensor([[0.,0.]]).to(device)
+        p_current = encoder(data).to(device)
         for iter in range(1,int(args.num_eval)+1): # for each random value, integrate from 0 to 1
             t_current = iter*dt*torch.ones((1)) # calculate the current time
-            t_calc = iter*dt*torch.Tensor([0.,1.])
-            dg_dh_dt_current = path_net(1,torch.Tensor([[t_current]])) # calculate the current dg/dt
-            g_h_current = torch.squeeze(odeint(path_net, g_h_0, t_calc, method='dopri5')[1])
-            in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_h_current.repeat([p_current.size()[0],1]).view(p_current.size()[0],2)), dim=1)
+            t_calc = iter*dt*torch.Tensor([0.,1.]).to(device)
+            dg_dh_dt_current = path_net(1,torch.Tensor([[t_current]])).to(device) # calculate the current dg/dt
+            g_h_current = torch.squeeze(odeint(path_net, g_h_0, t_calc, method='dopri5')[1]).to(device)
+            in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_h_current.repeat([p_current.size()[0],1]).view(p_current.size()[0],2)), dim=1).to(device)
             #p_current = p_current + dt*(torch.dot(torch.cat((grad_x_net(in_grad), grad_y_net(in_grad)),dim=1),dg_dh_dt_current))
-            p_current = p_current + dt*(grad_x_net(in_grad)*dg_dh_dt_current[0][0] + grad_y_net(in_grad)*dg_dh_dt_current[0][1])
+            p_current = p_current + dt*(grad_x_net(in_grad)*dg_dh_dt_current[0][0] + grad_y_net(in_grad)*dg_dh_dt_current[0][1]).to(device)
         soft_max = nn.Softmax(dim=1)
-        p_current = soft_max(p_current)
+        p_current = soft_max(p_current).to(device)
         ####### neural path integral ends here #######
-        loss = F.nll_loss(p_current, target)
+        loss = F.nll_loss(p_current, target).to(device)
         loss.backward()
         optimizer.step()
         if batch_idx % args.log_interval == 0:
@@ -114,6 +118,7 @@ def train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader,
 
 
 def test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader):
+    encoder = encoder.to(device)
     encoder.eval()
     test_loss = 0
     correct = 0
@@ -121,19 +126,19 @@ def test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader):
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             dt = (args.u_bound-args.l_bound)/args.num_eval
-            g_h_0 = torch.Tensor([[0.,0.]])
-            p_current = encoder(data)
+            g_h_0 = torch.Tensor([[0.,0.]]).to(device)
+            p_current = encoder(data).to(device)
             for iter in range(1,int(args.num_eval)+1): # for each random value, integrate from 0 to 1
-                t_current = iter*dt*torch.ones((1)) # calculate the current time
-                t_calc = iter*dt*torch.Tensor([0.,1.])
-                dg_dh_dt_current = path_net(1,torch.Tensor([[t_current]])) # calculate the current dg/dt
-                g_h_current = torch.squeeze(odeint(path_net, g_h_0, t_calc, method='dopri5')[1])
-                in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_h_current.repeat([p_current.size()[0],1]).view(p_current.size()[0],2)), dim=1)
+                t_current = iter*dt*torch.ones((1)).to(device) # calculate the current time
+                t_calc = iter*dt*torch.Tensor([0.,1.]).to(device)
+                dg_dh_dt_current = path_net(1,torch.Tensor([[t_current]])).to(device) # calculate the current dg/dt
+                g_h_current = torch.squeeze(odeint(path_net, g_h_0, t_calc, method='dopri5')[1]).to(device)
+                in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_h_current.repeat([p_current.size()[0],1]).view(p_current.size()[0],2)), dim=1).to(device)
                 #p_current = p_current + dt*(torch.dot(torch.cat((grad_x_net(in_grad), grad_y_net(in_grad)),dim=1),dg_dh_dt_current))
-                p_current = p_current + dt*(grad_x_net(in_grad)*dg_dh_dt_current[0][0] + grad_y_net(in_grad)*dg_dh_dt_current[0][1])
+                p_current = p_current + dt*(grad_x_net(in_grad)*dg_dh_dt_current[0][0] + grad_y_net(in_grad)*dg_dh_dt_current[0][1]).to(device)
             soft_max = nn.Softmax(dim=1)
-            p_current = soft_max(p_current)
-            test_loss += F.nll_loss(p_current, target, reduction='sum').item()  # sum up batch loss
+            p_current = soft_max(p_current).to(device)
+            test_loss += F.nll_loss(p_current, target, reduction='sum').item().to(device)  # sum up batch loss
             pred = p_current.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum().item()
 
@@ -144,6 +149,7 @@ def test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader):
         100. * correct / len(test_loader.dataset)))
 
 def validation(args, encoder, path_net, grad_x_net, grad_y_net, device, validation_loader):
+    encoder = encoder.to(device)
     encoder.eval()
     test_loss = 0
     correct = 0
@@ -151,19 +157,19 @@ def validation(args, encoder, path_net, grad_x_net, grad_y_net, device, validati
         for data, target in validation_loader:
             data, target = data.to(device), target.to(device)
             dt = (args.u_bound-args.l_bound)/args.num_eval
-            g_h_0 = torch.Tensor([[0.,0.]])
-            p_current = encoder(data)
+            g_h_0 = torch.Tensor([[0.,0.]]).to(device)
+            p_current = encoder(data).to(device)
             for iter in range(1,int(args.num_eval)+1): # for each random value, integrate from 0 to 1
-                t_current = iter*dt*torch.ones((1)) # calculate the current time
-                t_calc = iter*dt*torch.Tensor([0.,1.])
-                dg_dh_dt_current = path_net(1,torch.Tensor([[t_current]])) # calculate the current dg/dt
-                g_h_current = torch.squeeze(odeint(path_net, g_h_0, t_calc, method='dopri5')[1])
-                in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_h_current.repeat([p_current.size()[0],1]).view(p_current.size()[0],2)), dim=1)
+                t_current = iter*dt*torch.ones((1)).to(device) # calculate the current time
+                t_calc = iter*dt*torch.Tensor([0.,1.]).to(device)
+                dg_dh_dt_current = path_net(1,torch.Tensor([[t_current]])).to(device) # calculate the current dg/dt
+                g_h_current = torch.squeeze(odeint(path_net, g_h_0, t_calc, method='dopri5')[1]).to(device)
+                in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_h_current.repeat([p_current.size()[0],1]).view(p_current.size()[0],2)), dim=1).to(device)
                 #p_current = p_current + dt*(torch.dot(torch.cat((grad_x_net(in_grad), grad_y_net(in_grad)),dim=1),dg_dh_dt_current))
-                p_current = p_current + dt*(grad_x_net(in_grad)*dg_dh_dt_current[0][0] + grad_y_net(in_grad)*dg_dh_dt_current[0][1])
+                p_current = p_current + dt*(grad_x_net(in_grad)*dg_dh_dt_current[0][0] + grad_y_net(in_grad)*dg_dh_dt_current[0][1]).to(device)
             soft_max = nn.Softmax(dim=1)
-            p_current = soft_max(p_current)
-            test_loss += F.nll_loss(p_current, target, reduction='sum').item()  # sum up batch loss
+            p_current = soft_max(p_current).to(device)
+            test_loss += F.nll_loss(p_current, target, reduction='sum').item().to(device)  # sum up batch loss
             pred = p_current.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum().item()
 
@@ -264,6 +270,7 @@ def main():
     d = get_n_params(grad_y_net)
 
     scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
+    print('setup complete')
     for epoch in range(1, args.epochs + 1):
         train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader, optimizer, epoch)
         test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader)
