@@ -50,7 +50,9 @@ class ODEFunc(nn.Module):# define ode function, this is what we train on
                 nn.init.constant_(m.bias, val=0)
 
     def forward(self, t, y):
-        return self.net(t+torch.Tensor([[0.]]))
+        use_cuda = False
+        device = torch.device("cuda" if use_cuda else "cpu")
+        return self.net((t+torch.Tensor([[0.]])).to(device))
 
 class Net(nn.Module):
     def __init__(self):
@@ -271,9 +273,9 @@ def main():
     input_size_grad = 12
     width_grad = 32
     output_size_grad = 10
-    path_net = ODEFunc(input_size_path, width_path, output_size_path)
-    grad_x_net = Grad_net(input_size_grad, width_grad, output_size_grad)
-    grad_y_net = Grad_net(input_size_grad, width_grad, output_size_grad)
+    path_net = ODEFunc(input_size_path, width_path, output_size_path).to(device)
+    grad_x_net = Grad_net(input_size_grad, width_grad, output_size_grad).to(device)
+    grad_y_net = Grad_net(input_size_grad, width_grad, output_size_grad).to(device)
     optimizer = optim.SGD(list(encoder.parameters())+list(path_net.parameters())+list(grad_x_net.parameters())+list(grad_y_net.parameters()), lr=args.lr)
     
     a=get_n_params(encoder)
