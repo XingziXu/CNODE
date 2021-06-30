@@ -15,8 +15,10 @@ class Grad_net(nn.Module):
         self.stack = nn.Sequential(
             nn.Linear(input_size,width),
             nn.ReLU(),
+            nn.GroupNorm(1,32),
             nn.Linear(width,width),
             nn.ReLU(),
+            nn.GroupNorm(1,32),
             nn.Linear(width,output_size),
             nn.Tanh()
         )
@@ -38,8 +40,10 @@ class ODEFunc(nn.Module):# define ode function, this is what we train on
         self.net = nn.Sequential(
             nn.Linear(input_size, width),
             nn.ReLU(),
+            nn.GroupNorm(2,32),
             nn.Linear(width,width),
             nn.ReLU(),
+            nn.GroupNorm(2,32),
             nn.Linear(width, output_size),
             nn.ReLU()
         )
@@ -61,16 +65,22 @@ class Net(nn.Module):
         self.conv2 = nn.Conv2d(32, 64, 3, 1)
         self.fc1 = nn.Linear(9216, 128)
         self.fc2 = nn.Linear(128, 10)
+        self.norm1 = nn.GroupNorm(32,32)
+        self.norm2 = nn.GroupNorm(32,64)
+        self.norm3 = nn.GroupNorm(32,128)
 
     def forward(self, x):
         x = self.conv1(x)
         x = F.relu(x)
+        x = self.norm1(x)
         x = self.conv2(x)
         x = F.relu(x)
+        x = self.norm2(x)
         x = F.max_pool2d(x, 2)
         x = torch.flatten(x, 1)
         x = self.fc1(x)
         x = F.relu(x)
+        x = self.norm3(x)
         x = self.fc2(x)
         return x
 
@@ -108,7 +118,7 @@ def train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader,
         soft_max = nn.Softmax(dim=1).to(device)
         p_current = soft_max(p_current).to(device)
         ####### neural path integral ends here #######
-        loss = F.nll_loss(p_current, target).to(device)
+        loss = F.nll_loss(p_current, target)
         loss.backward()
         optimizer.step()
         if batch_idx % args.log_interval == 0:
@@ -150,7 +160,7 @@ def test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader):
             pred = p_current.argmax(dim=1, keepdim=True).to(device)  # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum().item()
 
-    test_loss /= len(test_loader.dataset).to(device)
+    test_loss /= len(test_loader.dataset)
 
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
         test_loss, correct, len(test_loader.dataset),
