@@ -15,10 +15,10 @@ class Grad_net(nn.Module):
         self.stack = nn.Sequential(
             nn.Linear(input_size,width),
             nn.ReLU(),
-#            nn.GroupNorm(1,32),
+            nn.GroupNorm(1,32),
             nn.Linear(width,width),
             nn.ReLU(),
-#            nn.GroupNorm(1,32),
+            nn.GroupNorm(1,32),
             nn.Linear(width,output_size),
             nn.Tanh()
         )
@@ -40,10 +40,8 @@ class ODEFunc(nn.Module):# define ode function, this is what we train on
         self.net = nn.Sequential(
             nn.Linear(input_size, width),
             nn.ReLU(),
-#            nn.GroupNorm(2,32),
             nn.Linear(width,width),
             nn.ReLU(),
-#            nn.GroupNorm(2,32),
             nn.Linear(width, output_size),
             nn.ReLU()
         )
@@ -57,22 +55,22 @@ class Net(nn.Module):
         self.conv2 = nn.Conv2d(32, 64, 3, 1)
         self.fc1 = nn.Linear(9216, 128)
         self.fc2 = nn.Linear(128, 10)
-#        self.norm1 = nn.GroupNorm(32,32)
-#        self.norm2 = nn.GroupNorm(32,64)
-#        self.norm3 = nn.GroupNorm(32,128)
+        self.norm1 = nn.GroupNorm(32,32)
+        self.norm2 = nn.GroupNorm(32,64)
+        self.norm3 = nn.GroupNorm(32,128)
 
     def forward(self, x):
         x = self.conv1(x)
         x = F.relu(x)
-#        x = self.norm1(x)
+        x = self.norm1(x)
         x = self.conv2(x)
         x = F.relu(x)
-#        x = self.norm2(x)
+        x = self.norm2(x)
         x = F.max_pool2d(x, 2)
         x = torch.flatten(x, 1)
         x = self.fc1(x)
         x = F.relu(x)
-#        x = self.norm3(x)
+        x = self.norm3(x)
         x = self.fc2(x)
         return x
 
@@ -154,34 +152,33 @@ def test(args, encoder, path_net_x, path_net_y, grad_x_net, grad_y_net, device, 
     grad_y_net.eval()
     test_loss = 0
     correct = 0
-    with torch.no_grad():
-        for data, target in test_loader:
-            data, target = data, target
-            dt = ((args.u_bound-args.l_bound)/args.num_eval)
-            p_current = encoder(data)
-            for iter in range(1,int(args.num_eval)+1): # for each random value, integrate from 0 to 1
-                t_current_x = iter*dt*torch.ones((1)) # calculate the current time
-                #t_calc = iter*dt*torch.Tensor([0.,1.]).to(device)
-                t_current_x.requires_grad=True
-                t_current_x.retain_grad()
-                g_current = path_net_x(t_current_x)
-                g_current.backward(retain_graph=True)
-                dg_dt_current = t_current_x.grad # calculate the current dg/dt
-                t_current_y = iter*dt*torch.ones((1)) # calculate the current time
-                #t_calc = iter*dt*torch.Tensor([0.,1.]).to(device)
-                t_current_y.requires_grad=True
-                t_current_y.retain_grad()
-                h_current = path_net_y(t_current_y)
-                h_current.backward(retain_graph=True)
-                dh_dt_current = t_current_y.grad
-                in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_current.repeat([p_current.size()[0],1]),h_current.repeat([p_current.size()[0],1])), dim=1).to(device)
-                #p_current = p_current + dt*(torch.dot(torch.cat((grad_x_net(in_grad), grad_y_net(in_grad)),dim=1),dg_dh_dt_current))
-                p_current = p_current + dt*(grad_x_net(in_grad)*dg_dt_current + grad_y_net(in_grad)*dh_dt_current)
-            soft_max = nn.Softmax(dim=1)
-            p_current = soft_max(p_current)
-            test_loss += F.nll_loss(p_current, target, reduction='sum').item()  # sum up batch loss
-            pred = p_current.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
-            correct += pred.eq(target.view_as(pred)).sum().item()
+    for data, target in test_loader:
+        data, target = data, target
+        dt = ((args.u_bound-args.l_bound)/args.num_eval)
+        p_current = encoder(data)
+        for iter in range(1,int(args.num_eval)+1): # for each random value, integrate from 0 to 1
+            t_current_x = iter*dt*torch.ones((1)) # calculate the current time
+            #t_calc = iter*dt*torch.Tensor([0.,1.]).to(device)
+            t_current_x.requires_grad=True
+            t_current_x.retain_grad()
+            g_current = path_net_x(t_current_x)
+            g_current.backward(retain_graph=True)
+            dg_dt_current = t_current_x.grad # calculate the current dg/dt
+            t_current_y = iter*dt*torch.ones((1)) # calculate the current time
+            #t_calc = iter*dt*torch.Tensor([0.,1.]).to(device)
+            t_current_y.requires_grad=True
+            t_current_y.retain_grad()
+            h_current = path_net_y(t_current_y)
+            h_current.backward(retain_graph=True)
+            dh_dt_current = t_current_y.grad
+            in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_current.repeat([p_current.size()[0],1]),h_current.repeat([p_current.size()[0],1])), dim=1).to(device)
+            #p_current = p_current + dt*(torch.dot(torch.cat((grad_x_net(in_grad), grad_y_net(in_grad)),dim=1),dg_dh_dt_current))
+            p_current = p_current + dt*(grad_x_net(in_grad)*dg_dt_current + grad_y_net(in_grad)*dh_dt_current)
+        soft_max = nn.Softmax(dim=1)
+        p_current = soft_max(p_current)
+        test_loss += F.nll_loss(p_current, target, reduction='sum').item()  # sum up batch loss
+        pred = p_current.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+        correct += pred.eq(target.view_as(pred)).sum().item()
 
     test_loss /= len(test_loader.dataset)
 
@@ -303,7 +300,7 @@ def main():
     dataset2 = datasets.MNIST('../data', train=False, download=True,
                        transform=transform)
 
-    dataset3, dataset1 = torch.utils.data.random_split(dataset1, [10000,50000])
+    dataset3, dataset1 = torch.utils.data.random_split(dataset1, [59500,500])
 
     train_loader = torch.utils.data.DataLoader(dataset1,**train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
