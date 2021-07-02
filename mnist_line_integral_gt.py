@@ -86,14 +86,13 @@ class WeightClipper(object):
             w = w.clamp(0, float('inf'))
             module.weight.data = w
 
-def train(args, encoder, path_net_x, path_net_y, grad_x_net, grad_y_net, device, train_loader, optimizer, epoch):
+def train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader, optimizer, epoch):
 #    encoder = encoder.to(device)
 #    path_net = path_net.to(device)
 #    grad_x_net = grad_x_net.to(device)
 #    grad_y_net = grad_y_net.to(device)
     encoder.train()
-    path_net_x.train()
-    path_net_y.train()
+    path_net.train()
     grad_x_net.train()
     grad_y_net.train()
     for batch_idx, (data, target) in enumerate(train_loader):
@@ -109,21 +108,15 @@ def train(args, encoder, path_net_x, path_net_y, grad_x_net, grad_y_net, device,
         dt = ((args.u_bound-args.l_bound)/args.num_eval)
         p_current = encoder(data)
         for iter in range(1,int(args.num_eval)+1): # for each random value, integrate from 0 to 1
-            t_current_x = iter*dt*torch.ones((1)) # calculate the current time
+            t_current = iter*dt*torch.ones((1)) # calculate the current time
             #t_calc = iter*dt*torch.Tensor([0.,1.]).to(device)
-            t_current_x.requires_grad=True
-            t_current_x.retain_grad()
-            g_current = path_net_x(t_current_x)
-            g_current.backward(retain_graph=True)
-            dg_dt_current = t_current_x.grad # calculate the current dg/dt
-            t_current_y = iter*dt*torch.ones((1)) # calculate the current time
-            #t_calc = iter*dt*torch.Tensor([0.,1.]).to(device)
-            t_current_y.requires_grad=True
-            t_current_y.retain_grad()
-            h_current = path_net_y(t_current_y)
-            h_current.backward(retain_graph=True)
-            dh_dt_current = t_current_y.grad
-            in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_current.repeat([p_current.size()[0],1]),h_current.repeat([p_current.size()[0],1])), dim=1).to(device)
+            t_current.requires_grad=True
+            t_current.retain_grad()
+            g_h_current = path_net(t_current)
+            torch.sum(g_h_current).backward(retain_graph=True)
+            dg_dt_current = torch.autograd.grad(g_h_current[0], t_current, retain_graph = True)[0] # calculate the current dg/dt
+            dh_dt_current = torch.autograd.grad(g_h_current[1], t_current, retain_graph = True)[0]
+            in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_h_current.repeat([p_current.size()[0],1]).view(p_current.size()[0],2)), dim=1).to(device)
             #p_current = p_current + dt*(torch.dot(torch.cat((grad_x_net(in_grad), grad_y_net(in_grad)),dim=1),dg_dh_dt_current))
             p_current = p_current + dt*(grad_x_net(in_grad)*dg_dt_current + grad_y_net(in_grad)*dh_dt_current)
         soft_max = nn.Softmax(dim=1)
@@ -140,14 +133,13 @@ def train(args, encoder, path_net_x, path_net_y, grad_x_net, grad_y_net, device,
                 break
 
 
-def test(args, encoder, path_net_x, path_net_y, grad_x_net, grad_y_net, device, test_loader):
+def test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader):
 #    encoder = encoder.to(device)
 #    path_net = path_net.to(device)
 #    grad_x_net = grad_x_net.to(device)
 #    grad_y_net = grad_y_net.to(device)
     encoder.eval()
-    path_net_x.eval()
-    path_net_y.eval()
+    path_net.eval()
     grad_x_net.eval()
     grad_y_net.eval()
     test_loss = 0
@@ -157,21 +149,15 @@ def test(args, encoder, path_net_x, path_net_y, grad_x_net, grad_y_net, device, 
         dt = ((args.u_bound-args.l_bound)/args.num_eval)
         p_current = encoder(data)
         for iter in range(1,int(args.num_eval)+1): # for each random value, integrate from 0 to 1
-            t_current_x = iter*dt*torch.ones((1)) # calculate the current time
+            t_current = iter*dt*torch.ones((1)) # calculate the current time
             #t_calc = iter*dt*torch.Tensor([0.,1.]).to(device)
-            t_current_x.requires_grad=True
-            t_current_x.retain_grad()
-            g_current = path_net_x(t_current_x)
-            g_current.backward(retain_graph=True)
-            dg_dt_current = t_current_x.grad # calculate the current dg/dt
-            t_current_y = iter*dt*torch.ones((1)) # calculate the current time
-            #t_calc = iter*dt*torch.Tensor([0.,1.]).to(device)
-            t_current_y.requires_grad=True
-            t_current_y.retain_grad()
-            h_current = path_net_y(t_current_y)
-            h_current.backward(retain_graph=True)
-            dh_dt_current = t_current_y.grad
-            in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_current.repeat([p_current.size()[0],1]),h_current.repeat([p_current.size()[0],1])), dim=1).to(device)
+            t_current.requires_grad=True
+            t_current.retain_grad()
+            g_h_current = path_net(t_current)
+            torch.sum(g_h_current).backward(retain_graph=True)
+            dg_dt_current = torch.autograd.grad(g_h_current[0], t_current, retain_graph = True)[0] # calculate the current dg/dt
+            dh_dt_current = torch.autograd.grad(g_h_current[1], t_current, retain_graph = True)[0]
+            in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_h_current.repeat([p_current.size()[0],1]).view(p_current.size()[0],2)), dim=1).to(device)
             #p_current = p_current + dt*(torch.dot(torch.cat((grad_x_net(in_grad), grad_y_net(in_grad)),dim=1),dg_dh_dt_current))
             p_current = p_current + dt*(grad_x_net(in_grad)*dg_dt_current + grad_y_net(in_grad)*dh_dt_current)
         soft_max = nn.Softmax(dim=1)
@@ -186,50 +172,42 @@ def test(args, encoder, path_net_x, path_net_y, grad_x_net, grad_y_net, device, 
         test_loss, correct, len(test_loader.dataset),
         100. * correct / len(test_loader.dataset)))
 
-def validation(args, encoder, path_net_x, path_net_y, grad_x_net, grad_y_net, device, validation_loader):
+def validation(args, encoder, path_net, grad_x_net, grad_y_net, device, validation_loader):
 #    encoder = encoder.to(device)
 #    path_net = path_net.to(device)
 #    grad_x_net = grad_x_net.to(device)
 #    grad_y_net = grad_y_net.to(device)
     encoder.eval()
-    path_net_x.eval()
-    path_net_y.eval()
+    path_net.eval()
     grad_x_net.eval()
     grad_y_net.eval()
     test_loss = 0
     correct = 0
-    with torch.no_grad():
-        for data, target in validation_loader:
-            data, target = data, target
-            dt = ((args.u_bound-args.l_bound)/args.num_eval)
-            p_current = encoder(data)
-            for iter in range(1,int(args.num_eval)+1): # for each random value, integrate from 0 to 1
-                t_current_x = iter*dt*torch.ones((1)) # calculate the current time
-                #t_calc = iter*dt*torch.Tensor([0.,1.]).to(device)
-                t_current_x.requires_grad=True
-                t_current_x.retain_grad()
-                g_current = path_net_x(t_current_x)
-                g_current.backward(retain_graph=True)
-                dg_dt_current = t_current_x.grad # calculate the current dg/dt
-                t_current_y = iter*dt*torch.ones((1)) # calculate the current time
-                #t_calc = iter*dt*torch.Tensor([0.,1.]).to(device)
-                t_current_y.requires_grad=True
-                t_current_y.retain_grad()
-                h_current = path_net_y(t_current_y)
-                h_current.backward(retain_graph=True)
-                dh_dt_current = t_current_y.grad
-                in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_current.repeat([p_current.size()[0],1]),h_current.repeat([p_current.size()[0],1])), dim=1).to(device)
-                #p_current = p_current + dt*(torch.dot(torch.cat((grad_x_net(in_grad), grad_y_net(in_grad)),dim=1),dg_dh_dt_current))
-                p_current = p_current + dt*(grad_x_net(in_grad)*dg_dt_current + grad_y_net(in_grad)*dh_dt_current)
-            soft_max = nn.Softmax(dim=1)
-            p_current = soft_max(p_current)
-            test_loss += F.nll_loss(p_current, target, reduction='sum').item()  # sum up batch loss
-            pred = p_current.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
-            correct += pred.eq(target.view_as(pred)).sum().item()
+    for data, target in validation_loader:
+        data, target = data, target
+        dt = ((args.u_bound-args.l_bound)/args.num_eval)
+        p_current = encoder(data)
+        for iter in range(1,int(args.num_eval)+1): # for each random value, integrate from 0 to 1
+            t_current = iter*dt*torch.ones((1)) # calculate the current time
+            #t_calc = iter*dt*torch.Tensor([0.,1.]).to(device)
+            t_current.requires_grad=True
+            t_current.retain_grad()
+            g_h_current = path_net(t_current)
+            torch.sum(g_h_current).backward(retain_graph=True)
+            dg_dt_current = torch.autograd.grad(g_h_current[0], t_current, retain_graph = True)[0] # calculate the current dg/dt
+            dh_dt_current = torch.autograd.grad(g_h_current[1], t_current, retain_graph = True)[0]
+            in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_h_current.repeat([p_current.size()[0],1]).view(p_current.size()[0],2)), dim=1).to(device)
+            #p_current = p_current + dt*(torch.dot(torch.cat((grad_x_net(in_grad), grad_y_net(in_grad)),dim=1),dg_dh_dt_current))
+            p_current = p_current + dt*(grad_x_net(in_grad)*dg_dt_current + grad_y_net(in_grad)*dh_dt_current)
+        soft_max = nn.Softmax(dim=1)
+        p_current = soft_max(p_current)
+        test_loss += F.nll_loss(p_current, target, reduction='sum').item()  # sum up batch loss
+        pred = p_current.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+        correct += pred.eq(target.view_as(pred)).sum().item()
 
     test_loss /= len(validation_loader.dataset)
 
-    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+    print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
         test_loss, correct, len(validation_loader.dataset),
         100. * correct / len(validation_loader.dataset)))
 
@@ -251,7 +229,7 @@ def main():
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=150, metavar='N',
+    parser.add_argument('--epochs', type=int, default=2, metavar='N',
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--gamma', type=float, default=0.7, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
@@ -299,8 +277,8 @@ def main():
                        transform=transform)
     dataset2 = datasets.MNIST('../data', train=False, download=True,
                        transform=transform)
-
-    dataset3, dataset1 = torch.utils.data.random_split(dataset1, [59500,500])
+ 
+    dataset3, dataset1 = torch.utils.data.random_split(dataset1, [10000,50000]) # dataset 1 is training, dataset 2 is testing, dataset 3 is validation
 
     train_loader = torch.utils.data.DataLoader(dataset1,**train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
@@ -309,36 +287,33 @@ def main():
     encoder = Net()
     input_size_path = 1
     width_path = 32
-    output_size_path = 1
+    output_size_path = 2
     input_size_grad = 12
     width_grad = 32
     output_size_grad = 10
     clipper = WeightClipper()
-    path_net_x = ODEFunc(input_size_path, width_path, output_size_path)
-    path_net_x.apply(clipper)
-    path_net_y = ODEFunc(input_size_path, width_path, output_size_path)
-    path_net_y.apply(clipper)
+    path_net = ODEFunc(input_size_path, width_path, output_size_path)
+    path_net.apply(clipper)
     grad_x_net = Grad_net(input_size_grad, width_grad, output_size_grad)
     grad_y_net = Grad_net(input_size_grad, width_grad, output_size_grad)
-    optimizer = optim.SGD(list(encoder.parameters())+list(path_net_x.parameters())+list(path_net_y.parameters())+list(grad_x_net.parameters())+list(grad_y_net.parameters()), lr=args.lr)
+    optimizer = optim.SGD(list(encoder.parameters())+list(path_net.parameters())+list(grad_x_net.parameters())+list(grad_y_net.parameters()), lr=args.lr)
     
     a=get_n_params(encoder)
-    b = get_n_params(path_net_x)
+    b = get_n_params(path_net)
     c = get_n_params(grad_x_net)
     d = get_n_params(grad_y_net)
 
     scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
     print('setup complete')
     for epoch in range(1, args.epochs + 1):
-        train(args, encoder, path_net_x, path_net_y, grad_x_net, grad_y_net, device, train_loader, optimizer, epoch)
-        test(args, encoder, path_net_x, path_net_y, grad_x_net, grad_y_net, device, test_loader)
+        train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader, optimizer, epoch)
+        validation(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader)
         scheduler.step()
-    validation(args, encoder, path_net_x, path_net_y, grad_x_net, grad_y_net, device, validation_loader)
+    test(args, encoder, path_net, grad_x_net, grad_y_net, device, validation_loader)
 
     if args.save_model:
         torch.save(encoder.state_dict(), "mnist_cnn.pt")
-        torch.save(path_net_x.state_dict(), "path_network.pt")
-        torch.save(path_net_y.state_dict(), "path_network.pt")
+        torch.save(path_net.state_dict(), "path_network.pt")
         torch.save(grad_x_net.state_dict(), "grad_x_net.pt")
         torch.save(grad_y_net.state_dict(), "grad_y_net.pt")
 
