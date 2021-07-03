@@ -20,7 +20,7 @@ class Grad_net(nn.Module):
             nn.ReLU(),
             nn.GroupNorm(1,32),
             nn.Linear(width,output_size),
-            nn.Tanh()
+            nn.Tanhshrink()
         )
 
     def forward(self,x):
