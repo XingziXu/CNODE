@@ -44,11 +44,11 @@ class Grad_net(nn.Module):
         )
 
     def forward(self,t,p_current):
-        t_current = t*torch.ones((1)) # calculate the current time
-        g_h_current = self.path(t_current)
+        t = t.view(1) # calculate the current time
+        g_h_current = self.path(t)
         torch.sum(g_h_current).backward(retain_graph=True)
-        dg_dt_current = torch.autograd.grad(g_h_current[0], t_current, retain_graph = True)[0] # calculate the current dg/dt
-        dh_dt_current = torch.autograd.grad(g_h_current[1], t_current, retain_graph = True)[0]
+        dg_dt_current = torch.autograd.grad(g_h_current[0], t, retain_graph = True)[0] # calculate the current dg/dt
+        dh_dt_current = torch.autograd.grad(g_h_current[1], t, retain_graph = True)[0]
         in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_h_current.repeat([p_current.size()[0],1]).view(p_current.size()[0],2)), dim=1)
         dpdt = self.grad_x(in_grad)*dg_dt_current + self.grad_y(in_grad)*dh_dt_current
         return dpdt
@@ -115,14 +115,14 @@ def train(args, encoder, grad_net, device, train_loader, optimizer, epoch):
     for batch_idx, (data, target) in enumerate(train_loader):
         #if batch_idx > 100:
         #    break
-        data, target = data, target
+        data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
 
         ####### neural path integral starts here #######
         p_current = encoder(data)
         t = torch.Tensor([0.,1.]).to(device)
         t.requires_grad=True
-        p_current = odeint(grad_net, p_current, t)
+        p_current = torch.squeeze(odeint(grad_net, p_current, t)[1])
         soft_max = nn.Softmax(dim=1)
         ####### neural path integral ends here #######
         p_current = soft_max(p_current)
@@ -152,7 +152,7 @@ def test(args, encoder, grad_net, device, test_loader):
         p_current = encoder(data)
         t = torch.Tensor([0.,1.]).to(device)
         t.requires_grad=True
-        p_current = odeint(grad_net, p_current, t)
+        p_current = torch.squeeze(odeint(grad_net, p_current, t)[1])
         soft_max = nn.Softmax(dim=1)
         ####### neural path integral ends here #######
         p_current = soft_max(p_current)
@@ -176,12 +176,12 @@ def validation(args, encoder, grad_net, device, validation_loader):
     test_loss = 0
     correct = 0
     for data, target in validation_loader:
-        data, target = data, target
+        data, target = data.to(device), target.to(device)
         ####### neural path integral starts here #######
         p_current = encoder(data)
         t = torch.Tensor([0.,1.]).to(device)
         t.requires_grad=True
-        p_current = odeint(grad_net, p_current, t)
+        p_current = torch.squeeze(odeint(grad_net, p_current, t)[1])
         soft_max = nn.Softmax(dim=1)
         ####### neural path integral ends here #######
         p_current = soft_max(p_current)
@@ -217,7 +217,7 @@ def main():
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--gamma', type=float, default=0.7, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
-    parser.add_argument('--no-cuda', action='store_true', default=False,
+    parser.add_argument('--no-cuda', action='store_true', default=True,
                         help='disables CUDA training')
     parser.add_argument('--dry-run', action='store_true', default=False,
                         help='quickly check a single pass')
@@ -262,22 +262,22 @@ def main():
     dataset2 = datasets.CIFAR10('../data', train=False, download=True,
                        transform=transform)
  
-    dataset4, dataset2 = torch.utils.data.random_split(dataset2, [9990,10])
+#    dataset4, dataset2 = torch.utils.data.random_split(dataset2, [9990,10])
 
-    dataset3, dataset1 = torch.utils.data.random_split(dataset1, [49990,10]) # dataset 1 is training, dataset 2 is testing, dataset 3 is validation
+    dataset3, dataset1 = torch.utils.data.random_split(dataset1, [10000,40000]) # dataset 1 is training, dataset 2 is testing, dataset 3 is validation
 
     train_loader = torch.utils.data.DataLoader(dataset1,**train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
     validation_loader = torch.utils.data.DataLoader(dataset3, **validation_kwargs)
 
-    encoder = Net()
+    encoder = Net().to(device)
     input_size_path = 1
     width_path = 64
     output_size_path = 2
     input_size_grad = 12
     width_grad = 64
     output_size_grad = 10
-    grad_net = Grad_net(input_size_path, width_path, output_size_path, input_size_grad, width_grad, output_size_grad)
+    grad_net = Grad_net(input_size_path, width_path, output_size_path, input_size_grad, width_grad, output_size_grad).to(device)
     optimizer = optim.SGD(list(encoder.parameters())+list(grad_net.parameters()), lr=args.lr)
     
     a=get_n_params(encoder)
