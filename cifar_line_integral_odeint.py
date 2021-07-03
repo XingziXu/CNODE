@@ -115,7 +115,9 @@ def train(args, encoder, grad_net, device, train_loader, optimizer, epoch):
         optimizer.step()
         constraintLow = 0
         constraintHigh = float('inf')
-        grad_net.path.weight=torch.nn.Parameter(constraintLow + (constraintHigh-constraintLow)*(grad_net.path.weight - torch.min(grad_net.path.weight))/(torch.max(grad_net.path.weight) - torch.min(grad_net.path.weight)))
+        clipper = WeightClipper()
+        grad_net.path.apply(clipper)
+       # grad_net.path[1].weight=torch.nn.Parameter(constraintLow + (constraintHigh-constraintLow)*(grad_net.path.weight - torch.min(grad_net.path.weight))/(torch.max(grad_net.path.weight) - torch.min(grad_net.path.weight)))
         if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
