@@ -53,22 +53,6 @@ class Grad_net(nn.Module):
         dpdt = self.grad_x(in_grad)*dg_dt_current + self.grad_y(in_grad)*dh_dt_current
         return dpdt
 
-class ODEFunc(nn.Module):# define ode function, this is what we train on
-
-    def __init__(self, input_size : int, width : int, output_size : int):
-        super(ODEFunc, self).__init__()
-
-        self.net = nn.Sequential(
-            nn.Linear(input_size, width),
-            nn.ReLU(),
-            nn.Linear(width,width),
-            nn.ReLU(),
-            nn.Linear(width, output_size),
-            nn.ReLU()
-        )
-    def forward(self, t):
-        return self.net(t)
-
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
@@ -129,6 +113,9 @@ def train(args, encoder, grad_net, device, train_loader, optimizer, epoch):
         loss = F.nll_loss(p_current, target)
         loss.backward()
         optimizer.step()
+        constraintLow = 0
+        constraintHigh = float('inf')
+        grad_net.path.weight=torch.nn.Parameter(constraintLow + (constraintHigh-constraintLow)*(grad_net.path.weight - torch.min(grad_net.path.weight))/(torch.max(grad_net.path.weight) - torch.min(grad_net.path.weight)))
         if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
