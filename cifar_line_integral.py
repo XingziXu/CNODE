@@ -124,7 +124,6 @@ def train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader,
         loss = F.nll_loss(p_current, target)
         loss.backward()
         optimizer.step()
-        print(torch.max(path_net.weight.data))
         if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),

@@ -141,7 +141,7 @@ def test(args, encoder, grad_net, device, test_loader):
         p_current = encoder(data)
         t = torch.Tensor([0.,1.]).to(device)
         t.requires_grad=True
-        p_current = torch.squeeze(odeint(grad_net, p_current, t)[1])
+        p_current = torch.squeeze(odeint(grad_net, p_current, t)[0])
         soft_max = nn.Softmax(dim=1)
         ####### neural path integral ends here #######
         p_current = soft_max(p_current)
