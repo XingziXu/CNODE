@@ -15,10 +15,10 @@ class Grad_net(nn.Module):
         self.stack = nn.Sequential(
             nn.Linear(input_size,width),
             nn.ReLU(),
-            nn.GroupNorm(1,64),
+            nn.GroupNorm(1,width),
             nn.Linear(width,width),
             nn.ReLU(),
-            nn.GroupNorm(1,64),
+            nn.GroupNorm(1,width),
             nn.Linear(width,output_size),
             nn.Tanh()
         )
@@ -36,28 +36,41 @@ class ODEFunc(nn.Module):# define ode function, this is what we train on
 
     def __init__(self, input_size : int, width : int, output_size : int):
         super(ODEFunc, self).__init__()
+        self.l1 = nn.Linear(input_size, width)
+        self.l2 = nn.Linear(width,width)
+        self.l3 = nn.Linear(width, output_size)
+        self.norm1 = nn.LayerNorm(width)
+        self.norm2 = nn.LayerNorm(width)
 
-        self.net = nn.Sequential(
-            nn.Linear(input_size, width),
-            nn.ReLU(),
-            nn.Linear(width,width),
-            nn.ReLU(),
-            nn.Linear(width, output_size),
-            nn.ReLU()
-        )
     def forward(self, t):
-        return self.net(t)
+        t = self.l1(t)
+        t = F.relu(t)
+        t = self.norm1(t)
+        t = self.l2(t)
+        t = F.relu(t)
+        t = self.norm2(t)
+        t = self.l3(t)
+        t = F.relu(t)
+        return t
 
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(3,4,3,1)
         self.conv2 = nn.Conv2d(4,4,3,1)
+<<<<<<< HEAD
         self.fc1 = nn.Linear(784,128)
         self.fc2 = nn.Linear(128,10)
         self.norm1 = nn.GroupNorm(4,4)
         self.norm2 = nn.GroupNorm(4,4)
         self.norm3 = nn.GroupNorm(4,128)
+=======
+        self.fc1 = nn.Linear(784,256)
+        self.fc2 = nn.Linear(256,10)
+        self.norm1 = nn.GroupNorm(4,4)
+        self.norm2 = nn.GroupNorm(4,4)
+        self.norm3 = nn.GroupNorm(4,256)
+>>>>>>> 40a2a0fd5197fa8899c493fc4d3d92d793cf6db6
 
     def forward(self, x):
         x = self.conv1(x)
@@ -243,7 +256,7 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
-    parser.add_argument('--lr', type=float, default=1e-1, metavar='LR',
+    parser.add_argument('--lr', type=float, default=5e-1, metavar='LR',
                         help='learning rate (default: 1.0)')
     parser.add_argument('--l-bound', type=float, default=0., help='Lower bound of line integral t value')
     parser.add_argument('--u-bound', type=float, default=1., help='Upper bound of line integral t value')
