@@ -36,28 +36,33 @@ class ODEFunc(nn.Module):# define ode function, this is what we train on
 
     def __init__(self, input_size : int, width : int, output_size : int):
         super(ODEFunc, self).__init__()
+        self.l1 = nn.Linear(input_size, width)
+        self.l2 = nn.Linear(width,width)
+        self.l3 = nn.Linear(width, output_size)
+        self.norm1 = nn.LayerNorm(width)
+        self.norm2 = nn.LayerNorm(width)
 
-        self.net = nn.Sequential(
-            nn.Linear(input_size, width),
-            nn.ReLU(),
-            nn.Linear(width,width),
-            nn.ReLU(),
-            nn.Linear(width, output_size),
-            nn.ReLU()
-        )
     def forward(self, t):
-        return self.net(t)
+        t = self.l1(t)
+        t = F.relu(t)
+        t = self.norm1(t)
+        t = self.l2(t)
+        t = F.relu(t)
+        t = self.norm2(t)
+        t = self.l3(t)
+        t = F.relu(t)
+        return t
 
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(3, 16, 3, 1)
-        self.conv2 = nn.Conv2d(16, 16, 3, 1)
-        self.fc1 = nn.Linear(3136, 128)
-        self.fc2 = nn.Linear(128, 10)
-        self.norm1 = nn.GroupNorm(16,16)
-        self.norm2 = nn.GroupNorm(16,16)
-        self.norm3 = nn.GroupNorm(16,128)
+        self.conv1 = nn.Conv2d(3,4,3,1)
+        self.conv2 = nn.Conv2d(4,4,3,1)
+        self.fc1 = nn.Linear(784,256)
+        self.fc2 = nn.Linear(256,10)
+        self.norm1 = nn.GroupNorm(4,4)
+        self.norm2 = nn.GroupNorm(4,4)
+        self.norm3 = nn.GroupNorm(4,256)
 
     def forward(self, x):
         x = self.conv1(x)
