@@ -51,15 +51,13 @@ class ODEFunc(nn.Module):# define ode function, this is what we train on
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(3, 8, 3, 1)
-        self.conv2 = nn.Conv2d(8, 8, 3, 1)
-        self.conv3 = nn.Conv2d(8, 8, 3, 1)
-        self.fc1 = nn.Linear(1352, 128)
-        self.fc2 = nn.Linear(128, 10)
-        self.norm1 = nn.GroupNorm(8,8)
-        self.norm2 = nn.GroupNorm(8,8)
-        self.norm3 = nn.GroupNorm(8,8)
-        self.norm4 = nn.GroupNorm(8,128)
+        self.conv1 = nn.Conv2d(3,4,3,1)
+        self.conv2 = nn.Conv2d(4,4,3,1)
+        self.fc1 = nn.Linear(784,128)
+        self.fc2 = nn.Linear(128,10)
+        self.norm1 = nn.GroupNorm(4,4)
+        self.norm2 = nn.GroupNorm(4,4)
+        self.norm3 = nn.GroupNorm(4,128)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -68,14 +66,11 @@ class Net(nn.Module):
         x = self.conv2(x)
         x = F.relu(x)
         x = self.norm2(x)
-        x = self.conv3(x)
-        x = F.relu(x)
-        x = self.norm3(x)
         x = F.max_pool2d(x, 2)
         x = torch.flatten(x, 1)
         x = self.fc1(x)
         x = F.relu(x)
-        x = self.norm4(x)
+        x = self.norm3(x)
         x = self.fc2(x)
         return x
 
@@ -234,11 +229,11 @@ def main():
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=2, metavar='N',
+    parser.add_argument('--epochs', type=int, default=200, metavar='N',
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--gamma', type=float, default=0.7, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
-    parser.add_argument('--no-cuda', action='store_true', default=False,
+    parser.add_argument('--no-cuda', action='store_true', default=True,
                         help='disables CUDA training')
     parser.add_argument('--dry-run', action='store_true', default=False,
                         help='quickly check a single pass')
@@ -283,9 +278,9 @@ def main():
     dataset2 = datasets.CIFAR10('../data', train=False, download=True,
                        transform=transform)
  
-    dataset4, dataset2 = torch.utils.data.random_split(dataset2, [9990,10])
+    #dataset4, dataset2 = torch.utils.data.random_split(dataset2, [9990,10])
 
-    dataset3, dataset1 = torch.utils.data.random_split(dataset1, [49990,10]) # dataset 1 is training, dataset 2 is testing, dataset 3 is validation
+    dataset3, dataset1 = torch.utils.data.random_split(dataset1, [10000,40000]) # dataset 1 is training, dataset 2 is testing, dataset 3 is validation
 
     train_loader = torch.utils.data.DataLoader(dataset1,**train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
