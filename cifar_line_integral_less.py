@@ -58,19 +58,11 @@ class Net(nn.Module):
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(3,4,3,1)
         self.conv2 = nn.Conv2d(4,4,3,1)
-<<<<<<< HEAD
-        self.fc1 = nn.Linear(784,128)
-        self.fc2 = nn.Linear(128,10)
-        self.norm1 = nn.GroupNorm(4,4)
-        self.norm2 = nn.GroupNorm(4,4)
-        self.norm3 = nn.GroupNorm(4,128)
-=======
         self.fc1 = nn.Linear(784,256)
         self.fc2 = nn.Linear(256,10)
         self.norm1 = nn.GroupNorm(4,4)
         self.norm2 = nn.GroupNorm(4,4)
         self.norm3 = nn.GroupNorm(4,256)
->>>>>>> 40a2a0fd5197fa8899c493fc4d3d92d793cf6db6
 
     def forward(self, x):
         x = self.conv1(x)
@@ -242,11 +234,11 @@ def main():
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=200, metavar='N',
+    parser.add_argument('--epochs', type=int, default=2, metavar='N',
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--gamma', type=float, default=0.7, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
-    parser.add_argument('--no-cuda', action='store_true', default=True,
+    parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
     parser.add_argument('--dry-run', action='store_true', default=False,
                         help='quickly check a single pass')
