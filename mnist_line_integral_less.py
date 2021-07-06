@@ -52,8 +52,13 @@ class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(1, 8, 3, 1)
+<<<<<<< HEAD
         self.conv2 = nn.Conv2d(8,8, 3, 1)
         self.fc1 = nn.Linear(948, 128)
+=======
+        self.conv2 = nn.Conv2d(8, 8, 3, 1)
+        self.fc1 = nn.Linear(968, 128)
+>>>>>>> 6a448d88774d1dee5369efd3f05b47ec926b4a14
         self.fc2 = nn.Linear(128, 10)
         self.norm1 = nn.GroupNorm(8,8)
         self.norm2 = nn.GroupNorm(8,8)
@@ -63,6 +68,9 @@ class Net(nn.Module):
         x = self.conv1(x)
         x = F.relu(x)
         x = self.norm1(x)
+        x = self.conv2(x)
+        x = F.relu(x)
+        x = self.norm2(x)
         x = self.conv2(x)
         x = F.relu(x)
         x = self.norm2(x)
