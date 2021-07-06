@@ -9,7 +9,6 @@ from torch.optim.lr_scheduler import StepLR
 from torchdiffeq import odeint_adjoint as odeint
 from scipy.integrate import odeint as odeint_scipy
 
-
 class Grad_net(nn.Module):
     def __init__(self, input_size : int, width : int, output_size : int):
         super().__init__()
@@ -52,11 +51,13 @@ class ODEFunc(nn.Module):# define ode function, this is what we train on
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(1, 32, 3, 1)
-        self.conv2 = nn.Conv2d(32, 32, 3, 1)
-        self.fc1 = nn.Linear(4608, 10)
-        self.norm1 = nn.GroupNorm(32,32)
-        self.norm2 = nn.GroupNorm(32,32)
+        self.conv1 = nn.Conv2d(1, 8, 3, 1)
+        self.conv2 = nn.Conv2d(8, 8, 3, 1)
+        self.fc1 = nn.Linear(968, 128)
+        self.fc2 = nn.Linear(128, 10)
+        self.norm1 = nn.GroupNorm(8,8)
+        self.norm2 = nn.GroupNorm(8,8)
+        self.norm3 = nn.GroupNorm(8,128)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -65,10 +66,15 @@ class Net(nn.Module):
         x = self.conv2(x)
         x = F.relu(x)
         x = self.norm2(x)
+        x = self.conv2(x)
+        x = F.relu(x)
+        x = self.norm2(x)
         x = F.max_pool2d(x, 2)
         x = torch.flatten(x, 1)
         x = self.fc1(x)
         x = F.relu(x)
+        x = self.norm3(x)
+        x = self.fc2(x)
         return x
 
 class WeightClipper(object):
@@ -295,11 +301,10 @@ def main():
     grad_y_net = Grad_net(input_size_grad, width_grad, output_size_grad)
     optimizer = optim.SGD(list(encoder.parameters())+list(path_net.parameters())+list(grad_x_net.parameters())+list(grad_y_net.parameters()), lr=args.lr)
     
-    a = get_n_params(encoder)
+    a=get_n_params(encoder)
     b = get_n_params(path_net)
     c = get_n_params(grad_x_net)
     d = get_n_params(grad_y_net)
-
     print(a+b+c+d)
 
     scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
