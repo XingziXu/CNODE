@@ -301,6 +301,7 @@ def main():
     b = get_n_params(path_net)
     c = get_n_params(grad_x_net)
     d = get_n_params(grad_y_net)
+    print(a+b+c+d)
 
     scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
     print('setup complete')

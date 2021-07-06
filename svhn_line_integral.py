@@ -122,7 +122,7 @@ def train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader,
         soft_max = nn.Softmax(dim=1)
         ####### neural path integral ends here #######
         p_current = soft_max(p_current)
-        loss = F.nll_loss(p_current, target)
+        loss = F.cross_entropy(p_current, target)
         loss.backward()
         optimizer.step()
         if batch_idx % args.log_interval == 0:
@@ -162,7 +162,7 @@ def test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader):
             p_current = p_current + dt*(grad_x_net(in_grad)*dg_dt_current + grad_y_net(in_grad)*dh_dt_current)
         soft_max = nn.Softmax(dim=1)
         p_current = soft_max(p_current)
-        test_loss += F.nll_loss(p_current, target, reduction='sum').item()  # sum up batch loss
+        test_loss += F.cross_entropy(p_current, target, reduction='sum').item()  # sum up batch loss
         pred = p_current.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
         correct += pred.eq(target.view_as(pred)).sum().item()
 
@@ -201,7 +201,7 @@ def validation(args, encoder, path_net, grad_x_net, grad_y_net, device, validati
             p_current = p_current + dt*(grad_x_net(in_grad)*dg_dt_current + grad_y_net(in_grad)*dh_dt_current)
         soft_max = nn.Softmax(dim=1)
         p_current = soft_max(p_current)
-        test_loss += F.nll_loss(p_current, target, reduction='sum').item()  # sum up batch loss
+        test_loss += F.cross_entropy(p_current, target, reduction='sum').item()  # sum up batch loss
         pred = p_current.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
         correct += pred.eq(target.view_as(pred)).sum().item()
 
@@ -229,11 +229,11 @@ def main():
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=2, metavar='N',
+    parser.add_argument('--epochs', type=int, default=200, metavar='N',
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--gamma', type=float, default=0.7, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
-    parser.add_argument('--no-cuda', action='store_true', default=False,
+    parser.add_argument('--no-cuda', action='store_true', default=True,
                         help='disables CUDA training')
     parser.add_argument('--dry-run', action='store_true', default=False,
                         help='quickly check a single pass')
@@ -243,7 +243,7 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
-    parser.add_argument('--lr', type=float, default=1e-1, metavar='LR',
+    parser.add_argument('--lr', type=float, default=5e-1, metavar='LR',
                         help='learning rate (default: 1.0)')
     parser.add_argument('--l-bound', type=float, default=0., help='Lower bound of line integral t value')
     parser.add_argument('--u-bound', type=float, default=1., help='Upper bound of line integral t value')
