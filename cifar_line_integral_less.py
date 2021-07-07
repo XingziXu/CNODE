@@ -16,11 +16,13 @@ class Grad_net(nn.Module):
             nn.Linear(input_size,width),
             nn.ReLU(),
             nn.GroupNorm(1,width),
+           # nn.LayerNorm(width),
             nn.Linear(width,width),
             nn.ReLU(),
             nn.GroupNorm(1,width),
+           # nn.LayerNorm(width),
             nn.Linear(width,output_size),
-            nn.Tanh()
+            nn.Tanhshrink()
         )
 
     def forward(self,x):
@@ -56,13 +58,13 @@ class ODEFunc(nn.Module):# define ode function, this is what we train on
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(3,4,3,1)
-        self.conv2 = nn.Conv2d(4,4,3,1)
-        self.fc1 = nn.Linear(784,256)
-        self.fc2 = nn.Linear(256,10)
-        self.norm1 = nn.GroupNorm(4,4)
-        self.norm2 = nn.GroupNorm(4,4)
-        self.norm3 = nn.GroupNorm(4,256)
+        self.conv1 = nn.Conv2d(3,8,3,1)
+        self.conv2 = nn.Conv2d(8,8,3,1)
+        self.fc1 = nn.Linear(1568,128)
+        self.fc2 = nn.Linear(128,10)
+        self.norm1 = nn.BatchNorm2d(8)
+        self.norm2 = nn.BatchNorm2d(8)
+        self.norm3 = nn.GroupNorm(8,128)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -234,11 +236,11 @@ def main():
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=2, metavar='N',
+    parser.add_argument('--epochs', type=int, default=40, metavar='N',
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--gamma', type=float, default=0.7, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
-    parser.add_argument('--no-cuda', action='store_true', default=False,
+    parser.add_argument('--no-cuda', action='store_true', default=True,
                         help='disables CUDA training')
     parser.add_argument('--dry-run', action='store_true', default=False,
                         help='quickly check a single pass')
@@ -293,7 +295,7 @@ def main():
 
     encoder = Net()
     input_size_path = 1
-    width_path = 64
+    width_path =64
     output_size_path = 2
     input_size_grad = 12
     width_grad = 64

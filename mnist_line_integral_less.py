@@ -51,13 +51,13 @@ class ODEFunc(nn.Module):# define ode function, this is what we train on
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(1, 8, 3, 1)
-        self.conv2 = nn.Conv2d(8, 8, 3, 1)
-        self.fc1 = nn.Linear(968, 128)
+        self.conv1 = nn.Conv2d(1, 4, 3, 1)
+        self.conv2 = nn.Conv2d(4, 4, 3, 1)
+        self.fc1 = nn.Linear(484, 128)
         self.fc2 = nn.Linear(128, 10)
-        self.norm1 = nn.GroupNorm(8,8)
-        self.norm2 = nn.GroupNorm(8,8)
-        self.norm3 = nn.GroupNorm(8,128)
+        self.norm1 = nn.GroupNorm(4,4)
+        self.norm2 = nn.GroupNorm(4,4)
+        self.norm3 = nn.GroupNorm(4,128)
 
     def forward(self, x):
         x = self.conv1(x)
