@@ -129,7 +129,7 @@ def train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader,
         soft_max = nn.Softmax(dim=1)
         ####### neural path integral ends here #######
         p_current = soft_max(p_current)
-        loss = F.nll_loss(p_current, target)
+        loss = F.cross_entropy(p_current, target)
         loss.backward()
         optimizer.step()
         if batch_idx % args.log_interval == 0:
@@ -169,7 +169,7 @@ def test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader):
             p_current = p_current + dt*(grad_x_net(in_grad)*dg_dt_current + grad_y_net(in_grad)*dh_dt_current)
         soft_max = nn.Softmax(dim=1)
         p_current = soft_max(p_current)
-        test_loss += F.nll_loss(p_current, target, reduction='sum').item()  # sum up batch loss
+        test_loss += F.cross_entropy(p_current, target, reduction='sum').item()  # sum up batch loss
         pred = p_current.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
         correct += pred.eq(target.view_as(pred)).sum().item()
 
@@ -208,7 +208,7 @@ def validation(args, encoder, path_net, grad_x_net, grad_y_net, device, validati
             p_current = p_current + dt*(grad_x_net(in_grad)*dg_dt_current + grad_y_net(in_grad)*dh_dt_current)
         soft_max = nn.Softmax(dim=1)
         p_current = soft_max(p_current)
-        test_loss += F.nll_loss(p_current, target, reduction='sum').item()  # sum up batch loss
+        test_loss += F.cross_entropy(p_current, target, reduction='sum').item()  # sum up batch loss
         pred = p_current.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
         correct += pred.eq(target.view_as(pred)).sum().item()
 
@@ -250,7 +250,7 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
-    parser.add_argument('--lr', type=float, default=5e-1, metavar='LR',
+    parser.add_argument('--lr', type=float, default=1.0, metavar='LR',
                         help='learning rate (default: 1.0)')
     parser.add_argument('--l-bound', type=float, default=0., help='Lower bound of line integral t value')
     parser.add_argument('--u-bound', type=float, default=1., help='Upper bound of line integral t value')
@@ -287,11 +287,11 @@ def main():
  
     #dataset4, dataset2 = torch.utils.data.random_split(dataset2, [9990,10])
 
-    dataset3, dataset1 = torch.utils.data.random_split(dataset1, [10000,40000]) # dataset 1 is training, dataset 2 is testing, dataset 3 is validation
+    #dataset3, dataset1 = torch.utils.data.random_split(dataset1, [10000,40000]) # dataset 1 is training, dataset 2 is testing, dataset 3 is validation
 
     train_loader = torch.utils.data.DataLoader(dataset1,**train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
-    validation_loader = torch.utils.data.DataLoader(dataset3, **validation_kwargs)
+    #validation_loader = torch.utils.data.DataLoader(dataset3, **validation_kwargs)
 
     encoder = Net()
     input_size_path = 1
@@ -317,9 +317,9 @@ def main():
     print('setup complete')
     for epoch in range(1, args.epochs + 1):
         train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader, optimizer, epoch)
-        validation(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader)
+        test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader)
         scheduler.step()
-    test(args, encoder, path_net, grad_x_net, grad_y_net, device, validation_loader)
+    test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader)
 
     if args.save_model:
         torch.save(encoder.state_dict(), "mnist_cnn.pt")
