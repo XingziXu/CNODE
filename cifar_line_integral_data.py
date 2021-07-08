@@ -117,8 +117,10 @@ def train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader,
             t_data_current = torch.cat((iter*dt*torch.ones((p_current.size(0),1)).to(device),p_current),dim=1) # calculate the current time
             t_data_current = Variable(t_data_current.data, requires_grad=True)
             g_h_current = path_net(t_data_current)
-            dg_dt_current = torch.autograd.grad(g_h_current[:,0].view(64,1), t_data_current, grad_outputs= t_data_current[:,0].view(64,1),create_graph=True)[0][:,0].view(args.batch_size,1) # calculate the current dg/dt
-            dh_dt_current = torch.autograd.grad(g_h_current[:,1].view(64,1), t_data_current, grad_outputs= t_data_current[:,0].view(64,1),create_graph=True)[0][:,0].view(args.batch_size,1)
+            dg_dt_current = torch.autograd.grad(g_h_current[:,0].view(g_h_current.size(0),1), t_data_current, grad_outputs= t_data_current[:,0].view(t_data_current.size(0),1),create_graph=True)[0][:,0]
+            dg_dt_current = dg_dt_current.view(dg_dt_current.size(0),1) # calculate the current dg/dt
+            dh_dt_current = torch.autograd.grad(g_h_current[:,1].view(g_h_current.size(0),1), t_data_current, grad_outputs= t_data_current[:,0].view(t_data_current.size(0),1),create_graph=True)[0][:,0]
+            dh_dt_current = dh_dt_current.view(dh_dt_current.size(0),1)
             in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_h_current), dim=1)
             p_current = p_current + dt*(grad_x_net(in_grad)*dg_dt_current + grad_y_net(in_grad)*dh_dt_current)
         soft_max = nn.Softmax(dim=1)
@@ -154,8 +156,10 @@ def test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader):
             t_data_current = torch.cat((iter*dt*torch.ones((p_current.size(0),1)).to(device),p_current),dim=1) # calculate the current time
             t_data_current = Variable(t_data_current.data, requires_grad=True)
             g_h_current = path_net(t_data_current)
-            dg_dt_current = torch.autograd.grad(g_h_current[:,0].view(64,1), t_data_current, grad_outputs= t_data_current[:,0].view(64,1),create_graph=True)[0][:,0].view(args.batch_size,1) # calculate the current dg/dt
-            dh_dt_current = torch.autograd.grad(g_h_current[:,1].view(64,1), t_data_current, grad_outputs= t_data_current[:,0].view(64,1),create_graph=True)[0][:,0].view(args.batch_size,1)
+            dg_dt_current = torch.autograd.grad(g_h_current[:,0].view(g_h_current.size(0),1), t_data_current, grad_outputs= t_data_current[:,0].view(t_data_current.size(0),1),create_graph=True)[0][:,0]
+            dg_dt_current = dg_dt_current.view(dg_dt_current.size(0),1) # calculate the current dg/dt
+            dh_dt_current = torch.autograd.grad(g_h_current[:,1].view(g_h_current.size(0),1), t_data_current, grad_outputs= t_data_current[:,0].view(t_data_current.size(0),1),create_graph=True)[0][:,0]
+            dh_dt_current = dh_dt_current.view(dh_dt_current.size(0),1)
             in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_h_current), dim=1)
             p_current = p_current + dt*(grad_x_net(in_grad)*dg_dt_current + grad_y_net(in_grad)*dh_dt_current)
         soft_max = nn.Softmax(dim=1)
@@ -190,8 +194,10 @@ def validation(args, encoder, path_net, grad_x_net, grad_y_net, device, validati
             t_data_current = torch.cat((iter*dt*torch.ones((p_current.size(0),1)).to(device),p_current),dim=1) # calculate the current time
             t_data_current = Variable(t_data_current.data, requires_grad=True)
             g_h_current = path_net(t_data_current)
-            dg_dt_current = torch.autograd.grad(g_h_current[:,0].view(64,1), t_data_current, grad_outputs= t_data_current[:,0].view(64,1),create_graph=True)[0][:,0].view(args.batch_size,1) # calculate the current dg/dt
-            dh_dt_current = torch.autograd.grad(g_h_current[:,1].view(64,1), t_data_current, grad_outputs= t_data_current[:,0].view(64,1),create_graph=True)[0][:,0].view(args.batch_size,1)
+            dg_dt_current = torch.autograd.grad(g_h_current[:,0].view(g_h_current.size(0),1), t_data_current, grad_outputs= t_data_current[:,0].view(t_data_current.size(0),1),create_graph=True)[0][:,0]
+            dg_dt_current = dg_dt_current.view(dg_dt_current.size(0),1) # calculate the current dg/dt
+            dh_dt_current = torch.autograd.grad(g_h_current[:,1].view(g_h_current.size(0),1), t_data_current, grad_outputs= t_data_current[:,0].view(t_data_current.size(0),1),create_graph=True)[0][:,0]
+            dh_dt_current = dh_dt_current.view(dh_dt_current.size(0),1)
             in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_h_current), dim=1)
             p_current = p_current + dt*(grad_x_net(in_grad)*dg_dt_current + grad_y_net(in_grad)*dh_dt_current)
         soft_max = nn.Softmax(dim=1)
@@ -227,8 +233,10 @@ def main():
                         help='input batch size for validation (default: 1000)')
     parser.add_argument('--epochs', type=int, default=40, metavar='N',
                         help='number of epochs to train (default: 14)')
-    parser.add_argument('--gamma', type=float, default=0.7, metavar='M',
+    parser.add_argument('--gamma', type=float, default=0.9, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
+    parser.add_argument('--step-size', type=int, default=5, metavar='M',
+                        help='how many epochs to we change the learning rate, default is 5')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
     parser.add_argument('--dry-run', action='store_true', default=False,
@@ -302,7 +310,7 @@ def main():
     d = get_n_params(grad_y_net)
     print(a+b+c+d)
 
-    scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
+    scheduler = StepLR(optimizer, step_size=args.step_size, gamma=args.gamma)
     print('setup complete')
     for epoch in range(1, args.epochs + 1):
         train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader, optimizer, epoch)
