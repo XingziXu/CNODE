@@ -256,11 +256,11 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
-    parser.add_argument('--lr', type=float, default=5e-4, metavar='LR',
+    parser.add_argument('--lr', type=float, default=8e-4, metavar='LR',
                         help='learning rate (default: 1.0)')
     parser.add_argument('--l-bound', type=float, default=0., help='Lower bound of line integral t value')
     parser.add_argument('--u-bound', type=float, default=1., help='Upper bound of line integral t value')
-    parser.add_argument('--num-eval', type=float, default=1e2, help='Number of evaluations along the line integral')
+    parser.add_argument('--num-eval', type=float, default=50.0, help='Number of evaluations along the line integral')
 
 
     args = parser.parse_args()
@@ -275,7 +275,7 @@ def main():
     validation_kwargs = {'batch_size': args.validation_batch_size}
 
     if use_cuda:
-        cuda_kwargs = {'num_workers': 12,
+        cuda_kwargs = {'num_workers': 64,
                        'pin_memory': True,
                        'shuffle': True}
         train_kwargs.update(cuda_kwargs)
