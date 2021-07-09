@@ -56,9 +56,9 @@ class ODEFunc(nn.Module):# define ode function, this is what we train on
         t = F.relu(t)
         return t
 
-class Net(nn.Module):
+class Encoder(nn.Module):
     def __init__(self):
-        super(Net, self).__init__()
+        super(Encoder, self).__init__()
         self.conv1 = nn.Conv2d(3,8,3,1)
         self.conv2 = nn.Conv2d(8,8,3,1)
         self.fc1 = nn.Linear(1568,128)
@@ -113,8 +113,9 @@ def train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader,
         ####### neural path integral starts here #######
         dt = ((args.u_bound-args.l_bound)/args.num_eval)
         p_current = encoder(data)
+        p_i = p_current
         for iter in range(1,int(args.num_eval)+1): # for each random value, integrate from 0 to 1
-            t_data_current = torch.cat((iter*dt*torch.ones((p_current.size(0),1)).to(device),p_current),dim=1) # calculate the current time
+            t_data_current = torch.cat((iter*dt*torch.ones((p_current.size(0),1)).to(device),p_i),dim=1) # calculate the current time
             t_data_current = Variable(t_data_current.data, requires_grad=True)
             g_h_current = path_net(t_data_current)
             dg_dt_current = torch.autograd.grad(g_h_current[:,0].view(g_h_current.size(0),1), t_data_current, grad_outputs= t_data_current[:,0].view(t_data_current.size(0),1),create_graph=True)[0][:,0]
@@ -152,8 +153,9 @@ def test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader):
         data, target = data.to(device), target.to(device)
         dt = ((args.u_bound-args.l_bound)/args.num_eval)
         p_current = encoder(data)
+        p_i = p_current
         for iter in range(1,int(args.num_eval)+1): # for each random value, integrate from 0 to 1
-            t_data_current = torch.cat((iter*dt*torch.ones((p_current.size(0),1)).to(device),p_current),dim=1) # calculate the current time
+            t_data_current = torch.cat((iter*dt*torch.ones((p_current.size(0),1)).to(device),p_i),dim=1) # calculate the current time
             t_data_current = Variable(t_data_current.data, requires_grad=True)
             g_h_current = path_net(t_data_current)
             dg_dt_current = torch.autograd.grad(g_h_current[:,0].view(g_h_current.size(0),1), t_data_current, grad_outputs= t_data_current[:,0].view(t_data_current.size(0),1),create_graph=True)[0][:,0]
@@ -190,8 +192,9 @@ def validation(args, encoder, path_net, grad_x_net, grad_y_net, device, validati
         data, target = data.to(device), target.to(device)
         dt = ((args.u_bound-args.l_bound)/args.num_eval)
         p_current = encoder(data)
+        p_i = p_current
         for iter in range(1,int(args.num_eval)+1): # for each random value, integrate from 0 to 1
-            t_data_current = torch.cat((iter*dt*torch.ones((p_current.size(0),1)).to(device),p_current),dim=1) # calculate the current time
+            t_data_current = torch.cat((iter*dt*torch.ones((p_current.size(0),1)).to(device),p_i),dim=1) # calculate the current time
             t_data_current = Variable(t_data_current.data, requires_grad=True)
             g_h_current = path_net(t_data_current)
             dg_dt_current = torch.autograd.grad(g_h_current[:,0].view(g_h_current.size(0),1), t_data_current, grad_outputs= t_data_current[:,0].view(t_data_current.size(0),1),create_graph=True)[0][:,0]
@@ -290,7 +293,7 @@ def main():
     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
     #validation_loader = torch.utils.data.DataLoader(dataset3, **validation_kwargs)
 
-    encoder = Net().to(device)
+    encoder = Encoder().to(device)
     input_size_path = 11
     width_path =64
     output_size_path = 2
@@ -304,7 +307,7 @@ def main():
     grad_y_net = Grad_net(input_size_grad, width_grad, output_size_grad).to(device)
     optimizer = optim.AdamW(list(encoder.parameters())+list(path_net.parameters())+list(grad_x_net.parameters())+list(grad_y_net.parameters()), lr=args.lr)
     
-    a=get_n_params(encoder)
+    a = get_n_params(encoder)
     b = get_n_params(path_net)
     c = get_n_params(grad_x_net)
     d = get_n_params(grad_y_net)
