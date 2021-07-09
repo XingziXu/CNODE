@@ -114,7 +114,7 @@ def train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader,
         dt = ((args.u_bound-args.l_bound)/args.num_eval)
         p_current = encoder(data)
         p_i = p_current
-        #p_current = torch.cat((p_current,torch.zeros(p_current.size(0),2).to(device)),dim=1) # augment here
+        p_current = torch.cat((p_current,torch.zeros(p_current.size(0),2).to(device)),dim=1) # augment here
         for iter in range(1,int(args.num_eval)+1): # for each random value, integrate from 0 to 1
             t_data_current = torch.cat((iter*dt*torch.ones((p_current.size(0),1)).to(device),p_i),dim=1) # calculate the current time
             t_data_current = Variable(t_data_current.data, requires_grad=True)
@@ -123,7 +123,7 @@ def train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader,
             dg_dt_current = dg_dt_current.view(dg_dt_current.size(0),1) # calculate the current dg/dt
             dh_dt_current = torch.autograd.grad(g_h_current[:,1].view(g_h_current.size(0),1), t_data_current, grad_outputs= t_data_current[:,0].view(t_data_current.size(0),1),create_graph=True)[0][:,0]
             dh_dt_current = dh_dt_current.view(dh_dt_current.size(0),1)
-            in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_h_current), dim=1)
+            in_grad = torch.cat((p_current.view(p_current.size()[0], p_current.size()[1]), g_h_current), dim=1)
             p_current = p_current + dt*(grad_x_net(in_grad)*dg_dt_current + grad_y_net(in_grad)*dh_dt_current)
         soft_max = nn.Softmax(dim=1)
         p_current = p_current[:,0:10] # the first ten are features
@@ -156,7 +156,7 @@ def test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader):
         dt = ((args.u_bound-args.l_bound)/args.num_eval)
         p_current = encoder(data)
         p_i = p_current
-        #p_current = torch.cat((p_current,torch.zeros(p_current.size(0),2).to(device)),dim=1) # augment here
+        p_current = torch.cat((p_current,torch.zeros(p_current.size(0),2).to(device)),dim=1) # augment here
         for iter in range(1,int(args.num_eval)+1): # for each random value, integrate from 0 to 1
             t_data_current = torch.cat((iter*dt*torch.ones((p_current.size(0),1)).to(device),p_i),dim=1) # calculate the current time
             t_data_current = Variable(t_data_current.data, requires_grad=True)
@@ -165,7 +165,7 @@ def test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader):
             dg_dt_current = dg_dt_current.view(dg_dt_current.size(0),1) # calculate the current dg/dt
             dh_dt_current = torch.autograd.grad(g_h_current[:,1].view(g_h_current.size(0),1), t_data_current, grad_outputs= t_data_current[:,0].view(t_data_current.size(0),1),create_graph=True)[0][:,0]
             dh_dt_current = dh_dt_current.view(dh_dt_current.size(0),1)
-            in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_h_current), dim=1)
+            in_grad = torch.cat((p_current.view(p_current.size()[0], p_current.size()[1]), g_h_current), dim=1)
             p_current = p_current + dt*(grad_x_net(in_grad)*dg_dt_current + grad_y_net(in_grad)*dh_dt_current)
         soft_max = nn.Softmax(dim=1)
         p_current = p_current[:,0:10] # the first ten are features
@@ -197,7 +197,7 @@ def validation(args, encoder, path_net, grad_x_net, grad_y_net, device, validati
         dt = ((args.u_bound-args.l_bound)/args.num_eval)
         p_current = encoder(data)
         p_i = p_current
-        #p_current = torch.cat((p_current,torch.zeros(p_current.size(0),2).to(device)),dim=1) # augment here
+        p_current = torch.cat((p_current,torch.zeros(p_current.size(0),2).to(device)),dim=1) # augment here
         for iter in range(1,int(args.num_eval)+1): # for each random value, integrate from 0 to 1
             t_data_current = torch.cat((iter*dt*torch.ones((p_current.size(0),1)).to(device),p_i),dim=1) # calculate the current time
             t_data_current = Variable(t_data_current.data, requires_grad=True)
@@ -206,7 +206,7 @@ def validation(args, encoder, path_net, grad_x_net, grad_y_net, device, validati
             dg_dt_current = dg_dt_current.view(dg_dt_current.size(0),1) # calculate the current dg/dt
             dh_dt_current = torch.autograd.grad(g_h_current[:,1].view(g_h_current.size(0),1), t_data_current, grad_outputs= t_data_current[:,0].view(t_data_current.size(0),1),create_graph=True)[0][:,0]
             dh_dt_current = dh_dt_current.view(dh_dt_current.size(0),1)
-            in_grad = torch.cat((p_current.view(p_current.size()[0], 10), g_h_current), dim=1)
+            in_grad = torch.cat((p_current.view(p_current.size()[0], p_current.size()[1]), g_h_current), dim=1)
             p_current = p_current + dt*(grad_x_net(in_grad)*dg_dt_current + grad_y_net(in_grad)*dh_dt_current)
         soft_max = nn.Softmax(dim=1)
         p_current = p_current[:,0:10] # the first ten are features
@@ -242,9 +242,9 @@ def main():
                         help='input batch size for validation (default: 1000)')
     parser.add_argument('--epochs', type=int, default=40, metavar='N',
                         help='number of epochs to train (default: 14)')
-    parser.add_argument('--gamma', type=float, default=0.9, metavar='M',
+    parser.add_argument('--gamma', type=float, default=0.5, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
-    parser.add_argument('--step-size', type=int, default=5, metavar='M',
+    parser.add_argument('--step-size', type=int, default=10, metavar='M',
                         help='how many epochs to we change the learning rate, default is 5')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
@@ -256,11 +256,11 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
-    parser.add_argument('--lr', type=float, default=5e-4, metavar='LR',
+    parser.add_argument('--lr', type=float, default=1e-3, metavar='LR',
                         help='learning rate (default: 1.0)')
     parser.add_argument('--l-bound', type=float, default=0., help='Lower bound of line integral t value')
     parser.add_argument('--u-bound', type=float, default=1., help='Upper bound of line integral t value')
-    parser.add_argument('--num-eval', type=float, default=1e2, help='Number of evaluations along the line integral')
+    parser.add_argument('--num-eval', type=float, default=50.0, help='Number of evaluations along the line integral')
 
 
     args = parser.parse_args()
@@ -301,11 +301,11 @@ def main():
 
     encoder = Encoder().to(device)
     input_size_path = 11
-    width_path =64
+    width_path = 64
     output_size_path = 2
-    input_size_grad = 12
+    input_size_grad = 14
     width_grad = 64
-    output_size_grad = 10
+    output_size_grad = 12
     clipper = WeightClipper()
     path_net = ODEFunc(input_size_path, width_path, output_size_path).to(device)
     path_net.apply(clipper)
