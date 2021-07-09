@@ -260,7 +260,7 @@ def main():
                         help='learning rate (default: 1.0)')
     parser.add_argument('--l-bound', type=float, default=0., help='Lower bound of line integral t value')
     parser.add_argument('--u-bound', type=float, default=1., help='Upper bound of line integral t value')
-    parser.add_argument('--num-eval', type=float, default=50.0, help='Number of evaluations along the line integral')
+    parser.add_argument('--num-eval', type=float, default=20.0, help='Number of evaluations along the line integral')
 
 
     args = parser.parse_args()
