@@ -341,11 +341,11 @@ def main():
     with open('results.npy', 'wb') as f:
         np.save(f, results)
 
-    for i in range(0,args.epochs-1):
-        plt.plot(lr_mat, results[:,i])
-        plt.legend(str(i+1))
+    #for i in range(0,args.epochs-1):
+    #    plt.plot(lr_mat, results[:,i])
+    #    plt.legend(str(i+1))
     
-    plt.show()
+    #plt.show()
 
     if args.save_model:
         torch.save(encoder.state_dict(), "mnist_cnn.pt")
