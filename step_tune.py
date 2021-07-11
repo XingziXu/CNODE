@@ -328,7 +328,7 @@ def main():
         optimizer = optim.AdamW(list(encoder.parameters())+list(path_net.parameters())+list(grad_x_net.parameters())+list(grad_y_net.parameters()), lr=0.006)
         args.num_eval = lr_current
         scheduler = StepLR(optimizer, step_size=args.step_size, gamma=args.gamma)
-        print('setup complete for number of eval', lr_current.item(), ' cycle', lr_index+1, ' of', num_trial)
+        print('setup complete for number of eval', args.num_eval, ' cycle', lr_index+1, ' of', num_trial)
         for epoch in range(1, args.epochs + 1):
             train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader, optimizer, epoch)
             results[lr_index, epoch-1] = test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader)
