@@ -321,7 +321,7 @@ def main():
     print(a+b+c+d)
 
     num_trial = 20
-    lr_mat = np.linspace(0, 100, num_trial+1)+1
+    lr_mat = (np.linspace(0, 100, num_trial+1)+1)[0:20]
     results = np.zeros((num_trial,args.epochs))
 
     for lr_index, lr_current in enumerate(lr_mat): 
