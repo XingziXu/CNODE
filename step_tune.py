@@ -320,8 +320,8 @@ def main():
     d = get_n_params(grad_y_net)
     print(a+b+c+d)
 
-    num_trial = 20
-    lr_mat = (np.linspace(0, 100, num_trial+1)+1)[0:20]
+    num_trial = 10
+    lr_mat = (np.linspace(0, 100, num_trial+1)+1)[0:10]
     results = np.zeros((num_trial,args.epochs))
 
     for lr_index, lr_current in enumerate(lr_mat): 
@@ -333,19 +333,23 @@ def main():
             train(args, encoder, path_net, grad_x_net, grad_y_net, device, train_loader, optimizer, epoch)
             results[lr_index, epoch-1] = test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader)
             scheduler.step()
+        with open('learning_rates_nfe.npy', 'wb') as f:
+            np.save(f, lr_mat)
+        with open('results_nfe.npy', 'wb') as f:
+            np.save(f, results)
         #test(args, encoder, path_net, grad_x_net, grad_y_net, device, test_loader)
 
-    with open('learning_rates.npy', 'wb') as f:
-        np.save(f, lr_mat)
+    #with open('learning_rates.npy', 'wb') as f:
+    #    np.save(f, lr_mat)
 
-    with open('results.npy', 'wb') as f:
-        np.save(f, results)
+    #with open('results.npy', 'wb') as f:
+    #    np.save(f, results)
 
-    for i in range(0,args.epochs-1):
-        plt.plot(lr_mat, results[:,i])
-        plt.legend(str(i+1))
+    #for i in range(0,args.epochs-1):
+    #    plt.plot(lr_mat, results[:,i])
+    #    plt.legend(str(i+1))
     
-    plt.show()
+    #plt.show()
 
     if args.save_model:
         torch.save(encoder.state_dict(), "mnist_cnn.pt")
