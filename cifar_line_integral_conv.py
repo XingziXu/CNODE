@@ -176,7 +176,7 @@ def test(args, path_net, grad_x_net, grad_y_net, classifier_net, device, test_lo
         ####### neural path integral ends here #######
         output = soft_max(output)
         test_loss += F.cross_entropy(output, target, reduction='sum').item()  # sum up batch loss
-        pred = p_current.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+        pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
         correct += pred.eq(target.view_as(pred)).sum().item()
 
     test_loss /= len(test_loader.dataset)
@@ -216,7 +216,7 @@ def validation(args, path_net, grad_x_net, grad_y_net, classifier_net, device, v
         ####### neural path integral ends here #######
         output = soft_max(output)
         test_loss += F.cross_entropy(output, target, reduction='sum').item()  # sum up batch loss
-        pred = p_current.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+        pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
         correct += pred.eq(target.view_as(pred)).sum().item()
 
     test_loss /= len(validation_loader.dataset)
@@ -237,9 +237,9 @@ def get_n_params(model):
 def main():
     # Training settings
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
-    parser.add_argument('--batch-size', type=int, default=64, metavar='N',
+    parser.add_argument('--batch-size', type=int, default=32, metavar='N',
                         help='input batch size for training (default: 64)')
-    parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
+    parser.add_argument('--test-batch-size', type=int, default=64, metavar='N',
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
@@ -278,7 +278,7 @@ def main():
     validation_kwargs = {'batch_size': args.validation_batch_size}
 
     if use_cuda:
-        cuda_kwargs = {'num_workers': 12,
+        cuda_kwargs = {'num_workers': 8,
                        'pin_memory': True,
                        'shuffle': True}
         train_kwargs.update(cuda_kwargs)
