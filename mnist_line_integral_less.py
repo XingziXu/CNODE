@@ -43,13 +43,13 @@ def norm(dim):
 class Path_net(nn.Module):
     def __init__(self):
         super(Path_net, self).__init__()
-        self.conv1 = nn.Conv2d(2,8,3,1)
-        self.conv2 = nn.Conv2d(8,8,3,1)
-        self.fc1 = nn.Linear(4608,2)
-#        self.fc2 = nn.Linear(128,2)
-        self.norm1 = nn.BatchNorm2d(8)
-        self.norm2 = nn.BatchNorm2d(8)
-        self.norm3 = nn.GroupNorm(8,128)
+        self.conv1 = nn.Conv2d(2,4,1,1,0)
+        self.conv2 = nn.Conv2d(4,4,1,1,0)
+        self.fc1 = nn.Linear(3136,2)
+#        self.fc2 = nn.Linear(64,2)
+        self.norm1 = nn.BatchNorm2d(4)
+        self.norm2 = nn.BatchNorm2d(4)
+#        self.norm3 = nn.GroupNorm(8,64)
 
     def forward(self, t, x):
         t_channel = t.expand(t.size(0), x.size(2)*x.size(3))
