@@ -121,7 +121,7 @@ def train(args, path_net, grad_x_net, grad_y_net, classifier_net, device, train_
         p_current = data
         p_i = p_current
         for iter in range(1,int(args.num_eval)+1): # for each random value, integrate from 0 to 1
-            t_data_current = torch.cat((iter*dt*torch.ones((64,1,p_current.size(2),p_current.size(3))).to(device),p_i),dim=1) # calculate the current time
+            t_data_current = torch.cat((iter*dt*torch.ones((p_current.size(0),1,p_current.size(2),p_current.size(3))).to(device),p_i),dim=1) # calculate the current time
             t_data_current = Variable(t_data_current.data, requires_grad=True)
             g_h_current = path_net(t_data_current)
             dg_dt_current = torch.autograd.grad(g_h_current[:,0,:,:].view(g_h_current.size(0),1,g_h_current.size(2),g_h_current.size(3)), t_data_current, grad_outputs= t_data_current[:,0,:,:].view(t_data_current.size(0),1,t_data_current.size(2),t_data_current.size(3)),create_graph=True)[0][:,0]
@@ -162,7 +162,7 @@ def test(args, path_net, grad_x_net, grad_y_net, classifier_net, device, test_lo
         p_current = data
         p_i = p_current
         for iter in range(1,int(args.num_eval)+1): # for each random value, integrate from 0 to 1
-            t_data_current = torch.cat((iter*dt*torch.ones((64,1,p_current.size(2),p_current.size(3))).to(device),p_i),dim=1) # calculate the current time
+            t_data_current = torch.cat((iter*dt*torch.ones((p_current.size(0),1,p_current.size(2),p_current.size(3))).to(device),p_i),dim=1) # calculate the current time
             t_data_current = Variable(t_data_current.data, requires_grad=True)
             g_h_current = path_net(t_data_current)
             dg_dt_current = torch.autograd.grad(g_h_current[:,0,:,:].view(g_h_current.size(0),1,g_h_current.size(2),g_h_current.size(3)), t_data_current, grad_outputs= t_data_current[:,0,:,:].view(t_data_current.size(0),1,t_data_current.size(2),t_data_current.size(3)),create_graph=True)[0][:,0]
@@ -202,7 +202,7 @@ def validation(args, path_net, grad_x_net, grad_y_net, classifier_net, device, v
         p_current = data
         p_i = p_current
         for iter in range(1,int(args.num_eval)+1): # for each random value, integrate from 0 to 1
-            t_data_current = torch.cat((iter*dt*torch.ones((64,1,p_current.size(2),p_current.size(3))).to(device),p_i),dim=1) # calculate the current time
+            t_data_current = torch.cat((iter*dt*torch.ones((p_current.size(0),1,p_current.size(2),p_current.size(3))).to(device),p_i),dim=1) # calculate the current time
             t_data_current = Variable(t_data_current.data, requires_grad=True)
             g_h_current = path_net(t_data_current)
             dg_dt_current = torch.autograd.grad(g_h_current[:,0,:,:].view(g_h_current.size(0),1,g_h_current.size(2),g_h_current.size(3)), t_data_current, grad_outputs= t_data_current[:,0,:,:].view(t_data_current.size(0),1,t_data_current.size(2),t_data_current.size(3)),create_graph=True)[0][:,0]
