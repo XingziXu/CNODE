@@ -51,17 +51,18 @@ class Grad_net(nn.Module):
 
 
     def forward(self, t, x):
+        device = torch.device("cuda")
         t_input = t.expand(x.size(0),1)
         t_channel = ((t_input.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size())
         #t_channel.requires_grad = True
         path_input = torch.cat((t_channel, x),dim=1)
         #path_input.requires_grad=True
         g_h_current = self.path(path_input)
-        dg_dt_current = torch.autograd.grad(g_h_current[:,0].view(g_h_current.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1), create_graph=True)[0]
+        dg_dt_current = torch.autograd.grad(g_h_current[:,0].view(g_h_current.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0]
         dg_dt_current = dg_dt_current.view(dg_dt_current.size(0),1,1)
         dg_dt_current = dg_dt_current.expand(dg_dt_current.size(0),1,784)
         dg_dt_current = dg_dt_current.view(dg_dt_current.size(0),1,28,28)
-        dh_dt_current = torch.autograd.grad(g_h_current[:,1].view(g_h_current.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1), create_graph=True)[0]
+        dh_dt_current = torch.autograd.grad(g_h_current[:,1].view(g_h_current.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0]
         dh_dt_current = dh_dt_current.view(dh_dt_current.size(0),1,1)
         dh_dt_current = dh_dt_current.expand(dh_dt_current.size(0),1,784)
         dh_dt_current = dh_dt_current.view(dh_dt_current.size(0),1,28,28)
@@ -236,9 +237,9 @@ def get_n_params(model):
 def main():
     # Training settings
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
-    parser.add_argument('--batch-size', type=int, default=64, metavar='N',
+    parser.add_argument('--batch-size', type=int, default=16, metavar='N',
                         help='input batch size for training (default: 64)')
-    parser.add_argument('--test-batch-size', type=int, default=500, metavar='N',
+    parser.add_argument('--test-batch-size', type=int, default=16, metavar='N',
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
