@@ -34,20 +34,20 @@ class Grad_net(nn.Module):
         self.grad_x = nn.Sequential(
             nn.ReLU(),
             nn.Conv2d(3,16,1,1,0),
-            nn.BatchNorm(16),
+            nn.GroupNorm(4,16),
             nn.ReLU(),
             nn.Conv2d(16,16,1,1,0),
-            nn.BatchNorm2d(16),
+            nn.GroupNorm(4,16),
             nn.ReLU(),
             nn.Conv2d(16,1,1,1,0)
         )
         self.grad_y = nn.Sequential(
             nn.ReLU(),
             nn.Conv2d(3,16,1,1,0),
-            nn.BatchNorm2d(16),
+            nn.GroupNorm(4,16),
             nn.ReLU(),
             nn.Conv2d(16,16,1,1,0),
-            nn.BatchNorm2d(16),
+            nn.GroupNorm(4,16),
             nn.ReLU(),
             nn.Conv2d(16,1,1,1,0)
         )
