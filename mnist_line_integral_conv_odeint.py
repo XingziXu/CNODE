@@ -20,35 +20,37 @@ class Grad_net(nn.Module):
         #nn.Linear(16,16),
         #nn.ReLU(),
         #nn.Linear(16,2),
-        #nn.ReLU()
+        nn.ReLU(),
         nn.Conv2d(2,4,1,1,0),
-        #nn.BatchNorm2d(4),
+        nn.GroupNorm(2,4),
         nn.ReLU(),
         nn.Conv2d(4,4,1,1,0),
-        #nn.BatchNorm2d(4),
+        nn.GroupNorm(2,4),
         nn.ReLU(),
         nn.Conv2d(4,2,1,1,0),
         nn.Flatten(),
-        nn.Linear(1568,2)
+        nn.Linear(1568,32),
+        nn.ReLU(),
+        nn.Linear(32,2)
         )
         self.grad_x = nn.Sequential(
-            nn.ReLU(),
+            nn.Tanhshrink(),
             nn.Conv2d(3,16,1,1,0),
-            nn.BatchNorm(16),
-            nn.ReLU(),
+            nn.GroupNorm(4,16),
+            nn.Tanhshrink(),
             nn.Conv2d(16,16,1,1,0),
-            nn.BatchNorm2d(16),
-            nn.ReLU(),
+            nn.GroupNorm(4,16),
+            nn.Tanhshrink(),
             nn.Conv2d(16,1,1,1,0)
         )
         self.grad_y = nn.Sequential(
-            nn.ReLU(),
+            nn.Tanhshrink(),
             nn.Conv2d(3,16,1,1,0),
-            nn.BatchNorm2d(16),
-            nn.ReLU(),
+            nn.GroupNorm(4,16),
+            nn.Tanhshrink(),
             nn.Conv2d(16,16,1,1,0),
-            nn.BatchNorm2d(16),
-            nn.ReLU(),
+            nn.GroupNorm(4,16),
+            nn.Tanhshrink(),
             nn.Conv2d(16,1,1,1,0)
         )
 
@@ -214,15 +216,15 @@ def main():
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
     parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
-    parser.add_argument('--test-batch-size', type=int, default=4, metavar='N',
+    parser.add_argument('--test-batch-size', type=int, default=64, metavar='N',
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
     parser.add_argument('--epochs', type=int, default=40, metavar='N',
                         help='number of epochs to train (default: 14)')
-    parser.add_argument('--gamma', type=float, default=0.1, metavar='M',
+    parser.add_argument('--gamma', type=float, default=1e-2, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
-    parser.add_argument('--step-size', type=int, default=10, metavar='M',
+    parser.add_argument('--step-size', type=int, default=5, metavar='M',
                         help='how many epochs to we change the learning rate, default is 5')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
