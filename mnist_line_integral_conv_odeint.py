@@ -22,8 +22,10 @@ class Grad_net(nn.Module):
         #nn.Linear(16,2),
         #nn.ReLU()
         nn.Conv2d(2,4,1,1,0),
+        #nn.BatchNorm2d(4),
         nn.ReLU(),
         nn.Conv2d(4,4,1,1,0),
+        #nn.BatchNorm2d(4),
         nn.ReLU(),
         nn.Conv2d(4,2,1,1,0),
         nn.Flatten(),
@@ -32,16 +34,20 @@ class Grad_net(nn.Module):
         self.grad_x = nn.Sequential(
             nn.ReLU(),
             nn.Conv2d(3,16,1,1,0),
+            nn.BatchNorm(16),
             nn.ReLU(),
             nn.Conv2d(16,16,1,1,0),
+            nn.BatchNorm2d(16),
             nn.ReLU(),
             nn.Conv2d(16,1,1,1,0)
         )
         self.grad_y = nn.Sequential(
             nn.ReLU(),
             nn.Conv2d(3,16,1,1,0),
+            nn.BatchNorm2d(16),
             nn.ReLU(),
             nn.Conv2d(16,16,1,1,0),
+            nn.BatchNorm2d(16),
             nn.ReLU(),
             nn.Conv2d(16,1,1,1,0)
         )
@@ -72,40 +78,6 @@ class Grad_net(nn.Module):
         dpdt = torch.mul(self.grad_x(in_grad),dg_dt_current) + torch.mul(self.grad_y(in_grad),dh_dt_current)
         #print(t.item())
         return dpdt
-
-#model = Grad_net()
-
-def norm(dim):
-    return nn.GroupNorm(min(32, dim), dim)
-
-class Path_net(nn.Module):
-    def __init__(self):
-        super(Path_net, self).__init__()
-        self.conv1 = nn.Conv2d(2,4,1,1,0)
-        self.conv2 = nn.Conv2d(4,4,1,1,0)
-        self.fc1 = nn.Linear(3136,2)
-#        self.fc2 = nn.Linear(128,2)
-        self.norm1 = nn.BatchNorm2d(4)
-        self.norm2 = nn.BatchNorm2d(4)
-        self.norm3 = nn.GroupNorm(4,128)
-
-    def forward(self, t, x):
-        t_channel = t.expand(t.size(0), x.size(2)*x.size(3))
-        t_channel = t_channel.view(x.size())
-        x = torch.cat((t_channel, x),dim=1)
-        x = self.conv1(x)
-        x = F.relu(x)
-        x = self.norm1(x)
-        x = self.conv2(x)
-        x = F.relu(x)
-        x = self.norm2(x)
-#        x = F.max_pool2d(x, 2)
-        x = torch.flatten(x, 1)
-        x = self.fc1(x)
-#        x = F.relu(x)
-#        x = self.norm3(x)
-#        x = self.fc2(x)
-        return x
 
 class Classifier(nn.Module):
     def __init__(self):
@@ -250,7 +222,7 @@ def main():
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--gamma', type=float, default=0.1, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
-    parser.add_argument('--step-size', type=int, default=2, metavar='M',
+    parser.add_argument('--step-size', type=int, default=10, metavar='M',
                         help='how many epochs to we change the learning rate, default is 5')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
@@ -264,9 +236,6 @@ def main():
                         help='For Saving the current Model')
     parser.add_argument('--lr', type=float, default=1e-3, metavar='LR',
                         help='learning rate (default: 1.0)')
-    parser.add_argument('--l-bound', type=float, default=0., help='Lower bound of line integral t value')
-    parser.add_argument('--u-bound', type=float, default=1., help='Upper bound of line integral t value')
-    parser.add_argument('--num-eval', type=float, default=100.0, help='Number of evaluations along the line integral')
 
 
     args = parser.parse_args()
