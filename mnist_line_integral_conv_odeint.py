@@ -15,20 +15,19 @@ class Grad_net(nn.Module):
     def __init__(self):
         super().__init__()
         self.path = nn.Sequential(
-        nn.Linear(1,16),
+        #nn.Linear(1,16),
+        #nn.ReLU(),
+        #nn.Linear(16,16),
+        #nn.ReLU(),
+        #nn.Linear(16,2),
+        #nn.ReLU()
+        nn.Conv2d(2,4,1,1,0),
         nn.ReLU(),
-        nn.Linear(16,16),
+        nn.Conv2d(4,4,1,1,0),
         nn.ReLU(),
-        nn.Linear(16,2),
-        nn.ReLU()
-        )
-        self.grad_x = nn.Sequential(
-            nn.ReLU(),
-            nn.Conv2d(3,16,1,1,0),
-            nn.ReLU(),
-            nn.Conv2d(16,16,1,1,0),
-            nn.ReLU(),
-            nn.Conv2d(16,1,1,1,0)
+        nn.Conv2d(4,2,1,1,0),
+        nn.Flatten(),
+        nn.Linear(1568,2)
         )
         self.grad_x = nn.Sequential(
             nn.ReLU(),
@@ -52,11 +51,11 @@ class Grad_net(nn.Module):
         device = torch.device("cuda")
         #device = torch.device("cpu")
         t_input = t.expand(x.size(0),1)
-        #t_channel = ((t_input.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size())
+        t_channel = ((t_input.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size())
         #t_channel.requires_grad = True
-        #path_input = torch.cat((t_channel, x),dim=1)
+        path_input = torch.cat((t_channel, x),dim=1)
         #path_input.requires_grad=True
-        g_h_current = self.path(t_input)
+        g_h_current = self.path(path_input)
         dg_dt_current = torch.autograd.grad(g_h_current[:,0].view(g_h_current.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0]
         dg_dt_current = dg_dt_current.view(dg_dt_current.size(0),1,1)
         dg_dt_current = dg_dt_current.expand(dg_dt_current.size(0),1,784)
@@ -150,7 +149,7 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer, epoch
         p_current.requires_grad=True
         t = torch.Tensor([0.,1.]).to(device)
         t.requires_grad=True
-        p_current = torch.squeeze(odeint(grad_net, p_current, t)[1])
+        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
         output = classifier_net(p_current)
         soft_max = nn.Softmax(dim=1)
         ####### neural path integral ends here #######
@@ -185,7 +184,7 @@ def test(args, grad_net, classifier_net, device, test_loader):
         p_current = data
         t = torch.Tensor([0.,1.]).to(device)
         t.requires_grad=True
-        p_current = torch.squeeze(odeint(grad_net, p_current, t)[1])
+        p_current = torch.squeeze(odeint(grad_net, p_current, t, method="euler")[1])
         output = classifier_net(p_current)
         soft_max = nn.Softmax(dim=1)
         ####### neural path integral ends here #######
@@ -214,7 +213,7 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
         p_current = data
         t = torch.Tensor([0.,1.]).to(device)
         t.requires_grad=True
-        p_current = torch.squeeze(odeint(grad_net, p_current, t)[1])
+        p_current = torch.squeeze(odeint(grad_net, p_current, t, method="euler")[1])
         output = classifier_net(p_current)
         soft_max = nn.Softmax(dim=1)
         ####### neural path integral ends here #######
@@ -243,15 +242,15 @@ def main():
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
     parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
-    parser.add_argument('--test-batch-size', type=int, default=64, metavar='N',
+    parser.add_argument('--test-batch-size', type=int, default=4, metavar='N',
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
     parser.add_argument('--epochs', type=int, default=40, metavar='N',
                         help='number of epochs to train (default: 14)')
-    parser.add_argument('--gamma', type=float, default=1e-4, metavar='M',
+    parser.add_argument('--gamma', type=float, default=0.1, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
-    parser.add_argument('--step-size', type=int, default=10, metavar='M',
+    parser.add_argument('--step-size', type=int, default=2, metavar='M',
                         help='how many epochs to we change the learning rate, default is 5')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
@@ -282,7 +281,7 @@ def main():
     validation_kwargs = {'batch_size': args.validation_batch_size}
 
     if use_cuda:
-        cuda_kwargs = {'num_workers': 12,
+        cuda_kwargs = {'num_workers': 4,
                        'pin_memory': True,
                        'shuffle': True}
         train_kwargs.update(cuda_kwargs)
