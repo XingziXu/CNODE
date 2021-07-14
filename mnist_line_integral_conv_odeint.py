@@ -15,14 +15,12 @@ class Grad_net(nn.Module):
     def __init__(self):
         super().__init__()
         self.path = nn.Sequential(
-            nn.Conv2d(2,4,1,1,0),
-            nn.ReLU(),
-            nn.BatchNorm2d(4),
-            nn.Conv2d(4,4,1,1,0),
-            nn.ReLU(),
-            nn.BatchNorm2d(4),
-            nn.Flatten(),
-            nn.Linear(3136,2)
+        nn.Linear(1,16),
+        nn.ReLU(),
+        nn.Linear(16,16),
+        nn.ReLU(),
+        nn.Linear(16,2),
+        nn.ReLU()
         )
         self.grad_x = nn.Sequential(
             nn.ReLU(),
@@ -52,12 +50,13 @@ class Grad_net(nn.Module):
 
     def forward(self, t, x):
         device = torch.device("cuda")
+        #device = torch.device("cpu")
         t_input = t.expand(x.size(0),1)
-        t_channel = ((t_input.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size())
+        #t_channel = ((t_input.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size())
         #t_channel.requires_grad = True
-        path_input = torch.cat((t_channel, x),dim=1)
+        #path_input = torch.cat((t_channel, x),dim=1)
         #path_input.requires_grad=True
-        g_h_current = self.path(path_input)
+        g_h_current = self.path(t_input)
         dg_dt_current = torch.autograd.grad(g_h_current[:,0].view(g_h_current.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0]
         dg_dt_current = dg_dt_current.view(dg_dt_current.size(0),1,1)
         dg_dt_current = dg_dt_current.expand(dg_dt_current.size(0),1,784)
@@ -72,6 +71,7 @@ class Grad_net(nn.Module):
         in_grad = torch.cat((x, g_h_current_input), dim=1)
         #in_grad = torch.cat((x.view(x.size()[0], 10), g_h_current.repeat([x.size()[0],1]).view(x.size()[0],2)), dim=1)
         dpdt = torch.mul(self.grad_x(in_grad),dg_dt_current) + torch.mul(self.grad_y(in_grad),dh_dt_current)
+        #print(t.item())
         return dpdt
 
 #model = Grad_net()
@@ -139,6 +139,7 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer, epoch
     classifier_net.train()
     #print(device)
     for batch_idx, (data, target) in enumerate(train_loader):
+        #print('we are training')
         #if batch_idx > 100:
         #    break
         data, target = data.to(device), target.to(device)
@@ -154,9 +155,12 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer, epoch
         soft_max = nn.Softmax(dim=1)
         ####### neural path integral ends here #######
         output = soft_max(output)
+        #print('2')
         loss = F.nll_loss(output, target)
         loss.backward()
+        #print('3')
         optimizer.step()
+        #print('4')
         clipper = WeightClipper()
         grad_net.path.apply(clipper)
         if batch_idx % args.log_interval == 0:
@@ -249,7 +253,7 @@ def main():
                         help='Learning rate step gamma (default: 0.7)')
     parser.add_argument('--step-size', type=int, default=10, metavar='M',
                         help='how many epochs to we change the learning rate, default is 5')
-    parser.add_argument('--no-cuda', action='store_true', default=True,
+    parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
     parser.add_argument('--dry-run', action='store_true', default=False,
                         help='quickly check a single pass')
