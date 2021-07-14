@@ -20,6 +20,7 @@ class Grad_net(nn.Module):
         #nn.Linear(16,16),
         #nn.ReLU(),
         #nn.Linear(16,2),
+        nn.GroupNorm(2,2),
         nn.ReLU(),
         nn.Conv2d(2,4,1,1,0),
         nn.GroupNorm(2,4),
@@ -29,29 +30,31 @@ class Grad_net(nn.Module):
         nn.ReLU(),
         nn.Conv2d(4,2,1,1,0),
         nn.Flatten(),
-        nn.Linear(1568,32),
+        nn.Linear(1568,16),
         nn.ReLU(),
-        nn.Linear(32,2)
+        nn.Linear(16,2)
         )
         self.grad_x = nn.Sequential(
-            nn.Tanhshrink(),
-            nn.Conv2d(3,16,1,1,0),
-            nn.GroupNorm(4,16),
-            nn.Tanhshrink(),
-            nn.Conv2d(16,16,1,1,0),
-            nn.GroupNorm(4,16),
-            nn.Tanhshrink(),
-            nn.Conv2d(16,1,1,1,0)
+            nn.GroupNorm(3,3),
+            nn.ReLU(),
+            nn.Conv2d(3,32,3,1,1),
+            nn.GroupNorm(8,32),
+            nn.ReLU(),
+            nn.Conv2d(32,32,3,1,1),
+            nn.GroupNorm(8,32),
+            nn.ReLU(),
+            nn.Conv2d(32,1,3,1,1)
         )
         self.grad_y = nn.Sequential(
-            nn.Tanhshrink(),
-            nn.Conv2d(3,16,1,1,0),
-            nn.GroupNorm(4,16),
-            nn.Tanhshrink(),
-            nn.Conv2d(16,16,1,1,0),
-            nn.GroupNorm(4,16),
-            nn.Tanhshrink(),
-            nn.Conv2d(16,1,1,1,0)
+            nn.GroupNorm(3,3),
+            nn.ReLU(),
+            nn.Conv2d(3,32,3,1,1),
+            nn.GroupNorm(8,32),
+            nn.ReLU(),
+            nn.Conv2d(32,32,3,1,1),
+            nn.GroupNorm(8,32),
+            nn.ReLU(),
+            nn.Conv2d(32,1,3,1,1)
         )
 
 
@@ -129,7 +132,7 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer, epoch
         ####### neural path integral ends here #######
         output = soft_max(output)
         #print('2')
-        loss = F.nll_loss(output, target)
+        loss = F.cross_entropy(output, target)
         loss.backward()
         #print('3')
         optimizer.step()
@@ -163,7 +166,7 @@ def test(args, grad_net, classifier_net, device, test_loader):
         soft_max = nn.Softmax(dim=1)
         ####### neural path integral ends here #######
         output = soft_max(output)
-        test_loss += F.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
+        test_loss += F.cross_entropy(output, target, reduction='sum').item()  # sum up batch loss
         pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
         correct += pred.eq(target.view_as(pred)).sum().item()
 
@@ -192,7 +195,7 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
         soft_max = nn.Softmax(dim=1)
         ####### neural path integral ends here #######
         output = soft_max(output)
-        test_loss += F.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
+        test_loss += F.cross_entropy(output, target, reduction='sum').item()  # sum up batch loss
         pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
         correct += pred.eq(target.view_as(pred)).sum().item()
 
@@ -222,9 +225,9 @@ def main():
                         help='input batch size for validation (default: 1000)')
     parser.add_argument('--epochs', type=int, default=40, metavar='N',
                         help='number of epochs to train (default: 14)')
-    parser.add_argument('--gamma', type=float, default=1e-2, metavar='M',
+    parser.add_argument('--gamma', type=float, default=1e-1, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
-    parser.add_argument('--step-size', type=int, default=5, metavar='M',
+    parser.add_argument('--step-size', type=int, default=4, metavar='M',
                         help='how many epochs to we change the learning rate, default is 5')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
