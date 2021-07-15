@@ -45,17 +45,17 @@ class Grad_net(nn.Module):
             nn.ReLU(),
             nn.Conv2d(64,1,1,1,0)
         )
-        #self.grad_y = nn.Sequential(
-        #    #nn.GroupNorm(3,3),
-        #    #nn.ReLU(),
-        #    nn.Conv2d(3,64,1,1,0),
-        #    #nn.GroupNorm(4,16),
-        #    nn.ReLU(),
-        #    nn.Conv2d(64,64,3,1,1),
-        #    #nn.GroupNorm(4,16),
-        #    nn.ReLU(),
-        #    nn.Conv2d(64,1,1,1,0)
-        #)
+        self.grad_y = nn.Sequential(
+            #nn.GroupNorm(3,3),
+            #nn.ReLU(),
+            nn.Conv2d(3,64,1,1,0),
+            #nn.GroupNorm(4,16),
+            nn.ReLU(),
+            nn.Conv2d(64,64,3,1,1),
+            #nn.GroupNorm(4,16),
+            nn.ReLU(),
+            nn.Conv2d(64,1,1,1,0)
+        )
 
 
     def forward(self, t, x):
@@ -65,7 +65,7 @@ class Grad_net(nn.Module):
         x_ori = x[:,0,:,:].view(x.size(0),1,x.size(2),x.size(3)).to(device)
         t_channel = ((t_input.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3))
         #t_channel.requires_grad = True
-        path_input = torch.cat((t_channel, x_ori),dim=1)
+        path_input = torch.cat((t_channel, p_i),dim=1)
         #path_input.requires_grad=True
         g_h_current = self.path(path_input)
         dg_dt_current = torch.autograd.grad(g_h_current[:,0].view(g_h_current.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0]
@@ -82,7 +82,7 @@ class Grad_net(nn.Module):
         x_aug=torch.cat((x,g_h_current_input),dim=1)
         #in_grad = torch.cat((x, g_h_current_input), dim=1)
         #in_grad = torch.cat((x.view(x.size()[0], 10), g_h_current.repeat([x.size()[0],1]).view(x.size()[0],2)), dim=1)
-        dpdt = torch.mul(self.grad_x(x_aug),dg_dt_current) + torch.mul(self.grad_x(x_aug),dh_dt_current)
+        dpdt = torch.mul(self.grad_x(x_aug),dg_dt_current) + torch.mul(self.grad_y(x_aug),dh_dt_current)
         #print(t.item())
         return dpdt
 
@@ -126,6 +126,8 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer, epoch
         ####### neural path integral starts here #######
         p_current = data
         p_current.requires_grad=True
+        global p_i
+        p_i = p_current
         #aug = torch.zeros(p_current.size(0),5,p_current.size(2),p_current.size(3)).to(device)
         #p_current = torch.cat((p_current,aug),dim=1)
         t = torch.Tensor([0.,1.]).to(device)
@@ -141,8 +143,8 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer, epoch
         #print('3')
         optimizer.step()
         #print('4')
-        #clipper = WeightClipper()
-        #grad_net.path.apply(clipper)
+        clipper = WeightClipper()
+        grad_net.path.apply(clipper)
         if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
@@ -164,6 +166,8 @@ def test(args, grad_net, classifier_net, device, test_loader):
         data, target = data.to(device), target.to(device)
         p_current = data
         p_current.requires_grad=True
+        global p_i
+        p_i = p_current
         #aug = torch.zeros(p_current.size(0),5,p_current.size(2),p_current.size(3)).to(device)
         #p_current = torch.cat((p_current,aug),dim=1)
         t = torch.Tensor([0.,1.]).to(device)
@@ -196,6 +200,8 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
         data, target = data.to(device), target.to(device)
         p_current = data
         p_current.requires_grad=True
+        global p_i
+        p_i = p_current
         #aug = torch.zeros(p_current.size(0),5,p_current.size(2),p_current.size(3)).to(device)
         #p_current = torch.cat((p_current,aug),dim=1)
         t = torch.Tensor([0.,1.]).to(device)
