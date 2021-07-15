@@ -22,7 +22,7 @@ class Grad_net(nn.Module):
         #nn.Linear(16,2),
         #nn.GroupNorm(2,2),
         #nn.ReLU(),
-        nn.Conv2d(4,4,1,1,0),
+        nn.Conv2d(4,2,1,1,0),
         #nn.GroupNorm(2,4),
         nn.ReLU(),
         #nn.Conv2d(2,2,3,1,1),
@@ -30,7 +30,7 @@ class Grad_net(nn.Module):
         #nn.ReLU(),
         #nn.Conv2d(4,2,1,1,0),
         nn.Flatten(),
-        nn.Linear(4096,2)
+        nn.Linear(2048,2)
 #        nn.ReLU(),
 #        nn.Linear(16,2)
         )
