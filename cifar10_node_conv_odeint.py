@@ -16,11 +16,11 @@ class Grad_net(nn.Module):
         super().__init__()
 
         self.grad = nn.Sequential(
-            nn.Conv2d(2,64,1,1,0),
+            nn.Conv2d(4,64,1,1,0),
             nn.ReLU(),
             nn.Conv2d(64,64,3,1,1),
             nn.ReLU(),
-            nn.Conv2d(64,1,1,1,0)
+            nn.Conv2d(64,3,1,1,0)
         )
 
 
@@ -37,7 +37,7 @@ class Grad_net(nn.Module):
 class Classifier(nn.Module):
     def __init__(self):
         super(Classifier, self).__init__()
-        self.classifier = nn.Linear(784,10)
+        self.classifier = nn.Linear(3072,10)
 
     def forward(self, x):
         x = torch.flatten(x,1)
@@ -194,9 +194,9 @@ def main():
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
         ])
-    dataset1 = datasets.MNIST('../data', train=True, download=True,
+    dataset1 = datasets.CIFAR10('../data', train=True, download=True,
                        transform=transform)
-    dataset2 = datasets.MNIST('../data', train=False, download=True,
+    dataset2 = datasets.CIFAR10('../data', train=False, download=True,
                        transform=transform)
 
     train_loader = torch.utils.data.DataLoader(dataset1,**train_kwargs)
