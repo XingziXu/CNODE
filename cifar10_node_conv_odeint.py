@@ -16,11 +16,11 @@ class Grad_net(nn.Module):
         super().__init__()
 
         self.grad = nn.Sequential(
-            nn.Conv2d(4,125,1,1,0),
+            nn.Conv2d(4,64,1,1,0),
             nn.ReLU(),
-            nn.Conv2d(125,125,3,1,1),
+            nn.Conv2d(64,64,3,1,1),
             nn.ReLU(),
-            nn.Conv2d(125,3,1,1,0)
+            nn.Conv2d(64,3,1,1,0)
         )
 
 
