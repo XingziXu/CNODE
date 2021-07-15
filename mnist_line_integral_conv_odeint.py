@@ -59,8 +59,8 @@ class Grad_net(nn.Module):
 
 
     def forward(self, t, x):
-        device = torch.device("cuda")
-        #device = torch.device("cpu")
+        #device = torch.device("cuda")
+        device = torch.device("cpu")
         t_input = t.expand(x.size(0),1)
         x_ori = x[:,0,:,:].view(x.size(0),1,x.size(2),x.size(3)).to(device)
         t_channel = ((t_input.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3))
@@ -130,7 +130,7 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer, epoch
         p_current = torch.cat((p_current,aug),dim=1)
         t = torch.Tensor([0.,1.]).to(device)
         t.requires_grad=True
-        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
+        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="dopri5",rtol=1e-3,atol=1e-3)[1])
         output = classifier_net(p_current)
         soft_max = nn.Softmax(dim=1)
         ####### neural path integral ends here #######
@@ -168,7 +168,7 @@ def test(args, grad_net, classifier_net, device, test_loader):
         p_current = torch.cat((p_current,aug),dim=1)
         t = torch.Tensor([0.,1.]).to(device)
         t.requires_grad=True
-        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
+        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="dopri5",rtol=1e-3,atol=1e-3)[1])
         output = classifier_net(p_current)
         soft_max = nn.Softmax(dim=1)
         ####### neural path integral ends here #######
@@ -200,7 +200,7 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
         p_current = torch.cat((p_current,aug),dim=1)
         t = torch.Tensor([0.,1.]).to(device)
         t.requires_grad=True
-        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
+        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="dopri5",rtol=1e-3,atol=1e-3)[1])
         output = classifier_net(p_current)
         soft_max = nn.Softmax(dim=1)
         ####### neural path integral ends here #######
@@ -239,7 +239,7 @@ def main():
                         help='Learning rate step gamma (default: 0.7)')
     parser.add_argument('--step-size', type=int, default=5, metavar='M',
                         help='how many epochs to we change the learning rate, default is 5')
-    parser.add_argument('--no-cuda', action='store_true', default=False,
+    parser.add_argument('--no-cuda', action='store_true', default=True,
                         help='disables CUDA training')
     parser.add_argument('--dry-run', action='store_true', default=False,
                         help='quickly check a single pass')
