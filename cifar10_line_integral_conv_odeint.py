@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torchvision import datasets, transforms
+from torchvision import datasets, transforms  
 from torch.optim.lr_scheduler import StepLR
 from torchdiffeq import odeint as odeint
 from scipy.integrate import odeint as odeint_scipy
@@ -22,7 +22,7 @@ class Grad_net(nn.Module):
         #nn.Linear(16,2),
         #nn.GroupNorm(2,2),
         #nn.ReLU(),
-        nn.Conv2d(2,2,1,1,0),
+        nn.Conv2d(4,4,1,1,0),
         #nn.GroupNorm(2,4),
         nn.ReLU(),
         #nn.Conv2d(2,2,3,1,1),
@@ -30,31 +30,31 @@ class Grad_net(nn.Module):
         #nn.ReLU(),
         #nn.Conv2d(4,2,1,1,0),
         nn.Flatten(),
-        nn.Linear(1568,2)
+        nn.Linear(4096,2)
 #        nn.ReLU(),
 #        nn.Linear(16,2)
         )
         self.grad_x = nn.Sequential(
             #nn.GroupNorm(3,3),
             #nn.ReLU(),
-            nn.Conv2d(3,64,1,1,0),
+            nn.Conv2d(5,64,1,1,0),
             #nn.GroupNorm(4,16),
             nn.ReLU(),
             nn.Conv2d(64,64,3,1,1),
             #nn.GroupNorm(4,16),
             nn.ReLU(),
-            nn.Conv2d(64,1,1,1,0)
+            nn.Conv2d(64,3,1,1,0)
         )
         self.grad_y = nn.Sequential(
             #nn.GroupNorm(3,3),
             #nn.ReLU(),
-            nn.Conv2d(3,64,1,1,0),
+            nn.Conv2d(5,64,1,1,0),
             #nn.GroupNorm(4,16),
             nn.ReLU(),
             nn.Conv2d(64,64,3,1,1),
             #nn.GroupNorm(4,16),
             nn.ReLU(),
-            nn.Conv2d(64,1,1,1,0)
+            nn.Conv2d(64,3,1,1,0)
         )
 
 
@@ -62,20 +62,20 @@ class Grad_net(nn.Module):
         device = torch.device("cuda")
         #device = torch.device("cpu")
         t_input = t.expand(x.size(0),1)
-        x_ori = x[:,0,:,:].view(x.size(0),1,x.size(2),x.size(3)).to(device)
+        #x_ori = x[:,0,:,:].view(x.size(0),1,x.size(2),x.size(3)).to(device)
         t_channel = ((t_input.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3))
         #t_channel.requires_grad = True
-        path_input = torch.cat((t_channel, x_ori),dim=1)
+        path_input = torch.cat((t_channel, x),dim=1)
         #path_input.requires_grad=True
         g_h_current = self.path(path_input)
         dg_dt_current = torch.autograd.grad(g_h_current[:,0].view(g_h_current.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0]
         dg_dt_current = dg_dt_current.view(dg_dt_current.size(0),1,1)
-        dg_dt_current = dg_dt_current.expand(dg_dt_current.size(0),1,784)
-        dg_dt_current = dg_dt_current.view(dg_dt_current.size(0),1,28,28)
+        dg_dt_current = dg_dt_current.expand(dg_dt_current.size(0),1,x.size(2)*x.size(3))
+        dg_dt_current = dg_dt_current.view(dg_dt_current.size(0),1,x.size(2),x.size(3))
         dh_dt_current = torch.autograd.grad(g_h_current[:,1].view(g_h_current.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0]
         dh_dt_current = dh_dt_current.view(dh_dt_current.size(0),1,1)
-        dh_dt_current = dh_dt_current.expand(dh_dt_current.size(0),1,784)
-        dh_dt_current = dh_dt_current.view(dh_dt_current.size(0),1,28,28)
+        dh_dt_current = dh_dt_current.expand(dh_dt_current.size(0),1,x.size(2)*x.size(3))
+        dh_dt_current = dh_dt_current.view(dh_dt_current.size(0),1,x.size(2),x.size(3))
         g_h_current_input = g_h_current.view(g_h_current.size(0),g_h_current.size(1),1)
         g_h_current_input = g_h_current_input.expand(g_h_current.size(0),g_h_current.size(1),x.size(2)*x.size(3))
         g_h_current_input = g_h_current_input.view((g_h_current.size(0),g_h_current.size(1),x.size(2),x.size(3)))
@@ -89,7 +89,7 @@ class Grad_net(nn.Module):
 class Classifier(nn.Module):
     def __init__(self):
         super(Classifier, self).__init__()
-        self.classifier = nn.Linear(784,10)
+        self.classifier = nn.Linear(3072,10)
 
     def forward(self, x):
         x = torch.flatten(x,1)
@@ -130,8 +130,8 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer, epoch
         #p_current = torch.cat((p_current,aug),dim=1)
         t = torch.Tensor([0.,1.]).to(device)
         t.requires_grad=True
-        #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
-        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="dopri5",rtol=1e-3,atol=1e-3)[1])
+        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
+        #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="dopri5",rtol=1e-3,atol=1e-3)[1])
         output = classifier_net(p_current)
         soft_max = nn.Softmax(dim=1)
         ####### neural path integral ends here #######
@@ -169,8 +169,8 @@ def test(args, grad_net, classifier_net, device, test_loader):
         #p_current = torch.cat((p_current,aug),dim=1)
         t = torch.Tensor([0.,1.]).to(device)
         t.requires_grad=True
-        #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
-        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="dopri5",rtol=1e-3,atol=1e-3)[1])
+        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
+        #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="dopri5",rtol=1e-3,atol=1e-3)[1])
         output = classifier_net(p_current)
         soft_max = nn.Softmax(dim=1)
         ####### neural path integral ends here #######
@@ -202,8 +202,8 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
         #p_current = torch.cat((p_current,aug),dim=1)
         t = torch.Tensor([0.,1.]).to(device)
         t.requires_grad=True
-        #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
-        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="dopri5",rtol=1e-3,atol=1e-3)[1])
+        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
+        #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="dopri5",rtol=1e-3,atol=1e-3)[1])
         output = classifier_net(p_current)
         soft_max = nn.Softmax(dim=1)
         ####### neural path integral ends here #######
@@ -279,9 +279,9 @@ def main():
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
         ])
-    dataset1 = datasets.MNIST('../data', train=True, download=True,
+    dataset1 = datasets.CIFAR10('../data', train=True, download=True,
                        transform=transform)
-    dataset2 = datasets.MNIST('../data', train=False, download=True,
+    dataset2 = datasets.CIFAR10('../data', train=False, download=True,
                        transform=transform)
  
     #dataset4, dataset2 = torch.utils.data.random_split(dataset2, [9990,10])
