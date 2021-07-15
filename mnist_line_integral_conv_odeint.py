@@ -45,17 +45,17 @@ class Grad_net(nn.Module):
             nn.ReLU(),
             nn.Conv2d(64,1,1,1,0)
         )
-        self.grad_y = nn.Sequential(
-            #nn.GroupNorm(3,3),
-            #nn.ReLU(),
-            nn.Conv2d(3,64,1,1,0),
-            #nn.GroupNorm(4,16),
-            nn.ReLU(),
-            nn.Conv2d(64,64,3,1,1),
-            #nn.GroupNorm(4,16),
-            nn.ReLU(),
-            nn.Conv2d(64,1,1,1,0)
-        )
+        #self.grad_y = nn.Sequential(
+        #    #nn.GroupNorm(3,3),
+        #    #nn.ReLU(),
+        #    nn.Conv2d(3,64,1,1,0),
+        #    #nn.GroupNorm(4,16),
+        #    nn.ReLU(),
+        #    nn.Conv2d(64,64,3,1,1),
+        #    #nn.GroupNorm(4,16),
+        #    nn.ReLU(),
+        #    nn.Conv2d(64,1,1,1,0)
+        #)
 
 
     def forward(self, t, x):
@@ -82,7 +82,7 @@ class Grad_net(nn.Module):
         x_aug=torch.cat((x,g_h_current_input),dim=1)
         #in_grad = torch.cat((x, g_h_current_input), dim=1)
         #in_grad = torch.cat((x.view(x.size()[0], 10), g_h_current.repeat([x.size()[0],1]).view(x.size()[0],2)), dim=1)
-        dpdt = torch.mul(self.grad_x(x_aug),dg_dt_current) + torch.mul(self.grad_y(x_aug),dh_dt_current)
+        dpdt = torch.mul(self.grad_x(x_aug),dg_dt_current) + torch.mul(self.grad_x(x_aug),dh_dt_current)
         #print(t.item())
         return dpdt
 
