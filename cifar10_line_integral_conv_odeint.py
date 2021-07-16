@@ -22,9 +22,12 @@ class Grad_net(nn.Module):
         #nn.Linear(16,2),
         #nn.GroupNorm(2,2),
         #nn.ReLU(),
-        nn.Conv2d(4,3,1,1,0),
+        nn.Conv2d(4,16,1,1,0),
         #nn.GroupNorm(2,4),
         nn.ReLU(),
+        nn.Conv2d(16,16,3,1,1),
+        nn.ReLU(),
+        nn.Conv2d(16,3,1,1,0),
         #nn.Conv2d(2,2,3,1,1),
         #nn.GroupNorm(2,4),
         #nn.ReLU(),
@@ -153,7 +156,7 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer, epoch
         #p_current = torch.cat((p_current,aug),dim=1)
         t = torch.Tensor([0.,1.]).to(device)
         t.requires_grad=True
-        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="rk4")[1])
+        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
         #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="dopri5",rtol=1e-3,atol=1e-3)[1])
         output = classifier_net(p_current)
         soft_max = nn.Softmax(dim=1)
@@ -194,7 +197,7 @@ def test(args, grad_net, classifier_net, device, test_loader):
         #p_current = torch.cat((p_current,aug),dim=1)
         t = torch.Tensor([0.,1.]).to(device)
         t.requires_grad=True
-        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="rk4")[1])
+        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
         #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="dopri5",rtol=1e-3,atol=1e-3)[1])
         output = classifier_net(p_current)
         soft_max = nn.Softmax(dim=1)
@@ -229,7 +232,7 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
         #p_current = torch.cat((p_current,aug),dim=1)
         t = torch.Tensor([0.,1.]).to(device)
         t.requires_grad=True
-        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="rk4")[1])
+        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
         #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="dopri5",rtol=1e-3,atol=1e-3)[1])
         output = classifier_net(p_current)
         soft_max = nn.Softmax(dim=1)
