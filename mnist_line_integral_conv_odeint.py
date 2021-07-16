@@ -165,8 +165,8 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer, epoch
         #print('3')
         optimizer.step()
         #print('4')
-        #clipper = WeightClipper()
-        #grad_net.path.apply(clipper)
+        clipper = WeightClipper()
+        grad_net.path.apply(clipper)
         if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
