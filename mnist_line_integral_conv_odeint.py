@@ -25,12 +25,15 @@ class Grad_net(nn.Module):
         nn.Conv2d(2,3,1,1,0),
         #nn.GroupNorm(2,4),
         nn.ReLU(),
+        nn.Conv2d(3,3,3,1,1),
+        nn.ReLU(),
+        nn.Conv2d(3,2,1,1,0),
         #nn.Conv2d(2,2,3,1,1),
         #nn.GroupNorm(2,4),
         #nn.ReLU(),
         #nn.Conv2d(4,2,1,1,0),
         nn.Flatten(),
-        nn.Linear(2352,3)
+        nn.Linear(1568,3)
 #        nn.ReLU(),
 #        nn.Linear(16,2)
         )
@@ -56,13 +59,13 @@ class Grad_net(nn.Module):
             nn.ReLU(),
             nn.Conv2d(64,1,1,1,0)
         )
-        self.grad_z = nn.Sequential(
-            nn.Conv2d(4,64,1,1,0),
-            nn.ReLU(),
-            nn.Conv2d(64,64,3,1,1),
-            nn.ReLU(),
-            nn.Conv2d(64,1,1,1,0)
-        )
+        #self.grad_z = nn.Sequential(
+        #    nn.Conv2d(4,64,1,1,0),
+        #    nn.ReLU(),
+        #    nn.Conv2d(64,64,3,1,1),
+        #    nn.ReLU(),
+        #    nn.Conv2d(64,1,1,1,0)
+        #)
 
 
     def forward(self, t, x):
@@ -80,18 +83,22 @@ class Grad_net(nn.Module):
         dg_dt_current = dg_dt_current.view(dg_dt_current.size(0),1,1)
         dg_dt_current = dg_dt_current.expand(dg_dt_current.size(0),1,x.size(2)*x.size(3))
         dg_dt_current = dg_dt_current.view(dg_dt_current.size(0),1,x.size(2),x.size(3))
+        
         dh_dt_current = torch.autograd.grad(g_h_current[:,1].view(g_h_current.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0]
         dh_dt_current = dh_dt_current.view(dh_dt_current.size(0),1,1)
         dh_dt_current = dh_dt_current.expand(dh_dt_current.size(0),1,x.size(2)*x.size(3))
         dh_dt_current = dh_dt_current.view(dh_dt_current.size(0),1,x.size(2),x.size(3))
-        di_dt_current = torch.autograd.grad(g_h_current[:,2].view(g_h_current.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0]
-        di_dt_current = di_dt_current.view(di_dt_current.size(0),1,1)
-        di_dt_current = di_dt_current.expand(di_dt_current.size(0),1,x.size(2)*x.size(3))
-        di_dt_current = di_dt_current.view(di_dt_current.size(0),1,x.size(2),x.size(3))
+        
+        #di_dt_current = torch.autograd.grad(g_h_current[:,2].view(g_h_current.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0]
+        #di_dt_current = di_dt_current.view(di_dt_current.size(0),1,1)
+        #di_dt_current = di_dt_current.expand(di_dt_current.size(0),1,x.size(2)*x.size(3))
+        #di_dt_current = di_dt_current.view(di_dt_current.size(0),1,x.size(2),x.size(3))
+        
         #dj_dt_current = torch.autograd.grad(g_h_current[:,3].view(g_h_current.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0]
         #dj_dt_current = dj_dt_current.view(dj_dt_current.size(0),1,1)
         #dj_dt_current = dj_dt_current.expand(dj_dt_current.size(0),1,x.size(2)*x.size(3))
         #dj_dt_current = dj_dt_current.view(dj_dt_current.size(0),1,x.size(2),x.size(3))
+        
         #dk_dt_current = torch.autograd.grad(g_h_current[:,4].view(g_h_current.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0]
         #dk_dt_current = dk_dt_current.view(dk_dt_current.size(0),1,1)
         #dk_dt_current = dk_dt_current.expand(dk_dt_current.size(0),1,x.size(2)*x.size(3))
@@ -103,7 +110,7 @@ class Grad_net(nn.Module):
         x_aug=torch.cat((x,g_h_current_input),dim=1)
         #in_grad = torch.cat((x, g_h_current_input), dim=1)
         #in_grad = torch.cat((x.view(x.size()[0], 10), g_h_current.repeat([x.size()[0],1]).view(x.size()[0],2)), dim=1)
-        dpdt = torch.mul(self.grad_x(x_aug),dg_dt_current) + torch.mul(self.grad_y(x_aug),dh_dt_current) + torch.mul(self.grad_z(x_aug),di_dt_current)# + torch.mul(self.grad_x(x_aug),dj_dt_current) + torch.mul(self.grad_x(x_aug),dk_dt_current)
+        dpdt = torch.mul(self.grad_x(x_aug),dg_dt_current) + torch.mul(self.grad_y(x_aug),dh_dt_current)# + torch.mul(self.grad_z(x_aug),di_dt_current)# + torch.mul(self.grad_x(x_aug),dj_dt_current) + torch.mul(self.grad_x(x_aug),dk_dt_current)
         #print(t.item())
         return dpdt
 
