@@ -117,7 +117,7 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
         #p_current = torch.cat((p_current,aug),dim=1)
         t = torch.Tensor([0.,1.]).to(device)
         t.requires_grad=True
-        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="dopri5",rtol=1e-3,atol=1e-3)[1])
+        #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="dopri5",rtol=1e-3,atol=1e-3)[1])
         p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
         output = classifier_net(p_current)
         soft_max = nn.Softmax(dim=1)
@@ -151,11 +151,11 @@ def main():
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=40, metavar='N',
+    parser.add_argument('--epochs', type=int, default=400, metavar='N',
                         help='number of epochs to train (default: 14)')
-    parser.add_argument('--gamma', type=float, default=0.5, metavar='M',
+    parser.add_argument('--gamma', type=float, default=0.9, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
-    parser.add_argument('--step-size', type=int, default=5, metavar='M',
+    parser.add_argument('--step-size', type=int, default=40, metavar='M',
                         help='how many epochs to we change the learning rate, default is 5')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
