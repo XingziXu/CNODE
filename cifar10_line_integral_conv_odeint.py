@@ -14,6 +14,7 @@ from torch.autograd import Variable
 class Grad_net(nn.Module):
     def __init__(self):
         super().__init__()
+        self.nfe=0
         self.path = nn.Sequential(
         #nn.Linear(1,16),
         #nn.ReLU(),
@@ -69,6 +70,7 @@ class Grad_net(nn.Module):
 
 
     def forward(self, t, x):
+        self.nfe+=1
         device = torch.device("cuda")
         #device = torch.device("cpu")
         t_input = t.expand(x.size(0),1)
@@ -158,6 +160,8 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer, epoch
         t.requires_grad=True
         #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
         p_current = torch.squeeze(odeint(grad_net, p_current, t,method="dopri5",rtol=1e-3,atol=1e-3)[1])
+        print(grad_net.nfe)
+        grad_net.nfe=0
         output = classifier_net(p_current)
         soft_max = nn.Softmax(dim=1)
         ####### neural path integral ends here #######
@@ -199,6 +203,8 @@ def test(args, grad_net, classifier_net, device, test_loader):
         t.requires_grad=True
         #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
         p_current = torch.squeeze(odeint(grad_net, p_current, t,method="dopri5",rtol=1e-3,atol=1e-3)[1])
+        print(grad_net.nfe)
+        grad_net.nfe=0
         output = classifier_net(p_current)
         soft_max = nn.Softmax(dim=1)
         ####### neural path integral ends here #######
@@ -234,6 +240,8 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
         t.requires_grad=True
         #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
         p_current = torch.squeeze(odeint(grad_net, p_current, t,method="dopri5",rtol=1e-3,atol=1e-3)[1])
+        print(grad_net.nfe)
+        grad_net.nfe=0
         output = classifier_net(p_current)
         soft_max = nn.Softmax(dim=1)
         ####### neural path integral ends here #######
