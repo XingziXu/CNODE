@@ -191,8 +191,8 @@ def main():
         validation_kwargs.update(cuda_kwargs)
 
     transform=transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,))
+        transforms.Resize(28),
+        transforms.ToTensor()
         ])
     dataset1 = datasets.MNIST('../data', train=True, download=True,
                        transform=transform)
