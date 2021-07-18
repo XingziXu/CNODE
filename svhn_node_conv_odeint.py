@@ -197,8 +197,8 @@ def main():
     dataset1 = datasets.SVHN('../data', download=True, split="train",
                        transform=transform)
     #dataset1, dataset2 = torch.utils.data.random_split(dataset1, [63257, 10000])
-    dataset2 = datasets.SVHN('../data', download=True, split="test"
-    #                   transform=transform)
+    dataset2 = datasets.SVHN('../data', download=True, split="test",
+                       transform=transform)
 
     train_loader = torch.utils.data.DataLoader(dataset1,**train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)

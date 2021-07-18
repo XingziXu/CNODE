@@ -260,9 +260,9 @@ def get_n_params(model):
 def main():
     # Training settings
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
-    parser.add_argument('--batch-size', type=int, default=128, metavar='N',
+    parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
-    parser.add_argument('--test-batch-size', type=int, default=64, metavar='N',
+    parser.add_argument('--test-batch-size', type=int, default=32, metavar='N',
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
@@ -309,9 +309,9 @@ def main():
         transforms.Resize(32),
         transforms.ToTensor()
         ])
-    dataset1 = datasets.SVHN('../data', download=True, split="train"
+    dataset1 = datasets.SVHN('../data', download=True, split="train",
                        transform=transform)
-    dataset2 = datasets.CIFAR10('../data', download=True, split="test",
+    dataset2 = datasets.SVHN('../data', download=True, split="test",
                        transform=transform)
  
     #dataset4, dataset2 = torch.utils.data.random_split(dataset2, [9990,10])
