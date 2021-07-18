@@ -151,11 +151,11 @@ def main():
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=40, metavar='N',
+    parser.add_argument('--epochs', type=int, default=400, metavar='N',
                         help='number of epochs to train (default: 14)')
-    parser.add_argument('--gamma', type=float, default=0.5, metavar='M',
+    parser.add_argument('--gamma', type=float, default=0.9, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
-    parser.add_argument('--step-size', type=int, default=5, metavar='M',
+    parser.add_argument('--step-size', type=int, default=40, metavar='M',
                         help='how many epochs to we change the learning rate, default is 5')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
@@ -194,10 +194,11 @@ def main():
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
         ])
-    dataset1 = datasets.CIFAR10('../data', train=True, download=True,
+    dataset1 = datasets.SVHN('../data', download=True, split="train",
                        transform=transform)
-    dataset2 = datasets.CIFAR10('../data', train=False, download=True,
-                       transform=transform)
+    #dataset1, dataset2 = torch.utils.data.random_split(dataset1, [63257, 10000])
+    dataset2 = datasets.SVHN('../data', download=True, split="test"
+    #                   transform=transform)
 
     train_loader = torch.utils.data.DataLoader(dataset1,**train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)

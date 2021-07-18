@@ -309,9 +309,9 @@ def main():
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
         ])
-    dataset1 = datasets.CIFAR10('../data', train=True, download=True,
+    dataset1 = datasets.SVHN('../data', download=True, split="train"
                        transform=transform)
-    dataset2 = datasets.CIFAR10('../data', train=False, download=True,
+    dataset2 = datasets.CIFAR10('../data', download=True, split="test",
                        transform=transform)
  
     #dataset4, dataset2 = torch.utils.data.random_split(dataset2, [9990,10])
