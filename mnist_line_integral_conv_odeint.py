@@ -14,7 +14,7 @@ from torch.autograd import Variable
 class Grad_net(nn.Module):
     def __init__(self):
         super().__init__()
-        self.path = nn.Sequential(
+        #self.path = nn.Sequential(
         #nn.Linear(1,16),
         #nn.ReLU(),
         #nn.Linear(16,16),
