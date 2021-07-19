@@ -23,56 +23,56 @@ class Grad_net(nn.Module):
         #nn.Linear(16,2),
         #nn.GroupNorm(2,2),
         #nn.ReLU(),
-        nn.Conv2d(2,2,1,1,0),
+        nn.Conv2d(4,16,1,1,0),
         #nn.GroupNorm(2,4),
         nn.ReLU(),
-        nn.Conv2d(2,2,3,1,1),
+        nn.Conv2d(16,16,3,1,1),
         nn.ReLU(),
-        nn.Conv2d(2,2,1,1,0),
+        nn.Conv2d(16,3,1,1,0),
         #nn.Conv2d(2,2,3,1,1),
         #nn.GroupNorm(2,4),
         #nn.ReLU(),
         #nn.Conv2d(4,2,1,1,0),
         nn.Flatten(),
-        nn.Linear(1568,3)
+        nn.Linear(3072,3)
 #        nn.ReLU(),
 #        nn.Linear(16,2)
         )
         self.grad_x = nn.Sequential(
             #nn.GroupNorm(3,3),
             #nn.ReLU(),
-            nn.Conv2d(4,64,1,1,0),
+            nn.Conv2d(6,64,1,1,0),
             #nn.GroupNorm(4,16),
             nn.ReLU(),
             nn.Conv2d(64,64,3,1,1),
             #nn.GroupNorm(4,16),
             nn.ReLU(),
-            nn.Conv2d(64,1,1,1,0)
+            nn.Conv2d(64,3,1,1,0)
         )
-        #self.grad_y = nn.Sequential(
-        #    #nn.GroupNorm(3,3),
-        #    #nn.ReLU(),
-        #    nn.Conv2d(4,64,1,1,0),
-        #    #nn.GroupNorm(4,16),
-        #    nn.ReLU(),
-        #    nn.Conv2d(64,64,3,1,1),
-        #    #nn.GroupNorm(4,16),
-        #    nn.ReLU(),
-        #    nn.Conv2d(64,1,1,1,0)
-        #)
-        #self.grad_z = nn.Sequential(
-        #    nn.Conv2d(4,64,1,1,0),
-        #    nn.ReLU(),
-        #    nn.Conv2d(64,64,3,1,1),
-        #    nn.ReLU(),
-        #    nn.Conv2d(64,1,1,1,0)
-        #)
+        self.grad_y = nn.Sequential(
+            #nn.GroupNorm(3,3),
+            #nn.ReLU(),
+            nn.Conv2d(6,64,1,1,0),
+            #nn.GroupNorm(4,16),
+            nn.ReLU(),
+            nn.Conv2d(64,64,3,1,1),
+            #nn.GroupNorm(4,16),
+            nn.ReLU(),
+            nn.Conv2d(64,3,1,1,0)
+        )
+        self.grad_z = nn.Sequential(
+            nn.Conv2d(6,64,1,1,0),
+            nn.ReLU(),
+            nn.Conv2d(64,64,3,1,1),
+            nn.ReLU(),
+            nn.Conv2d(64,3,1,1,0)
+        )
 
 
     def forward(self, t, x):
         self.nfe+=1
-        #device = torch.device("cuda")
-        device = torch.device("cpu")
+        device = torch.device("cuda")
+        #device = torch.device("cpu")
         t_input = t.expand(x.size(0),1)
         #p_i.size()
         #x_ori = x[:,0,:,:].view(x.size(0),1,x.size(2),x.size(3)).to(device)
@@ -85,22 +85,18 @@ class Grad_net(nn.Module):
         dg_dt_current = dg_dt_current.view(dg_dt_current.size(0),1,1)
         dg_dt_current = dg_dt_current.expand(dg_dt_current.size(0),1,x.size(2)*x.size(3))
         dg_dt_current = dg_dt_current.view(dg_dt_current.size(0),1,x.size(2),x.size(3))
-        
         dh_dt_current = torch.autograd.grad(g_h_current[:,1].view(g_h_current.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0]
         dh_dt_current = dh_dt_current.view(dh_dt_current.size(0),1,1)
         dh_dt_current = dh_dt_current.expand(dh_dt_current.size(0),1,x.size(2)*x.size(3))
         dh_dt_current = dh_dt_current.view(dh_dt_current.size(0),1,x.size(2),x.size(3))
-        
-        #di_dt_current = torch.autograd.grad(g_h_current[:,2].view(g_h_current.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0]
-        #di_dt_current = di_dt_current.view(di_dt_current.size(0),1,1)
-        #di_dt_current = di_dt_current.expand(di_dt_current.size(0),1,x.size(2)*x.size(3))
-        #di_dt_current = di_dt_current.view(di_dt_current.size(0),1,x.size(2),x.size(3))
-        
+        di_dt_current = torch.autograd.grad(g_h_current[:,2].view(g_h_current.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0]
+        di_dt_current = di_dt_current.view(di_dt_current.size(0),1,1)
+        di_dt_current = di_dt_current.expand(di_dt_current.size(0),1,x.size(2)*x.size(3))
+        di_dt_current = di_dt_current.view(di_dt_current.size(0),1,x.size(2),x.size(3))
         #dj_dt_current = torch.autograd.grad(g_h_current[:,3].view(g_h_current.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0]
         #dj_dt_current = dj_dt_current.view(dj_dt_current.size(0),1,1)
         #dj_dt_current = dj_dt_current.expand(dj_dt_current.size(0),1,x.size(2)*x.size(3))
         #dj_dt_current = dj_dt_current.view(dj_dt_current.size(0),1,x.size(2),x.size(3))
-        
         #dk_dt_current = torch.autograd.grad(g_h_current[:,4].view(g_h_current.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0]
         #dk_dt_current = dk_dt_current.view(dk_dt_current.size(0),1,1)
         #dk_dt_current = dk_dt_current.expand(dk_dt_current.size(0),1,x.size(2)*x.size(3))
@@ -112,14 +108,14 @@ class Grad_net(nn.Module):
         x_aug=torch.cat((x,g_h_current_input),dim=1)
         #in_grad = torch.cat((x, g_h_current_input), dim=1)
         #in_grad = torch.cat((x.view(x.size()[0], 10), g_h_current.repeat([x.size()[0],1]).view(x.size()[0],2)), dim=1)
-        dpdt = torch.mul(self.grad_x(x_aug),dg_dt_current) + torch.mul(self.grad_x(x_aug),dh_dt_current)# + torch.mul(self.grad_z(x_aug),di_dt_current)# + torch.mul(self.grad_x(x_aug),dj_dt_current) + torch.mul(self.grad_x(x_aug),dk_dt_current)
+        dpdt = torch.mul(self.grad_x(x_aug),dg_dt_current) + torch.mul(self.grad_y(x_aug),dh_dt_current) + torch.mul(self.grad_z(x_aug),di_dt_current)# + torch.mul(self.grad_x(x_aug),dj_dt_current) + torch.mul(self.grad_x(x_aug),dk_dt_current)
         #print(t.item())
         return dpdt
 
 class Classifier(nn.Module):
     def __init__(self):
         super(Classifier, self).__init__()
-        self.classifier = nn.Linear(784,10)
+        self.classifier = nn.Linear(3072,10)
 
     def forward(self, x):
         x = torch.flatten(x,1)
@@ -239,8 +235,8 @@ def test(args, grad_net, classifier_net, device, test_loader):
         #p_current = torch.cat((p_current,aug),dim=1)
         t = torch.Tensor([0.,1.]).to(device)
         t.requires_grad=True
-        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
-        #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="bosh3",rtol=args.tol,atol=args.tol)[1])
+        #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
+        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="dopri5",rtol=args.tol,atol=args.tol)[1])
         print(grad_net.nfe)
         grad_net.nfe=0
         output = classifier_net(p_current)
@@ -276,8 +272,8 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
         #p_current = torch.cat((p_current,aug),dim=1)
         t = torch.Tensor([0.,1.]).to(device)
         t.requires_grad=True
-        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
-        #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="bosh3",rtol=args.tol,atol=args.tol)[1])
+        #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
+        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="dopri5",rtol=args.tol,atol=args.tol)[1])
         print(grad_net.nfe)
         grad_net.nfe=0
         output = classifier_net(p_current)
@@ -306,7 +302,7 @@ def get_n_params(model):
 def main():
     # Training settings
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
-    parser.add_argument('--batch-size', type=int, default=256, metavar='N',
+    parser.add_argument('--batch-size', type=int, default=128, metavar='N',
                         help='input batch size for training (default: 64)')
     parser.add_argument('--test-batch-size', type=int, default=64, metavar='N',
                         help='input batch size for testing (default: 1000)')
@@ -318,7 +314,7 @@ def main():
                         help='Learning rate step gamma (default: 0.7)')
     parser.add_argument('--step-size', type=int, default=40, metavar='M',
                         help='how many epochs to we change the learning rate, default is 5')
-    parser.add_argument('--no-cuda', action='store_true', default=True,
+    parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
     parser.add_argument('--dry-run', action='store_true', default=False,
                         help='quickly check a single pass')
@@ -354,12 +350,12 @@ def main():
         validation_kwargs.update(cuda_kwargs)
 
     transform=transforms.Compose([
-        transforms.Resize(28),
+        transforms.Resize(32),
         transforms.ToTensor()
         ])
-    dataset1 = datasets.MNIST('../data', train=True, download=True,
+    dataset1 = datasets.CIFAR10('../data', train=True, download=True,
                        transform=transform)
-    dataset2 = datasets.MNIST('../data', train=False, download=True,
+    dataset2 = datasets.CIFAR10('../data', train=False, download=True,
                        transform=transform)
  
     #dataset4, dataset2 = torch.utils.data.random_split(dataset2, [9990,10])
@@ -374,18 +370,22 @@ def main():
     classifier_net = Classifier().to(device)
     optimizer_grad = optim.AdamW(list(grad_net.grad_x.parameters()), lr=args.lr)
     optimizer_path = optim.AdamW(list(grad_net.path.parameters()), lr=args.lr)
-    optimizer_classification = optim.AdamW(list(classifier_net.parameters()), lr=args.lr)
+    optimizer_classifier = optim.AdamW(list(classifier_net.parameters()), lr=args.lr)
     #opt = MultipleOptimizer(optimizer1(params1, lr=lr1), optimizer2(params2, lr=lr2))
     a = get_n_params(grad_net)
     b = get_n_params(classifier_net)
     print(a+b)
 
-    scheduler = StepLR(optimizer_grad, step_size=args.step_size, gamma=args.gamma)
+    scheduler_grad = StepLR(optimizer_grad, step_size=args.step_size, gamma=args.gamma)
+    scheduler_path = StepLR(optimizer_path, step_size=args.step_size, gamma=args.gamma)
+    scheduler_classifier = StepLR(optimizer_classifier, step_size=args.step_size, gamma=args.gamma)
     print('setup complete')
     for epoch in range(1, args.epochs + 1):
-        train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, optimizer_path, optimizer_classification, epoch)
+        train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, optimizer_path, optimizer_classifier, epoch)
         validation(args, grad_net, classifier_net, device, test_loader)
-        scheduler.step()
+        scheduler_grad.step()
+        scheduler_path.step()
+        scheduler_classifier.step()
     test(args, grad_net, classifier_net, device, test_loader)
 
     if args.save_model:
