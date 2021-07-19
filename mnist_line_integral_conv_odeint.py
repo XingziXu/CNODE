@@ -71,8 +71,8 @@ class Grad_net(nn.Module):
 
     def forward(self, t, x):
         self.nfe+=1
-        device = torch.device("cuda")
-        #device = torch.device("cpu")
+        #device = torch.device("cuda")
+        device = torch.device("cpu")
         t_input = t.expand(x.size(0),1)
         #p_i.size()
         #x_ori = x[:,0,:,:].view(x.size(0),1,x.size(2),x.size(3)).to(device)
@@ -138,7 +138,7 @@ class WeightClipper(object):
             w = w.clamp(0, float('inf'))
             module.weight.data = w
 
-def train(args, grad_net, classifier_net, device, train_loader, optimizer, epoch):
+def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, optimizer_path, optimizer_classifier, epoch):
 #    encoder = encoder.to(device)
 #    path_net = path_net.to(device)
 #    grad_x_net = grad_x_net.to(device)
@@ -151,37 +151,71 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer, epoch
         #if batch_idx > 100:
         #    break
         data, target = data.to(device), target.to(device)
-        optimizer.zero_grad()
+        optimizer_grad.zero_grad()
+        
 
         ####### neural path integral starts here #######
-        p_current = data
-        p_current.requires_grad=True
+        p_current_grad = data
+        p_current_grad.requires_grad=True
         global p_i
-        p_i = p_current
+        p_i = p_current_grad
         #aug = torch.zeros(p_current.size(0),5,p_current.size(2),p_current.size(3)).to(device)
         #p_current = torch.cat((p_current,aug),dim=1)
         t = torch.Tensor([0.,1.]).to(device)
         t.requires_grad=True
-        #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
-        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="bosh3",rtol=1e-3,atol=1e-3)[1])
-        print(grad_net.nfe)
+        p_current_grad = torch.squeeze(odeint(grad_net, p_current_grad, t, method="euler")[1])
+        #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="bosh3",rtol=1e-3,atol=1e-3)[1])
+        #print(grad_net.nfe)
         grad_net.nfe=0
-        output = classifier_net(p_current)
+        output = classifier_net(p_current_grad)
         soft_max = nn.Softmax(dim=1)
         ####### neural path integral ends here #######
         output = soft_max(output)
         #print('2')
-        loss = F.cross_entropy(output, target)
-        loss.backward()
+        loss_grad = F.cross_entropy(output, target)
+        loss_grad.backward(retain_graph=True)
         #print('3')
-        optimizer.step()
+        optimizer_grad.step()
+
+        optimizer_path.zero_grad()
+        p_current_path = data
+        p_current_path.requires_grad=True
+        t = torch.Tensor([0.,1.]).to(device)
+        t.requires_grad=True
+        p_current_path = torch.squeeze(odeint(grad_net, p_current_path, t, method="euler")[1])
+        #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="bosh3",rtol=1e-3,atol=1e-3)[1])
+        #print(grad_net.nfe)
+        grad_net.nfe=0
+        output = classifier_net(p_current_path)
+        soft_max = nn.Softmax(dim=1)
+        output = soft_max(output)
+        #print('2')
+        loss_path = F.cross_entropy(output, target)
+        loss_path.backward(retain_graph=True)
+        optimizer_path.step()
+
+        optimizer_classifier.zero_grad()
+        p_current_classifier = data
+        p_current_classifier.requires_grad=True
+        p_current_classifier = torch.squeeze(odeint(grad_net, p_current_classifier, t, method="euler")[1])
+        #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="bosh3",rtol=1e-3,atol=1e-3)[1])
+        #print(grad_net.nfe)
+        grad_net.nfe=0
+        output = classifier_net(p_current_classifier)
+        soft_max = nn.Softmax(dim=1)
+        output = soft_max(output)
+        #print('2')
+        loss_classifier = F.cross_entropy(output, target)
+        loss_classifier.backward(retain_graph=True)
+        optimizer_classifier.step()
+
         #print('4')
         clipper = WeightClipper()
         grad_net.path.apply(clipper)
         if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.item()))
+                100. * batch_idx / len(train_loader), loss_classifier.item()))
             if args.dry_run:
                 break
 
@@ -205,8 +239,8 @@ def test(args, grad_net, classifier_net, device, test_loader):
         #p_current = torch.cat((p_current,aug),dim=1)
         t = torch.Tensor([0.,1.]).to(device)
         t.requires_grad=True
-        #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
-        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="bosh3",rtol=1e-3,atol=1e-3)[1])
+        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
+        #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="bosh3",rtol=1e-3,atol=1e-3)[1])
         print(grad_net.nfe)
         grad_net.nfe=0
         output = classifier_net(p_current)
@@ -242,8 +276,8 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
         #p_current = torch.cat((p_current,aug),dim=1)
         t = torch.Tensor([0.,1.]).to(device)
         t.requires_grad=True
-        #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
-        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="bosh3",rtol=1e-3,atol=1e-3)[1])
+        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
+        #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="bosh3",rtol=1e-3,atol=1e-3)[1])
         print(grad_net.nfe)
         grad_net.nfe=0
         output = classifier_net(p_current)
@@ -284,7 +318,7 @@ def main():
                         help='Learning rate step gamma (default: 0.7)')
     parser.add_argument('--step-size', type=int, default=40, metavar='M',
                         help='how many epochs to we change the learning rate, default is 5')
-    parser.add_argument('--no-cuda', action='store_true', default=False,
+    parser.add_argument('--no-cuda', action='store_true', default=True,
                         help='disables CUDA training')
     parser.add_argument('--dry-run', action='store_true', default=False,
                         help='quickly check a single pass')
@@ -336,16 +370,18 @@ def main():
 
     grad_net = Grad_net().to(device)
     classifier_net = Classifier().to(device)
-    optimizer = optim.AdamW(list(grad_net.parameters())+list(classifier_net.parameters()), lr=args.lr)
-    
+    optimizer_grad = optim.AdamW(list(grad_net.grad_x.parameters()), lr=args.lr)
+    optimizer_path = optim.AdamW(list(grad_net.path.parameters()), lr=args.lr)
+    optimizer_classification = optim.AdamW(list(classifier_net.parameters()), lr=args.lr)
+    #opt = MultipleOptimizer(optimizer1(params1, lr=lr1), optimizer2(params2, lr=lr2))
     a = get_n_params(grad_net)
     b = get_n_params(classifier_net)
     print(a+b)
 
-    scheduler = StepLR(optimizer, step_size=args.step_size, gamma=args.gamma)
+    scheduler = StepLR(optimizer_grad, step_size=args.step_size, gamma=args.gamma)
     print('setup complete')
     for epoch in range(1, args.epochs + 1):
-        train(args, grad_net, classifier_net, device, train_loader, optimizer, epoch)
+        train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, optimizer_path, optimizer_classification, epoch)
         validation(args, grad_net, classifier_net, device, test_loader)
         scheduler.step()
     test(args, grad_net, classifier_net, device, test_loader)
