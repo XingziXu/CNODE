@@ -25,9 +25,9 @@ class Grad_net(nn.Module):
         #nn.ReLU(),
         nn.Conv2d(4,8,1,1,0),
         #nn.GroupNorm(2,4),
-        nn.ReLU(),
+        nn.Sigmoid(),
         nn.Conv2d(8,8,3,1,1),
-        nn.ReLU(),
+        nn.Sigmoid(),
         nn.Conv2d(8,3,1,1,0),
         #nn.Conv2d(2,2,3,1,1),
         #nn.GroupNorm(2,4),
@@ -134,7 +134,7 @@ class WeightClipper(object):
             w = w.clamp(0, float('inf'))
             module.weight.data = w
 
-def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, optimizer_path, optimizer_classifier, epoch):
+def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, optimizer_path, epoch):
 #    encoder = encoder.to(device)
 #    path_net = path_net.to(device)
 #    grad_x_net = grad_x_net.to(device)
@@ -189,21 +189,6 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
         loss_path = F.cross_entropy(output, target)
         loss_path.backward(retain_graph=True)
         optimizer_path.step()
-
-        optimizer_classifier.zero_grad()
-        p_current_classifier = data
-        p_current_classifier.requires_grad=True
-        p_current_classifier = torch.squeeze(odeint(grad_net, p_current_classifier, t, method="euler")[1])
-        #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="bosh3",rtol=args.tol,atol=args.tol)[1])
-        #print(grad_net.nfe)
-        grad_net.nfe=0
-        output = classifier_net(p_current_classifier)
-        soft_max = nn.Softmax(dim=1)
-        output = soft_max(output)
-        #print('2')
-        loss_classifier = F.cross_entropy(output, target)
-        loss_classifier.backward(retain_graph=True)
-        optimizer_classifier.step()
 
         #print('4')
         clipper = WeightClipper()
@@ -368,9 +353,9 @@ def main():
 
     grad_net = Grad_net().to(device)
     classifier_net = Classifier().to(device)
-    optimizer_grad = optim.AdamW(list(grad_net.grad_x.parameters()), lr=args.lr)
+    optimizer_grad = optim.AdamW(list(grad_net.grad_x.parameters())+list(classifier_net.parameters()), lr=args.lr)
     optimizer_path = optim.AdamW(list(grad_net.path.parameters()), lr=1e-3)
-    optimizer_classifier = optim.AdamW(list(classifier_net.parameters()), lr=args.lr)
+    #optimizer_classifier = optim.AdamW(list(classifier_net.parameters()), lr=args.lr)
     #opt = MultipleOptimizer(optimizer1(params1, lr=lr1), optimizer2(params2, lr=lr2))
     a = get_n_params(grad_net)
     b = get_n_params(classifier_net)
@@ -378,14 +363,14 @@ def main():
 
     scheduler_grad = StepLR(optimizer_grad, step_size=args.step_size, gamma=args.gamma)
     scheduler_path = StepLR(optimizer_path, step_size=args.step_size, gamma=args.gamma)
-    scheduler_classifier = StepLR(optimizer_classifier, step_size=args.step_size, gamma=args.gamma)
+    #scheduler_classifier = StepLR(optimizer_classifier, step_size=args.step_size, gamma=args.gamma)
     print('setup complete')
     for epoch in range(1, args.epochs + 1):
-        train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, optimizer_path, optimizer_classifier, epoch)
+        train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, optimizer_path, epoch)
         validation(args, grad_net, classifier_net, device, test_loader)
         scheduler_grad.step()
         scheduler_path.step()
-        scheduler_classifier.step()
+        #scheduler_classifier.step()
     test(args, grad_net, classifier_net, device, test_loader)
 
     if args.save_model:
