@@ -23,12 +23,12 @@ class Grad_net(nn.Module):
         #nn.Linear(16,2),
         #nn.GroupNorm(2,2),
         #nn.ReLU(),
-        nn.Conv2d(4,4,1,1,0),
+        nn.Conv2d(4,8,1,1,0),
         #nn.GroupNorm(2,4),
         nn.Sigmoid(),
-        nn.Conv2d(4,4,3,1,1),
+        nn.Conv2d(8,8,3,1,1),
         nn.Sigmoid(),
-        nn.Conv2d(4,3,1,1,0),
+        nn.Conv2d(8,3,1,1,0),
         #nn.Conv2d(2,2,3,1,1),
         #nn.GroupNorm(2,4),
         #nn.ReLU(),
@@ -326,7 +326,7 @@ def main():
                         help='For Saving the current Model')
     parser.add_argument('--lr', type=float, default=1e-3, metavar='LR',
                         help='learning rate (default: 1.0)')
-    parser.add_argument('--tol', type=float, default=1e-2, metavar='LR',
+    parser.add_argument('--tol', type=float, default=1e-3, metavar='LR',
                         help='learning rate (default: 1e-3)')
 
 
