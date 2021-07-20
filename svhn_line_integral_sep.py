@@ -9,6 +9,7 @@ from torch.optim.lr_scheduler import StepLR
 from torchdiffeq import odeint as odeint
 from scipy.integrate import odeint as odeint_scipy
 from torch.autograd import Variable
+import matplotlib.pyplot as plt
 
 
 class Grad_net(nn.Module):
@@ -23,12 +24,12 @@ class Grad_net(nn.Module):
         #nn.Linear(16,2),
         #nn.GroupNorm(2,2),
         #nn.ReLU(),
-        nn.Conv2d(4,4,1,1,0),
+        nn.Conv2d(4,8,1,1,0),
         #nn.GroupNorm(2,4),
         nn.Sigmoid(),
-        nn.Conv2d(4,4,3,1,1),
+        nn.Conv2d(8,8,3,1,1),
         nn.Sigmoid(),
-        nn.Conv2d(4,3,1,1,0),
+        nn.Conv2d(8,3,1,1,0),
         #nn.Conv2d(2,2,3,1,1),
         #nn.GroupNorm(2,4),
         #nn.ReLU(),
@@ -302,7 +303,7 @@ def get_n_params(model):
 def main():
     # Training settings
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
-    parser.add_argument('--batch-size', type=int, default=64, metavar='N',
+    parser.add_argument('--batch-size', type=int, default=256, metavar='N',
                         help='input batch size for training (default: 64)')
     parser.add_argument('--test-batch-size', type=int, default=64, metavar='N',
                         help='input batch size for testing (default: 1000)')
