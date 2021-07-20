@@ -160,8 +160,8 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
         #p_current = torch.cat((p_current,aug),dim=1)
         t = torch.Tensor([0.,1.]).to(device)
         t.requires_grad=True
-        #p_current_grad = torch.squeeze(odeint(grad_net, p_current_grad, t, method="euler")[1])
-        p_current_grad = torch.squeeze(odeint(grad_net, p_current_grad, t,method="dopri5",rtol=args.tol,atol=args.tol)[1])
+        p_current_grad = torch.squeeze(odeint(grad_net, p_current_grad, t, method="euler")[1])
+        #p_current_grad = torch.squeeze(odeint(grad_net, p_current_grad, t,method="dopri5",rtol=args.tol,atol=args.tol)[1])
         #print(grad_net.nfe)
         grad_net.nfe=0
         output = classifier_net(p_current_grad)
@@ -179,8 +179,8 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
         p_current_path.requires_grad=True
         t = torch.Tensor([0.,1.]).to(device)
         t.requires_grad=True
-        #p_current_path = torch.squeeze(odeint(grad_net, p_current_path, t, method="euler")[1])
-        p_current_path = torch.squeeze(odeint(grad_net, p_current_path, t,method="dopri5",rtol=args.tol,atol=args.tol)[1])
+        p_current_path = torch.squeeze(odeint(grad_net, p_current_path, t, method="euler")[1])
+        #p_current_path = torch.squeeze(odeint(grad_net, p_current_path, t,method="dopri5",rtol=args.tol,atol=args.tol)[1])
         #print(grad_net.nfe)
         grad_net.nfe=0
         output = classifier_net(p_current_path)
@@ -194,8 +194,8 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
         optimizer_classifier.zero_grad()
         p_current_classifier = data
         p_current_classifier.requires_grad=True
-        #p_current_classifier = torch.squeeze(odeint(grad_net, p_current_classifier, t, method="euler")[1])
-        p_current_classifier = torch.squeeze(odeint(grad_net, p_current_classifier, t,method="dopri5",rtol=args.tol,atol=args.tol)[1])
+        p_current_classifier = torch.squeeze(odeint(grad_net, p_current_classifier, t, method="euler")[1])
+        #p_current_classifier = torch.squeeze(odeint(grad_net, p_current_classifier, t,method="dopri5",rtol=args.tol,atol=args.tol)[1])
         #print(grad_net.nfe)
         grad_net.nfe=0
         output = classifier_net(p_current_classifier)
@@ -236,9 +236,9 @@ def test(args, grad_net, classifier_net, device, test_loader):
         #p_current = torch.cat((p_current,aug),dim=1)
         t = torch.Tensor([0.,1.]).to(device)
         t.requires_grad=True
-        #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
-        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="dopri5",rtol=args.tol,atol=args.tol)[1])
-        print(grad_net.nfe)
+        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
+        #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="dopri5",rtol=args.tol,atol=args.tol)[1])
+        #print(grad_net.nfe)
         grad_net.nfe=0
         output = classifier_net(p_current)
         soft_max = nn.Softmax(dim=1)
@@ -273,9 +273,9 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
         #p_current = torch.cat((p_current,aug),dim=1)
         t = torch.Tensor([0.,1.]).to(device)
         t.requires_grad=True
-        #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
-        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="dopri5",rtol=args.tol,atol=args.tol)[1])
-        print(grad_net.nfe)
+        p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
+        #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="dopri5",rtol=args.tol,atol=args.tol)[1])
+        #print(grad_net.nfe)
         grad_net.nfe=0
         output = classifier_net(p_current)
         soft_max = nn.Softmax(dim=1)
