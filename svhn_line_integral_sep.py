@@ -145,51 +145,9 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
     for batch_idx, (data, target) in enumerate(train_loader):
         
         if batch_idx % 1 == 0:
-            #print('we are training')
-            #if batch_idx > 100:
-            #    break
+            print('we are optimizing the whole network')
             data, target = data.to(device), target.to(device)
             optimizer_grad.zero_grad()
-            
-
-            ####### neural path integral starts here #######
-            p_current_grad = data
-            p_current_grad.requires_grad=True
-            global p_i
-            p_i = p_current_grad
-            #aug = torch.zeros(p_current.size(0),5,p_current.size(2),p_current.size(3)).to(device)
-            #p_current = torch.cat((p_current,aug),dim=1)
-            t = torch.Tensor([0.,1.]).to(device)
-            t.requires_grad=True
-            p_current_grad = torch.squeeze(odeint(grad_net, p_current_grad, t, method="euler")[1])
-            #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="bosh3",rtol=args.tol,atol=args.tol)[1])
-            #print(grad_net.nfe)
-            grad_net.nfe=0
-            output = classifier_net(p_current_grad)
-            soft_max = nn.Softmax(dim=1)
-            ####### neural path integral ends here #######
-            output = soft_max(output)
-            #print('2')
-            loss_grad = F.cross_entropy(output, target)
-            loss_grad.backward(retain_graph=True)
-            #print('3')
-            optimizer_grad.step()
-
-            #print('4')
-            clipper = WeightClipper()
-            grad_net.path.apply(clipper)
-            if batch_idx % args.log_interval == 0:
-                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                    epoch, batch_idx * len(data), len(train_loader.dataset),
-                    100. * batch_idx / len(train_loader), loss_grad.item()))
-                if args.dry_run:
-                    break
-
-        else:
-            data, target = data.to(device), target.to(device)
-            optimizer_grad.zero_grad()
-            
-
             ####### neural path integral starts here #######
             p_current_grad = data
             p_current_grad.requires_grad=True
@@ -237,6 +195,46 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_idx * len(data), len(train_loader.dataset),
                     100. * batch_idx / len(train_loader), loss_path.item()))
+                if args.dry_run:
+                    break
+            
+
+        else:
+            print('we are only optimizing gradients and classifier')
+            #if batch_idx > 100:
+            #    break
+            data, target = data.to(device), target.to(device)
+            optimizer_grad.zero_grad()
+            ####### neural path integral starts here #######
+            p_current_grad = data
+            p_current_grad.requires_grad=True
+            global p_i
+            p_i = p_current_grad
+            #aug = torch.zeros(p_current.size(0),5,p_current.size(2),p_current.size(3)).to(device)
+            #p_current = torch.cat((p_current,aug),dim=1)
+            t = torch.Tensor([0.,1.]).to(device)
+            t.requires_grad=True
+            p_current_grad = torch.squeeze(odeint(grad_net, p_current_grad, t, method="euler")[1])
+            #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="bosh3",rtol=args.tol,atol=args.tol)[1])
+            #print(grad_net.nfe)
+            grad_net.nfe=0
+            output = classifier_net(p_current_grad)
+            soft_max = nn.Softmax(dim=1)
+            ####### neural path integral ends here #######
+            output = soft_max(output)
+            #print('2')
+            loss_grad = F.cross_entropy(output, target)
+            loss_grad.backward(retain_graph=True)
+            #print('3')
+            optimizer_grad.step()
+
+            #print('4')
+            clipper = WeightClipper()
+            grad_net.path.apply(clipper)
+            if batch_idx % args.log_interval == 0:
+                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                    epoch, batch_idx * len(data), len(train_loader.dataset),
+                    100. * batch_idx / len(train_loader), loss_grad.item()))
                 if args.dry_run:
                     break
 
