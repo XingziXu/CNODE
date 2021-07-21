@@ -294,6 +294,7 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
     if args.save_model:
         torch.save(grad_net.state_dict(), "grad_net.pt")
         torch.save(classifier_net.state_dict(), "classifer_net.pt")
+        print('saved')
 
 def get_n_params(model):
     pp=0
