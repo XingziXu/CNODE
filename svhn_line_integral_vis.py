@@ -134,10 +134,10 @@ class WeightClipper(object):
             w = module.weight.data
             w = w.clamp(0, float('inf'))
             module.weight.data = w
-        if hasattr(module, 'bias'):
-            b = module.bias.data
-            b = b.clamp(0, float('inf'))
-            module.bias.data = b
+        #if hasattr(module, 'bias'):
+        #    b = module.bias.data
+        #    b = b.clamp(0, float('inf'))
+        #    module.bias.data = b
 
 def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, optimizer_path, optimizer_classifier, epoch):
 #    encoder = encoder.to(device)
