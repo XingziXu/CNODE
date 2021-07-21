@@ -71,8 +71,8 @@ class Grad_net(nn.Module):
 
     def forward(self, t, x):
         self.nfe+=1
-        #device = torch.device("cuda")
-        device = torch.device("cpu")
+        device = torch.device("cuda")
+        #device = torch.device("cpu")
         t_input = t.expand(x.size(0),1)
         #p_i.size()
         #x_ori = x[:,0,:,:].view(x.size(0),1,x.size(2),x.size(3)).to(device)
@@ -241,7 +241,7 @@ def test(args, grad_net, classifier_net, device, test_loader):
         t.requires_grad=True
         p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
         #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="bosh3",rtol=args.tol,atol=args.tol)[1])
-        print(grad_net.nfe)
+        #print(grad_net.nfe)
         grad_net.nfe=0
         output = classifier_net(p_current)
         soft_max = nn.Softmax(dim=1)
@@ -278,7 +278,7 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
         t.requires_grad=True
         p_current = torch.squeeze(odeint(grad_net, p_current, t,method="euler")[1])
         #p_current = torch.squeeze(odeint(grad_net, p_current, t,method="bosh3",rtol=args.tol,atol=args.tol)[1])
-        print(grad_net.nfe)
+        #print(grad_net.nfe)
         grad_net.nfe=0
         output = classifier_net(p_current)
         soft_max = nn.Softmax(dim=1)
@@ -318,7 +318,7 @@ def main():
                         help='Learning rate step gamma (default: 0.7)')
     parser.add_argument('--step-size', type=int, default=40, metavar='M',
                         help='how many epochs to we change the learning rate, default is 5')
-    parser.add_argument('--no-cuda', action='store_true', default=True,
+    parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
     parser.add_argument('--dry-run', action='store_true', default=False,
                         help='quickly check a single pass')
