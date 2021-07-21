@@ -88,12 +88,17 @@ test_img = dataset2[17][0]
 
 t = torch.linspace(0,1,100)
 result = torch.zeros(100,3)
+input_current = torch.zeros(100,4,32,32)
 
-for i in range(0,99):
+for i in range(0,100):
     t_current = t[i] * torch.ones(1,32,32)
-    input_current = torch.cat((test_img,t_current),dim=0)
-    input_current = input_current.resize(1,4,32,32)
-    result[i,:] = model.path(input_current)
+    input_current[i,:,:,:] = torch.cat((t_current, test_img),dim=0)
+    
+    # input_current = input_current.resize(1,4,32,32)
+    #input_current = torch.ones(1,4,32,32)
+    
+    
+result = model.path(input_current)
 
 fig = plt.figure()
 ax = fig.gca(projection='3d')
