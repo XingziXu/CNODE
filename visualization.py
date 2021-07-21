@@ -71,10 +71,14 @@ class Grad_net(nn.Module):
             nn.Conv2d(64,3,1,1,0)
         )
 
-a = torch.load('grad_net_weight_and_bias.pt')
+#a = torch.load('grad_net_weight_and_bias.pt')
+#a = torch.load('grad_net_weight_only.pt')
+a = torch.load('grad_net_no_clamp.pt')
 
 model = Grad_net()
-model.load_state_dict(torch.load('grad_net_weight_and_bias.pt'))
+#model.load_state_dict(torch.load('grad_net_weight_and_bias.pt'))
+#model.load_state_dict(torch.load('grad_net_weight_only.pt'))
+model.load_state_dict(torch.load('grad_net_no_clamp.pt'))
 model.eval()
 
 transform=transforms.Compose([
@@ -84,7 +88,7 @@ transform=transforms.Compose([
 dataset2 = datasets.SVHN('../data', download=True, split="test",
                        transform=transform)
 
-test_img = dataset2[1][0]
+test_img = dataset2[17][0]
 
 t = torch.linspace(0,1,100)
 result = torch.zeros(100,3)
