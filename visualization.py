@@ -71,6 +71,8 @@ class Grad_net(nn.Module):
             nn.Conv2d(64,3,1,1,0)
         )
 
+a = torch.load('grad_net.pt')
+
 model = Grad_net()
 model.load_state_dict(torch.load('grad_net.pt'))
 model.eval()
@@ -82,7 +84,7 @@ transform=transforms.Compose([
 dataset2 = datasets.SVHN('../data', download=True, split="test",
                        transform=transform)
 
-test_img = dataset2[1][0]
+test_img = dataset2[17][0]
 
 t = torch.linspace(0,1,100)
 result = torch.zeros(100,3)
@@ -97,5 +99,9 @@ fig = plt.figure()
 ax = fig.gca(projection='3d')
 ax.plot(result[:,0].detach().numpy(), result[:,1].detach().numpy(), result[:,2].detach().numpy(), label='parametric curve')
 ax.legend()
+
+plt.show()
+
+plt.plot(result[:,0].detach().numpy())
 
 plt.show()

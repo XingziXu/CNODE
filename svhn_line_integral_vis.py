@@ -26,9 +26,9 @@ class Grad_net(nn.Module):
         #nn.ReLU(),
         nn.Conv2d(4,8,1,1,0),
         #nn.GroupNorm(2,4),
-        nn.ReLU(),
+        nn.Sigmoid(),
         nn.Conv2d(8,8,3,1,1),
-        nn.ReLU(),
+        nn.Sigmoid(),
         nn.Conv2d(8,3,1,1,0),
         #nn.Conv2d(2,2,3,1,1),
         #nn.GroupNorm(2,4),
@@ -134,6 +134,10 @@ class WeightClipper(object):
             w = module.weight.data
             w = w.clamp(0, float('inf'))
             module.weight.data = w
+        if hasattr(module, 'bias'):
+            b = module.bias.data
+            b = b.clamp(0, float('inf'))
+            module.bias.data = b
 
 def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, optimizer_path, optimizer_classifier, epoch):
 #    encoder = encoder.to(device)
