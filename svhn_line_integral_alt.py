@@ -178,6 +178,8 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
 
             clipper = WeightClipper() # define a clipper
             grad_net.path.apply(clipper) # force the weights of the path network to be non-negative. this ensures that the integration is monotonically increasing
+            
+            print('Training whole network')
             if batch_idx % args.log_interval == 0: # print training loss and training process
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_idx * len(data), len(train_loader.dataset),
@@ -223,6 +225,7 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
             loss_classifier.backward(retain_graph=True) # backpropagate through the loss
             optimizer_classifier.step() # update the classifier network's parameters
 
+            print('Training partial network')
             if batch_idx % args.log_interval == 0: # print training loss and training process
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_idx * len(data), len(train_loader.dataset),
