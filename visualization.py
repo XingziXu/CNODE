@@ -73,12 +73,12 @@ class Grad_net(nn.Module):
 
 #a = torch.load('grad_net_weight_and_bias.pt')
 #a = torch.load('grad_net_weight_only.pt')
-a = torch.load('grad_net_no_clamp.pt')
+#a = torch.load('grad_net_no_clamp.pt')
 
 model = Grad_net()
 #model.load_state_dict(torch.load('grad_net_weight_and_bias.pt'))
-#model.load_state_dict(torch.load('grad_net_weight_only.pt'))
-model.load_state_dict(torch.load('grad_net_no_clamp.pt'))
+model.load_state_dict(torch.load('grad_net_weight_only.pt'))
+#model.load_state_dict(torch.load('grad_net_no_clamp.pt'))
 model.eval()
 
 transform=transforms.Compose([
