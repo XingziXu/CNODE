@@ -114,14 +114,16 @@ def get_n_params(model): # define a function to measure the number of parameters
 def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, optimizer_path, optimizer_classifier, epoch):
     grad_net.train() # set network on training mode
     classifier_net.train() # set network on training mode
+    clipper = WeightClipper() # define a clipper, make sure the path is monotonically increasing from the beginning
+    grad_net.path.apply(clipper) # force the weights of the path network to be non-negative. this ensures that the integration is monotonically increasing
     for batch_idx, (data, target) in enumerate(train_loader): # for each batch
         data, target = data.to(device), target.to(device) # assign data to device
         
         global p_i # claim the initial image batch as a global variable
         p_i = data
 
-        optimizer_grad.zero_grad() # the start of updating the gradients parameters
         if batch_idx % args.training_frequency == 0: # check if it is time to optimize parameters of the gradients, path, and classifier
+            optimizer_grad.zero_grad() # the start of updating the gradients parameters
             p_grad = data # assign data, initialization
             p_grad.requires_grad=True # record the computation graph
             t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1

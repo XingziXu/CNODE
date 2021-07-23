@@ -107,8 +107,8 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
         global p_i # claim the initial image batch as a global variable
         p_i = data
 
-        optimizer_grad.zero_grad() # the start of updating the gradients parameters
         if batch_idx % args.training_frequency == 0: # check if it is time to optimize parameters of the gradients, path, and classifier
+            optimizer_grad.zero_grad() # the start of updating the gradients parameters
             p_grad = data # assign data, initialization
             p_grad.requires_grad=True # record the computation graph
             t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
