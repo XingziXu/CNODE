@@ -159,6 +159,9 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
             loss_path.backward(retain_graph=True) # backpropagate through the loss
             optimizer_path.step() # update the path network's parameters
 
+            clipper = WeightClipper() # define a clipper
+            grad_net.path.apply(clipper) # force the weights of the path network to be non-negative. this ensures that the integration is monotonically increasing
+
             optimizer_classifier.zero_grad() # the start of updating the classifier's parameters
             p_classifier = data # assign data, initialization
             p_classifier.requires_grad=True # record the computation graph
@@ -177,9 +180,6 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
             loss_classifier = F.cross_entropy(output, target) # calculate the function loss
             loss_classifier.backward(retain_graph=True) # backpropagate through the loss
             optimizer_classifier.step() # update the classifier network's parameters
-
-            clipper = WeightClipper() # define a clipper
-            grad_net.path.apply(clipper) # force the weights of the path network to be non-negative. this ensures that the integration is monotonically increasing
             
             #print('Training whole network')
             if batch_idx % args.log_interval == 0: # print training loss and training process
