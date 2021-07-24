@@ -209,18 +209,18 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
             optimizer_grad.step() # update the gradient networks' parameters
 
             optimizer_classifier.zero_grad() # the start of updating the classifier's parameters
-            p_current_classifier = data # assign data initialization
-            p_current_classifier.requires_grad=True # record the computation graph
+            p_classifier = data # assign data initialization
+            p_classifier.requires_grad=True # record the computation graph
             t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
             t.requires_grad=True # record the computation graph
             if args.adaptive_solver: # check if we are using the adaptive solver
-                p_current_classifier = torch.squeeze(odeint(grad_net, p_current_classifier, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
+                p_classifier = torch.squeeze(odeint(grad_net, p_classifier, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
                 print("The number of steps taken in this training itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
                 grad_net.nfe=0 # reset the number of function of evaluations
             else:
-                p_current_classifier = torch.squeeze(odeint(grad_net, p_current_classifier, t, method="euler")[1]) # solve the neural line integral with the euler's solver
+                p_classifier = torch.squeeze(odeint(grad_net, p_classifier, t, method="euler")[1]) # solve the neural line integral with the euler's solver
                 grad_net.nfe=0 # reset the number of function of evaluations
-            output = classifier_net(p_current_classifier) # classify the transformed images
+            output = classifier_net(p_classifier) # classify the transformed images
             soft_max = nn.Softmax(dim=1) # define a soft max calculator
             output = soft_max(output) # get the prediction results by getting the most probable ones
             loss_classifier = F.cross_entropy(output, target) # calculate the function loss
