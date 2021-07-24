@@ -195,7 +195,7 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
             p_grad.requires_grad=True # record the computation graph
             t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
             t.requires_grad=True # record the computation graph
-            if args.adaptive_solver == True: # check if we are using the adaptive solver
+            if args.adaptive_solver: # check if we are using the adaptive solver
                 p_grad = torch.squeeze(odeint(grad_net, p_grad, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
                 grad_net.nfe=0 # reset the number of function of evaluations
             else:
