@@ -17,9 +17,9 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         
         self.path = nn.Sequential( # define the network for the integration path
         nn.Conv2d(4,width_path,1,1,0),
-        nn.Sigmoid(),
+        nn.ReLU(),
         nn.Conv2d(width_path,width_path,3,1,1),
-        nn.Sigmoid(),
+        nn.ReLU(),
         nn.Conv2d(width_path,3,1,1,0),
         nn.Flatten(),
         nn.Linear(3072,3)
@@ -114,8 +114,8 @@ def get_n_params(model): # define a function to measure the number of parameters
 def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, optimizer_path, optimizer_classifier, epoch):
     grad_net.train() # set network on training mode
     classifier_net.train() # set network on training mode
-    clipper = WeightClipper() # define a clipper, make sure the path is monotonically increasing from the beginning
-    grad_net.path.apply(clipper) # force the weights of the path network to be non-negative. this ensures that the integration is monotonically increasing
+    #clipper = WeightClipper() # define a clipper, make sure the path is monotonically increasing from the beginning
+    #grad_net.path.apply(clipper) # force the weights of the path network to be non-negative. this ensures that the integration is monotonically increasing
     for batch_idx, (data, target) in enumerate(train_loader): # for each batch
         data, target = data.to(device), target.to(device) # assign data to device
         
@@ -159,8 +159,8 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
             loss_path.backward(retain_graph=True) # backpropagate through the loss
             optimizer_path.step() # update the path network's parameters
 
-            clipper = WeightClipper() # define a clipper
-            grad_net.path.apply(clipper) # force the weights of the path network to be non-negative. this ensures that the integration is monotonically increasing
+            #clipper = WeightClipper() # define a clipper
+            #grad_net.path.apply(clipper) # force the weights of the path network to be non-negative. this ensures that the integration is monotonically increasing
 
             optimizer_classifier.zero_grad() # the start of updating the classifier's parameters
             p_classifier = data # assign data, initialization
