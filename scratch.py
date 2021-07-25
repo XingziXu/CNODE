@@ -17,9 +17,9 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         
         self.path = nn.Sequential( # define the network for the integration path
         nn.Conv2d(4,width_path,1,1,0),
-        nn.Sigmoid(),
+        nn.ReLU(),
         nn.Conv2d(width_path,width_path,3,1,1),
-        nn.Sigmoid(),
+        nn.ReLU(),
         nn.Conv2d(width_path,3,1,1,0),
         nn.Flatten(),
         nn.Linear(3072,3)
@@ -111,11 +111,11 @@ def get_n_params(model): # define a function to measure the number of parameters
         pp += nn
     return pp
 
-def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, optimizer_path, epoch):
+def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, epoch):
     grad_net.train() # set network on training mode
     classifier_net.train() # set network on training mode
-    clipper = WeightClipper() # define a clipper, make sure the path is monotonically increasing from the beginning
-    grad_net.path.apply(clipper) # force the weights of the path network to be non-negative. this ensures that the integration is monotonically increasing
+    #clipper = WeightClipper() # define a clipper, make sure the path is monotonically increasing from the beginning
+    #grad_net.path.apply(clipper) # force the weights of the path network to be non-negative. this ensures that the integration is monotonically increasing
     for batch_idx, (data, target) in enumerate(train_loader): # for each batch
         data, target = data.to(device), target.to(device) # assign data to device
         
@@ -141,26 +141,8 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
             loss_grad.backward(retain_graph=True) # backpropagate through the loss
             optimizer_grad.step() # update the gradient networks' parameters
 
-            optimizer_path.zero_grad() # the start of updating the path's parameters
-            p_path = data # assign data, initialization
-            p_path.requires_grad=True # record the computation graph
-            t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
-            t.requires_grad=True # record the computation graph
-            if args.adaptive_solver: # check if we are using the adaptive solver
-                p_path = torch.squeeze(odeint(grad_net, p_path, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
-                grad_net.nfe=0 # reset the number of function of evaluations
-            else:
-                p_path = torch.squeeze(odeint(grad_net, p_path, t, method="euler")[1]) # solve the neural line integral with the euler's solver
-                grad_net.nfe=0 # reset the number of function of evaluations
-            output = classifier_net(p_path) # classify the transformed images
-            soft_max = nn.Softmax(dim=1) # define a soft max calculator
-            output = soft_max(output) # get the prediction results by getting the most probable ones
-            loss_path = F.cross_entropy(output, target) # calculate the function loss
-            loss_path.backward(retain_graph=True) # backpropagate through the loss
-            optimizer_path.step() # update the path network's parameters
+            
 
-            clipper = WeightClipper() # define a clipper
-            grad_net.path.apply(clipper) # force the weights of the path network to be non-negative. this ensures that the integration is monotonically increasing
 
 
             #clipper = WeightClipper() # define a clipper
@@ -170,7 +152,7 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
             if batch_idx % args.log_interval == 0: # print training loss and training process
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_idx * len(data), len(train_loader.dataset),
-                    100. * batch_idx / len(train_loader), loss_path.item()))
+                    100. * batch_idx / len(train_loader), loss_grad.item()))
                 if args.dry_run:
                     break
         
@@ -193,6 +175,7 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
             loss_grad.backward(retain_graph=True) # backpropagate through the loss
             optimizer_grad.step() # update the gradient networks' parameters
 
+            
 
             #print('Training partial network')
             if batch_idx % args.log_interval == 0: # print training loss and training process
@@ -356,23 +339,22 @@ def main():
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad).to(device) # define grad_net and assign to device
     classifier_net = Classifier().to(device) # define classifier network and assign to device
 
-    optimizer_grad = optim.AdamW(list(grad_net.grad_g.parameters())+list(grad_net.grad_h.parameters())+list(grad_net.grad_i.parameters())+list(classifier_net.parameters()), lr=args.lr_grad) # define optimizer on the gradients
-    optimizer_path = optim.AdamW(list(grad_net.path.parameters()), lr=args.lr_path) # define optimizer on the path
-#    optimizer_classifier = optim.AdamW(list(classifier_net.parameters()), lr=args.lr_classifier) # define optimizer on the classifier
+    optimizer_grad = optim.AdamW(list(grad_net.grad_g.parameters())+list(grad_net.grad_h.parameters())+list(grad_net.grad_i.parameters())+list(grad_net.path.parameters())+list(classifier_net.parameters()), lr=args.lr_grad) # define optimizer on the gradients
+    #optimizer_path = optim.AdamW(list(grad_net.path.parameters()), lr=args.lr_path) # define optimizer on the path
+    #optimizer_classifier = optim.AdamW(list(classifier_net.parameters()), lr=args.lr_classifier) # define optimizer on the classifier
     
     print("The number of parameters used is {}".format(get_n_params(grad_net)+get_n_params(classifier_net))) # print the number of parameters in our model
 
     scheduler_grad = StepLR(optimizer_grad, step_size=args.step_size, gamma=args.gamma) # define scheduler for the gradients' network
-    scheduler_path = StepLR(optimizer_path, step_size=args.step_size, gamma=args.gamma) # define scheduler for the path's network
+#    scheduler_path = StepLR(optimizer_path, step_size=args.step_size, gamma=args.gamma) # define scheduler for the path's network
 #    scheduler_classifier = StepLR(optimizer_classifier, step_size=args.step_size, gamma=args.gamma) # define scheduler for the classifier's network
 
     print('setup complete')
 
     for epoch in range(1, args.epochs + 1):
-        train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, optimizer_path, epoch)
+        train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, epoch)
         validation(args, grad_net, classifier_net, device, test_loader)
         scheduler_grad.step()
-        scheduler_path.step()
     test(args, grad_net, classifier_net, device, test_loader)
 
 if __name__ == '__main__':
