@@ -14,56 +14,38 @@ from torchvision import datasets, transforms
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-class Grad_net(nn.Module):
+class Grad_net(nn.Module): # the Grad_net defines the networks for the path and for the gradients
     def __init__(self):
         super().__init__()
-        self.nfe=0
-        self.path = nn.Sequential(
-        #nn.Linear(1,16),
-        #nn.ReLU(),
-        #nn.Linear(16,16),
-        #nn.ReLU(),
-        #nn.Linear(16,2),
-        #nn.GroupNorm(2,2),
-        #nn.ReLU(),
-        nn.Conv2d(4,8,1,1,0),
-        #nn.GroupNorm(2,4),
-        nn.Sigmoid(),
-        nn.Conv2d(8,8,3,1,1),
-        nn.Sigmoid(),
-        nn.Conv2d(8,3,1,1,0),
-        #nn.Conv2d(2,2,3,1,1),
-        #nn.GroupNorm(2,4),
-        #nn.ReLU(),
-        #nn.Conv2d(4,2,1,1,0),
+        self.nfe=0 # initialize the number of function evaluations
+        
+        self.path = nn.Sequential( # define the network for the integration path
+        nn.Conv2d(1,16,1,1,0),
+        nn.ReLU(),
+        nn.Conv2d(16,16,3,1,1),
+        nn.ReLU(),
+        nn.Conv2d(16,3,1,1,0),
         nn.Flatten(),
         nn.Linear(3072,3)
-#        nn.ReLU(),
-#        nn.Linear(16,2)
         )
-        self.grad_x = nn.Sequential(
-            #nn.GroupNorm(3,3),
-            #nn.ReLU(),
+        
+        self.grad_g = nn.Sequential( # define the network for the gradient on x direction
             nn.Conv2d(6,64,1,1,0),
-            #nn.GroupNorm(4,16),
             nn.ReLU(),
             nn.Conv2d(64,64,3,1,1),
-            #nn.GroupNorm(4,16),
             nn.ReLU(),
             nn.Conv2d(64,3,1,1,0)
         )
-        self.grad_y = nn.Sequential(
-            #nn.GroupNorm(3,3),
-            #nn.ReLU(),
+        
+        self.grad_h = nn.Sequential( # define the network for the gradient on y direction
             nn.Conv2d(6,64,1,1,0),
-            #nn.GroupNorm(4,16),
             nn.ReLU(),
             nn.Conv2d(64,64,3,1,1),
-            #nn.GroupNorm(4,16),
             nn.ReLU(),
             nn.Conv2d(64,3,1,1,0)
         )
-        self.grad_z = nn.Sequential(
+        
+        self.grad_i = nn.Sequential( # define the network for the gradient on z direction
             nn.Conv2d(6,64,1,1,0),
             nn.ReLU(),
             nn.Conv2d(64,64,3,1,1),
@@ -77,7 +59,7 @@ class Grad_net(nn.Module):
 
 model = Grad_net()
 #model.load_state_dict(torch.load('grad_net_weight_and_bias.pt'))
-model.load_state_dict(torch.load('grad_net_weight_only.pt'))
+model.load_state_dict(torch.load('grad_net.pt'))
 #model.load_state_dict(torch.load('grad_net_no_clamp.pt'))
 model.eval()
 
@@ -92,7 +74,7 @@ test_img = dataset2[0][0]
 
 t = torch.linspace(0,1,100)
 result = torch.zeros(100,3)
-input_current = torch.zeros(100,4,32,32)
+input_current = torch.zeros(100,1,32,32)
 
 for i in range(0,100):
     t_current = t[i] * torch.ones(1,32,32)
@@ -102,7 +84,7 @@ for i in range(0,100):
     #input_current = torch.ones(1,4,32,32)
     
     
-result = model.path(input_current)
+result = model.path(t_current)
 
 fig = plt.figure()
 ax = fig.gca(projection='3d')

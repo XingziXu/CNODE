@@ -16,7 +16,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         self.nfe=0 # initialize the number of function evaluations
         
         self.path = nn.Sequential( # define the network for the integration path
-        nn.Conv2d(4,width_path,1,1,0),
+        nn.Conv2d(1,width_path,1,1,0),
         nn.ReLU(),
         nn.Conv2d(width_path,width_path,3,1,1),
         nn.ReLU(),
@@ -26,26 +26,32 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         )
         
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
+            nn.GroupNorm(6,6),
             nn.Conv2d(6,width_grad,1,1,0),
             nn.ReLU(),
             nn.Conv2d(width_grad,width_grad,3,1,1),
             nn.ReLU(),
+            nn.GroupNorm(width_grad,width_grad),
             nn.Conv2d(width_grad,3,1,1,0)
         )
         
         self.grad_h = nn.Sequential( # define the network for the gradient on y direction
+            nn.GroupNorm(6,6),
             nn.Conv2d(6,width_grad,1,1,0),
             nn.ReLU(),
             nn.Conv2d(width_grad,width_grad,3,1,1),
             nn.ReLU(),
+            nn.GroupNorm(width_grad,width_grad),
             nn.Conv2d(width_grad,3,1,1,0)
         )
         
         self.grad_i = nn.Sequential( # define the network for the gradient on z direction
+            nn.GroupNorm(6,6),
             nn.Conv2d(6,width_grad,1,1,0),
             nn.ReLU(),
             nn.Conv2d(width_grad,width_grad,3,1,1),
             nn.ReLU(),
+            nn.GroupNorm(width_grad,width_grad),
             nn.Conv2d(width_grad,3,1,1,0)
         )
 
@@ -58,7 +64,8 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         
         t_input = t.expand(x.size(0),1) # resize
         t_channel = ((t_input.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
-        path_input = torch.cat((t_channel, p_i),dim=1) # concatenate the time and the image
+        #path_input = torch.cat((t_channel, p_i),dim=1) # concatenate the time and the image
+        path_input=t_channel
         g_h_i = self.path(path_input) # calculate the position of the integration path
 
         dg_dt = torch.autograd.grad(g_h_i[:,0].view(g_h_i.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the g position w.r.t. time
@@ -114,8 +121,8 @@ def get_n_params(model): # define a function to measure the number of parameters
 def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, epoch):
     grad_net.train() # set network on training mode
     classifier_net.train() # set network on training mode
-    #clipper = WeightClipper() # define a clipper, make sure the path is monotonically increasing from the beginning
-    #grad_net.path.apply(clipper) # force the weights of the path network to be non-negative. this ensures that the integration is monotonically increasing
+    clipper = WeightClipper() # define a clipper, make sure the path is monotonically increasing from the beginning
+    grad_net.path.apply(clipper) # force the weights of the path network to be non-negative. this ensures that the integration is monotonically increasing
     for batch_idx, (data, target) in enumerate(train_loader): # for each batch
         data, target = data.to(device), target.to(device) # assign data to device
         
@@ -145,8 +152,8 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
 
 
 
-            #clipper = WeightClipper() # define a clipper
-            #grad_net.path.apply(clipper) # force the weights of the path network to be non-negative. this ensures that the integration is monotonically increasing
+            clipper = WeightClipper() # define a clipper
+            grad_net.path.apply(clipper) # force the weights of the path network to be non-negative. this ensures that the integration is monotonically increasing
             
             #print('Training whole network')
             if batch_idx % args.log_interval == 0: # print training loss and training process

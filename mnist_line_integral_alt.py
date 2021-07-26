@@ -26,18 +26,22 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         )
         
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
+            nn.GroupNorm(3,3),
             nn.Conv2d(3,width_grad,1,1,0),
             nn.ReLU(),
             nn.Conv2d(width_grad,width_grad,3,1,1),
             nn.ReLU(),
+            nn.GroupNorm(width_grad,width_grad),
             nn.Conv2d(width_grad,1,1,1,0)
         )
         
         self.grad_h = nn.Sequential( # define the network for the gradient on y direction
+            nn.GroupNorm(3,3),
             nn.Conv2d(3,width_grad,1,1,0),
             nn.ReLU(),
             nn.Conv2d(width_grad,width_grad,3,1,1),
             nn.ReLU(),
+            nn.GroupNorm(width_grad,width_grad),
             nn.Conv2d(width_grad,1,1,1,0)
         )
 
