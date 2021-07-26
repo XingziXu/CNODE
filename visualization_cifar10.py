@@ -30,26 +30,32 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         )
         
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
+            nn.GroupNorm(6,6),
             nn.Conv2d(6,64,1,1,0),
             nn.ReLU(),
             nn.Conv2d(64,64,3,1,1),
             nn.ReLU(),
+            nn.GroupNorm(64,64),
             nn.Conv2d(64,3,1,1,0)
         )
         
         self.grad_h = nn.Sequential( # define the network for the gradient on y direction
+            nn.GroupNorm(6,6),
             nn.Conv2d(6,64,1,1,0),
             nn.ReLU(),
             nn.Conv2d(64,64,3,1,1),
             nn.ReLU(),
+            nn.GroupNorm(64,64),
             nn.Conv2d(64,3,1,1,0)
         )
         
         self.grad_i = nn.Sequential( # define the network for the gradient on z direction
+            nn.GroupNorm(6,6),
             nn.Conv2d(6,64,1,1,0),
             nn.ReLU(),
             nn.Conv2d(64,64,3,1,1),
             nn.ReLU(),
+            nn.GroupNorm(64,64),
             nn.Conv2d(64,3,1,1,0)
         )
 
@@ -78,13 +84,13 @@ input_current = torch.zeros(100,1,32,32)
 
 for i in range(0,100):
     t_current = t[i] * torch.ones(1,32,32)
-    input_current[i,:,:,:] = torch.cat((t_current, test_img),dim=0)
-    
+    #input_current[i,:,:,:] = torch.cat((t_current, test_img),dim=0)
+    input_current[i,:,:,:] = t_current
     # input_current = input_current.resize(1,4,32,32)
     #input_current = torch.ones(1,4,32,32)
     
     
-result = model.path(t_current)
+result = model.path(input_current)
 
 fig = plt.figure()
 ax = fig.gca(projection='3d')
