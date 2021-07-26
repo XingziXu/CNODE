@@ -76,7 +76,7 @@ transform=transforms.Compose([
 dataset2 = datasets.CIFAR10('../data', train=False, download=True,
                        transform=transform)
 
-test_img = dataset2[0][0]
+test_img = dataset2[10][0]
 
 t = torch.linspace(0,1,100)
 result = torch.zeros(100,3)
