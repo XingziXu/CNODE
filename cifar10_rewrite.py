@@ -175,8 +175,6 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_idx * len(data), len(train_loader.dataset),
                     100. * batch_idx / len(train_loader), loss_classifier.item()))
-                if args.dry_run:
-                    break
         else: # otherwise, we only update the gradient networks and the classifier network
             update(args, grad_net, classifier_net, optimizer_grad, data, target, device) # update gradient networks' weights
             loss_classifier = update(args, grad_net, classifier_net, optimizer_classifier, data, target, device) # update classifier network's weights
@@ -184,8 +182,6 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_idx * len(data), len(train_loader.dataset),
                     100. * batch_idx / len(train_loader), loss_classifier.item()))
-                if args.dry_run:
-                    break
 
 def test(args, grad_net, classifier_net, device, test_loader):
     grad_net.eval() # set the network on evaluation mode
@@ -254,8 +250,6 @@ def main():
                         help='how many epochs to we change the learning rate, default is 5')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
-    parser.add_argument('--dry-run', action='store_true', default=False,
-                        help='quickly check a single pass')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
     parser.add_argument('--log-interval', type=int, default=10, metavar='N',
