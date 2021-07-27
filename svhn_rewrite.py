@@ -113,17 +113,18 @@ def get_n_params(model): # define a function to measure the number of parameters
 
 def update(args, grad_net, classifier_net, optimizer, data, target, device):
     optimizer.zero_grad() # the start of updating the path's parameters
-    p_path = data # assign data, initialization
-    p_path.requires_grad=True # record the computation graph
+    p = data # assign data, initialization
+    p.requires_grad=True # record the computation graph
     t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
     t.requires_grad=True # record the computation graph
     if args.adaptive_solver: # check if we are using the adaptive solver
-        p_path = torch.squeeze(odeint(grad_net, p_path, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
+        p = torch.squeeze(odeint(grad_net, p, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
+        print("The number of steps taken in this training itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
         grad_net.nfe=0 # reset the number of function of evaluations
     else:
-        p_path = torch.squeeze(odeint(grad_net, p_path, t, method="euler")[1]) # solve the neural line integral with the euler's solver
+        p = torch.squeeze(odeint(grad_net, p, t, method="euler")[1]) # solve the neural line integral with the euler's solver
         grad_net.nfe=0 # reset the number of function of evaluations
-    output = classifier_net(p_path) # classify the transformed images
+    output = classifier_net(p) # classify the transformed images
     soft_max = nn.Softmax(dim=1) # define a soft max calculator
     output = soft_max(output) # get the prediction results by getting the most probable ones
     loss = F.cross_entropy(output, target) # calculate the function loss
@@ -158,8 +159,8 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
         global p_i # claim the initial image batch as a global variable
         p_i = data
         if batch_idx % args.training_frequency == 0: # check if it is time to optimize parameters of the gradients, path, and classifier
-            update(args, grad_net, classifier_net, optimizer_grad, data, target, device) # update gradient networks' weights
-            update(args, grad_net, classifier_net, optimizer_path, data, target, device) # update path network's weights
+            loss_grad = update(args, grad_net, classifier_net, optimizer_grad, data, target, device) # update gradient networks' weights
+            loss_path = update(args, grad_net, classifier_net, optimizer_path, data, target, device) # update path network's weights
             if args.clipper:
                 clipper = WeightClipper() # define a clipper
                 grad_net.path.apply(clipper) # force the weights of the path network to be non-negative. this ensures that the integration is monotonically increasing
@@ -278,7 +279,7 @@ def main():
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available() # check if we have a GPU available
 
-    #torch.manual_seed(args.seed)
+    torch.manual_seed(args.seed)
 
     device = torch.device("cuda" if use_cuda else "cpu") # check if we are using the GPU
 
