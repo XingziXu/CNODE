@@ -157,7 +157,7 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
                     epoch, batch_idx * len(data), len(train_loader.dataset),
                     100. * batch_idx / len(train_loader), loss_classifier.item()))
         else: # otherwise, we only update the gradient networks and the classifier network
-            update(args, grad_net, classifier_net, optimizer_grad, data, target, device) # update gradient networks' weights
+            loss_grad = update(args, grad_net, classifier_net, optimizer_grad, data, target, device) # update gradient networks' weights
             loss_classifier = update(args, grad_net, classifier_net, optimizer_classifier, data, target, device) # update classifier network's weights
             if batch_idx % args.log_interval == 0: # print training loss and training process
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
@@ -241,11 +241,11 @@ def main():
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
-    parser.add_argument('--lr-grad', type=float, default=1.5e-3, metavar='LR',
+    parser.add_argument('--lr-grad', type=float, default=1e-3, metavar='LR',
                         help='learning rate for the gradients (default: 1e-3)')
-    parser.add_argument('--lr-path', type=float, default=1.5e-3, metavar='LR',
+    parser.add_argument('--lr-path', type=float, default=1e-3, metavar='LR',
                         help='learning rate for the path (default: 1e-3)')
-    parser.add_argument('--lr-classifier', type=float, default=1.5e-3, metavar='LR',
+    parser.add_argument('--lr-classifier', type=float, default=1e-3, metavar='LR',
                         help='learning rate for the classifier(default: 1e-3)')
     parser.add_argument('--tol', type=float, default=1e-3, metavar='LR',
                         help='learning rate (default: 1e-3)')
