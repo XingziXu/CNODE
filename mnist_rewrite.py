@@ -16,7 +16,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         self.nfe=0 # initialize the number of function evaluations
         
         self.path = nn.Sequential( # define the network for the integration path
-        nn.Conv2d(1,width_path,1,1,0),
+        nn.Conv2d(2,width_path,1,1,0),
         nn.Sigmoid(),
         nn.Conv2d(width_path,width_path,3,1,1),
         nn.Sigmoid(),
@@ -35,9 +35,9 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         
         self.grad_h = nn.Sequential( # define the network for the gradient on y direction
             nn.Conv2d(3,width_grad,1,1,0),
-            nn.Tanh(),
+            nn.ReLU(),
             nn.Conv2d(width_grad,width_grad,3,1,1),
-            nn.Tanh(),
+            nn.ReLU(),
             nn.Conv2d(width_grad,1,1,1,0)
         )
 
@@ -50,7 +50,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         t_input = t.expand(x.size(0),1) # resize
         t_channel = ((t_input.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
         path_input = torch.cat((t_channel, p_i),dim=1) # concatenate the time and the image
-        g_h = self.path(t_channel) # calculate the position of the integration path
+        g_h = self.path(path_input) # calculate the position of the integration path
 
         dg_dt = torch.autograd.grad(g_h[:,0].view(g_h.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the g position w.r.t. time
         dg_dt = dg_dt.view(dg_dt.size(0),1,1) # resize 
@@ -239,13 +239,13 @@ def main():
                         help='For Saving the current Model')
     parser.add_argument('--adaptive-solver', action='store_true', default=False,
                         help='do we use euler solver or do we use dopri5')
-    parser.add_argument('--clipper', action='store_true', default=False,
+    parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
-    parser.add_argument('--lr-grad', type=float, default=1e-3, metavar='LR',
+    parser.add_argument('--lr-grad', type=float, default=1.5e-3, metavar='LR',
                         help='learning rate for the gradients (default: 1e-3)')
-    parser.add_argument('--lr-path', type=float, default=1e-3, metavar='LR',
+    parser.add_argument('--lr-path', type=float, default=1.5e-3, metavar='LR',
                         help='learning rate for the path (default: 1e-3)')
-    parser.add_argument('--lr-classifier', type=float, default=1e-3, metavar='LR',
+    parser.add_argument('--lr-classifier', type=float, default=1.5e-3, metavar='LR',
                         help='learning rate for the classifier(default: 1e-3)')
     parser.add_argument('--tol', type=float, default=1e-3, metavar='LR',
                         help='learning rate (default: 1e-3)')
