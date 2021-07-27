@@ -20,41 +20,26 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         nn.Sigmoid(),
         nn.Conv2d(width_path,width_path,3,1,1),
         nn.Sigmoid(),
-        nn.Conv2d(width_path,3,1,1,0),
+        nn.Conv2d(width_path,2,1,1,0),
         nn.Flatten(),
-        nn.Linear(2352,3)
+        nn.Linear(1568,2)
         )
         
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
-            nn.GroupNorm(4,4),
-            nn.Conv2d(4,width_grad,1,1,0),
+            nn.Conv2d(3,width_grad,1,1,0),
             nn.ReLU(),
             nn.Conv2d(width_grad,width_grad,3,1,1),
             nn.ReLU(),
-            nn.GroupNorm(width_grad,width_grad),
             nn.Conv2d(width_grad,1,1,1,0)
         )
         
         self.grad_h = nn.Sequential( # define the network for the gradient on y direction
-            nn.GroupNorm(4,4),
-            nn.Conv2d(4,width_grad,1,1,0),
+            nn.Conv2d(3,width_grad,1,1,0),
             nn.ReLU(),
             nn.Conv2d(width_grad,width_grad,3,1,1),
             nn.ReLU(),
-            nn.GroupNorm(width_grad,width_grad),
             nn.Conv2d(width_grad,1,1,1,0)
         )
-        
-        self.grad_i = nn.Sequential( # define the network for the gradient on z direction
-            nn.GroupNorm(4,4),
-            nn.Conv2d(4,width_grad,1,1,0),
-            nn.ReLU(),
-            nn.Conv2d(width_grad,width_grad,3,1,1),
-            nn.ReLU(),
-            nn.GroupNorm(width_grad,width_grad),
-            nn.Conv2d(width_grad,1,1,1,0)
-        )
-
 
     def forward(self, t, x):
         self.nfe+=1 # each time we evaluate the function, the number of evaluations adds one
@@ -65,26 +50,22 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         t_input = t.expand(x.size(0),1) # resize
         t_channel = ((t_input.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
         path_input = torch.cat((t_channel, p_i),dim=1) # concatenate the time and the image
-        g_h_i = self.path(path_input) # calculate the position of the integration path
+        g_h = self.path(path_input) # calculate the position of the integration path
 
-        dg_dt = torch.autograd.grad(g_h_i[:,0].view(g_h_i.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the g position w.r.t. time
+        dg_dt = torch.autograd.grad(g_h[:,0].view(g_h.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the g position w.r.t. time
         dg_dt = dg_dt.view(dg_dt.size(0),1,1) # resize 
         dg_dt = dg_dt.expand(dg_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         dg_dt = dg_dt.view(dg_dt.size(0),1,x.size(2),x.size(3)) # resize 
-        dh_dt = torch.autograd.grad(g_h_i[:,1].view(g_h_i.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the h position w.r.t. time
+        dh_dt = torch.autograd.grad(g_h[:,1].view(g_h.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the h position w.r.t. time
         dh_dt = dh_dt.view(dh_dt.size(0),1,1) # resize 
         dh_dt = dh_dt.expand(dh_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         dh_dt = dh_dt.view(dh_dt.size(0),1,x.size(2),x.size(3)) # resize 
-        di_dt = torch.autograd.grad(g_h_i[:,2].view(g_h_i.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the i position w.r.t. time
-        di_dt = di_dt.view(di_dt.size(0),1,1) # resize 
-        di_dt = di_dt.expand(di_dt.size(0),1,x.size(2)*x.size(3)) # resize 
-        di_dt = di_dt.view(di_dt.size(0),1,x.size(2),x.size(3)) # resize 
         
-        g_h_i_input = g_h_i.view(g_h_i.size(0),g_h_i.size(1),1) # resize 
-        g_h_i_input = g_h_i_input.expand(g_h_i.size(0),g_h_i.size(1),x.size(2)*x.size(3)) # resize 
-        g_h_i_input = g_h_i_input.view((g_h_i.size(0),g_h_i.size(1),x.size(2),x.size(3))) # resize 
-        x_aug=torch.cat((x,g_h_i_input),dim=1) # append the dimension information to the image
-        dp = torch.mul(self.grad_g(x_aug),dg_dt) + torch.mul(self.grad_h(x_aug),dh_dt) + torch.mul(self.grad_i(x_aug),di_dt) # calculate the change in p
+        g_h_input = g_h.view(g_h.size(0),g_h.size(1),1) # resize 
+        g_h_input = g_h_input.expand(g_h.size(0),g_h.size(1),x.size(2)*x.size(3)) # resize 
+        g_h_input = g_h_input.view((g_h.size(0),g_h.size(1),x.size(2),x.size(3))) # resize 
+        x_aug=torch.cat((x,g_h_input),dim=1) # append the dimension information to the image
+        dp = torch.mul(self.grad_g(x_aug),dg_dt) + torch.mul(self.grad_h(x_aug),dh_dt) # calculate the change in p
         #print(t.item())
         return dp
 
@@ -260,11 +241,11 @@ def main():
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
-    parser.add_argument('--lr-grad', type=float, default=1e-3, metavar='LR',
+    parser.add_argument('--lr-grad', type=float, default=1.5e-3, metavar='LR',
                         help='learning rate for the gradients (default: 1e-3)')
-    parser.add_argument('--lr-path', type=float, default=1e-3, metavar='LR',
+    parser.add_argument('--lr-path', type=float, default=1.5e-3, metavar='LR',
                         help='learning rate for the path (default: 1e-3)')
-    parser.add_argument('--lr-classifier', type=float, default=1e-3, metavar='LR',
+    parser.add_argument('--lr-classifier', type=float, default=1.5e-3, metavar='LR',
                         help='learning rate for the classifier(default: 1e-3)')
     parser.add_argument('--tol', type=float, default=1e-3, metavar='LR',
                         help='learning rate (default: 1e-3)')
@@ -272,7 +253,7 @@ def main():
                         help='how often do we optimize the path network')
     parser.add_argument('--width-grad', type=int, default=64, metavar='LR',
                         help='width of the gradient network')
-    parser.add_argument('--width-path', type=int, default=3, metavar='LR',
+    parser.add_argument('--width-path', type=int, default=2, metavar='LR',
                         help='width of the path network')
 
     args = parser.parse_args()
