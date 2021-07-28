@@ -20,9 +20,9 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         nn.Sigmoid(),
         nn.Conv2d(width_path,width_path,3,1,1),
         nn.Sigmoid(),
-        nn.Conv2d(width_path,3,1,1,0),
+        nn.Conv2d(width_path,2,1,1,0),
         nn.Flatten(),
-        nn.Linear(2352,2)
+        nn.Linear(1568,2)
         )
         
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
@@ -135,35 +135,6 @@ def evaluate(args, grad_net, classifier_net, data, device):
     output = soft_max(output) # get the prediction results by getting the most probable ones
     return output
 
-def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, optimizer_path, optimizer_classifier, epoch):
-    grad_net.train() # set network on training mode
-    classifier_net.train() # set network on training mode
-    if args.clipper:
-        clipper = WeightClipper() # define a clipper, make sure the path is monotonically increasing from the beginning
-        grad_net.path.apply(clipper) # force the weights of the path network to be non-negative. this ensures that the integration is monotonically increasing
-    for batch_idx, (data, target) in enumerate(train_loader): # for each batch
-        data, target = data.to(device), target.to(device) # assign data to device
-        global p_i # claim the initial image batch as a global variable
-        p_i = data
-        if batch_idx % args.training_frequency == 0: # check if it is time to optimize parameters of the gradients, path, and classifier
-            loss_grad = update(args, grad_net, classifier_net, optimizer_grad, data, target, device) # update gradient networks' weights
-            loss_path = update(args, grad_net, classifier_net, optimizer_path, data, target, device) # update path network's weights
-            if args.clipper:
-                clipper = WeightClipper() # define a clipper
-                grad_net.path.apply(clipper) # force the weights of the path network to be non-negative. this ensures that the integration is monotonically increasing
-            loss_classifier = update(args, grad_net, classifier_net, optimizer_classifier, data, target, device) # update classifier network's weights
-            if batch_idx % args.log_interval == 0: # print training loss and training process
-                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                    epoch, batch_idx * len(data), len(train_loader.dataset),
-                    100. * batch_idx / len(train_loader), loss_classifier.item()))
-        else: # otherwise, we only update the gradient networks and the classifier network
-            loss_grad = update(args, grad_net, classifier_net, optimizer_grad, data, target, device) # update gradient networks' weights
-            loss_classifier = update(args, grad_net, classifier_net, optimizer_classifier, data, target, device) # update classifier network's weights
-            if batch_idx % args.log_interval == 0: # print training loss and training process
-                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                    epoch, batch_idx * len(data), len(train_loader.dataset),
-                    100. * batch_idx / len(train_loader), loss_classifier.item()))
-
 def test(args, grad_net, classifier_net, device, test_loader):
     grad_net.eval() # set the network on evaluation mode
     classifier_net.eval() # set the network on evaluation mode
@@ -235,9 +206,9 @@ def main():
                         help='random seed (default: 1)')
     parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                         help='how many batches to wait before logging training status')
-    parser.add_argument('--save-model', action='store_true', default=False,
+    parser.add_argument('--save-model', action='store_true', default=True,
                         help='For Saving the current Model')
-    parser.add_argument('--adaptive-solver', action='store_true', default=False,
+    parser.add_argument('--adaptive-solver', action='store_true', default=True,
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
@@ -289,25 +260,14 @@ def main():
 
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad).to(device) # define grad_net and assign to device
     classifier_net = Classifier().to(device) # define classifier network and assign to device
+    grad_net.load_state_dict(torch.load('grad_net.pt'))
+    classifier_net.load_state_dict(torch.load('classifer_net.pt'))
 
-    optimizer_grad = optim.AdamW(list(grad_net.grad_g.parameters())+list(grad_net.grad_h.parameters()), lr=args.lr_grad) # define optimizer on the gradients
-    optimizer_path = optim.AdamW(list(grad_net.path.parameters()), lr=args.lr_path) # define optimizer on the path
-    optimizer_classifier = optim.AdamW(list(classifier_net.parameters()), lr=args.lr_classifier) # define optimizer on the classifier
-    
     print("The number of parameters used is {}".format(get_n_params(grad_net)+get_n_params(classifier_net))) # print the number of parameters in our model
-
-    scheduler_grad = StepLR(optimizer_grad, step_size=args.step_size, gamma=args.gamma) # define scheduler for the gradients' network
-    scheduler_path = StepLR(optimizer_path, step_size=args.step_size, gamma=args.gamma) # define scheduler for the path's network
-    scheduler_classifier = StepLR(optimizer_classifier, step_size=args.step_size, gamma=args.gamma) # define scheduler for the classifier's network
-
     print('setup complete')
 
     for epoch in range(1, args.epochs + 1):
-        train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, optimizer_path, optimizer_classifier, epoch)
         validation(args, grad_net, classifier_net, device, test_loader)
-        scheduler_grad.step()
-        scheduler_path.step()
-        scheduler_classifier.step()
     test(args, grad_net, classifier_net, device, test_loader)
 
 if __name__ == '__main__':
