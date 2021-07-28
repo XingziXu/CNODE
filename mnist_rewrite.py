@@ -44,8 +44,8 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
     def forward(self, t, x):
         self.nfe+=1 # each time we evaluate the function, the number of evaluations adds one
 
-        device = torch.device("cuda") # determine if the device is the gpu or cpu
-        #device = torch.device("cpu")
+        #device = torch.device("cuda") # determine if the device is the gpu or cpu
+        device = torch.device("cpu")
         
         t_input = t.expand(x.size(0),1) # resize
         t_channel = ((t_input.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
@@ -229,23 +229,23 @@ def main():
                         help='Learning rate step gamma (default: 0.7)')
     parser.add_argument('--step-size', type=int, default=40, metavar='M',
                         help='how many epochs to we change the learning rate, default is 5')
-    parser.add_argument('--no-cuda', action='store_true', default=False,
+    parser.add_argument('--no-cuda', action='store_true', default=True,
                         help='disables CUDA training')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
     parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                         help='how many batches to wait before logging training status')
-    parser.add_argument('--save-model', action='store_true', default=False,
+    parser.add_argument('--save-model', action='store_true', default=True,
                         help='For Saving the current Model')
-    parser.add_argument('--adaptive-solver', action='store_true', default=False,
+    parser.add_argument('--adaptive-solver', action='store_true', default=True,
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
-    parser.add_argument('--lr-grad', type=float, default=1.5e-3, metavar='LR',
+    parser.add_argument('--lr-grad', type=float, default=1e-3, metavar='LR',
                         help='learning rate for the gradients (default: 1e-3)')
-    parser.add_argument('--lr-path', type=float, default=1.5e-3, metavar='LR',
+    parser.add_argument('--lr-path', type=float, default=1e-3, metavar='LR',
                         help='learning rate for the path (default: 1e-3)')
-    parser.add_argument('--lr-classifier', type=float, default=1.5e-3, metavar='LR',
+    parser.add_argument('--lr-classifier', type=float, default=1e-3, metavar='LR',
                         help='learning rate for the classifier(default: 1e-3)')
     parser.add_argument('--tol', type=float, default=1e-3, metavar='LR',
                         help='learning rate (default: 1e-3)')
