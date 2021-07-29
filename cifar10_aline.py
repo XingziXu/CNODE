@@ -26,33 +26,33 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         )
         
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
-            nn.GroupNorm(6,6),
-            nn.Conv2d(6,width_grad,1,1,0),
+            nn.GroupNorm(16,16),
+            nn.Conv2d(16,width_grad,1,1,0),
             nn.ReLU(),
             nn.Conv2d(width_grad,width_grad,3,1,1),
             nn.ReLU(),
             nn.GroupNorm(width_grad,width_grad),
-            nn.Conv2d(width_grad,3,1,1,0)
+            nn.Conv2d(width_grad,13,1,1,0)
         )
         
         self.grad_h = nn.Sequential( # define the network for the gradient on y direction
-            nn.GroupNorm(6,6),
-            nn.Conv2d(6,width_grad,1,1,0),
+            nn.GroupNorm(16,16),
+            nn.Conv2d(16,width_grad,1,1,0),
             nn.ReLU(),
             nn.Conv2d(width_grad,width_grad,3,1,1),
             nn.ReLU(),
             nn.GroupNorm(width_grad,width_grad),
-            nn.Conv2d(width_grad,3,1,1,0)
+            nn.Conv2d(width_grad,13,1,1,0)
         )
         
         self.grad_i = nn.Sequential( # define the network for the gradient on z direction
-            nn.GroupNorm(6,6),
-            nn.Conv2d(6,width_grad,1,1,0),
+            nn.GroupNorm(16,16),
+            nn.Conv2d(16,width_grad,1,1,0),
             nn.ReLU(),
             nn.Conv2d(width_grad,width_grad,3,1,1),
             nn.ReLU(),
             nn.GroupNorm(width_grad,width_grad),
-            nn.Conv2d(width_grad,3,1,1,0)
+            nn.Conv2d(width_grad,13,1,1,0)
         )
 
 
@@ -91,7 +91,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 class Classifier(nn.Module): # define the linear classifier
     def __init__(self):
         super(Classifier, self).__init__()
-        self.classifier = nn.Linear(3072,10)
+        self.classifier = nn.Linear(13312,10)
 
     def forward(self, x):
         x = torch.flatten(x,1) # flatten the input image&dimension into a vector
@@ -150,6 +150,8 @@ def update(args, grad_net, classifier_net, optimizer, data, target, device):
     optimizer.zero_grad() # the start of updating the path's parameters
     p = data # assign data, initialization
     p.requires_grad=True # record the computation graph
+    aug = torch.zeros(p.size(0),10,p.size(2),p.size(3)).to(device)
+    p = torch.cat((p,aug),dim=1)
     t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
     t.requires_grad=True # record the computation graph
     if args.adaptive_solver: # check if we are using the adaptive solver
@@ -169,6 +171,8 @@ def update(args, grad_net, classifier_net, optimizer, data, target, device):
 
 def evaluate(args, grad_net, classifier_net, data, device):
     p=data
+    aug = torch.zeros(p.size(0),10,p.size(2),p.size(3)).to(device)
+    p = torch.cat((p,aug),dim=1)
     t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
     t.requires_grad=True # record the computation graph
     if args.adaptive_solver: # check if we are using the adaptive solver

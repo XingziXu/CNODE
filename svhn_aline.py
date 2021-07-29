@@ -26,27 +26,27 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         )
         
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
-            nn.Conv2d(6,width_grad,1,1,0),
+            nn.Conv2d(16,width_grad,1,1,0),
             nn.ReLU(),
             nn.Conv2d(width_grad,width_grad,3,1,1),
             nn.ReLU(),
-            nn.Conv2d(width_grad,3,1,1,0)
+            nn.Conv2d(width_grad,13,1,1,0)
         )
         
         self.grad_h = nn.Sequential( # define the network for the gradient on y direction
-            nn.Conv2d(6,width_grad,1,1,0),
+            nn.Conv2d(16,width_grad,1,1,0),
             nn.ReLU(),
             nn.Conv2d(width_grad,width_grad,3,1,1),
             nn.ReLU(),
-            nn.Conv2d(width_grad,3,1,1,0)
+            nn.Conv2d(width_grad,13,1,1,0)
         )
         
         self.grad_i = nn.Sequential( # define the network for the gradient on z direction
-            nn.Conv2d(6,width_grad,1,1,0),
+            nn.Conv2d(16,width_grad,1,1,0),
             nn.ReLU(),
             nn.Conv2d(width_grad,width_grad,3,1,1),
             nn.ReLU(),
-            nn.Conv2d(width_grad,3,1,1,0)
+            nn.Conv2d(width_grad,13,1,1,0)
         )
 
 
@@ -85,7 +85,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 class Classifier(nn.Module): # define the linear classifier
     def __init__(self):
         super(Classifier, self).__init__()
-        self.classifier = nn.Linear(3072,10)
+        self.classifier = nn.Linear(13312,10)
 
     def forward(self, x):
         x = torch.flatten(x,1) # flatten the input image&dimension into a vector
@@ -101,6 +101,17 @@ class WeightClipper(object): # define a clamp on the weights of a network
             w = module.weight.data
             w = w.clamp(0, float('inf')) # clamp the path network's weights to be positive so that the generated path is monotonically increasing
             module.weight.data = w
+
+def initialize_grad(m):
+    if isinstance(m, nn.Conv2d):
+        #torch.nn.init.xavier_normal_(m.weight.data, gain=1.0)
+        torch.nn.init.orthogonal_(m.weight.data,gain=6)
+        #nn.init.kaiming_normal_(m.weight.data,mode='fan_out',nonlinearity='relu')
+    if isinstance(m, nn.Linear):
+        #torch.nn.init.xavier_normal_(m.weight.data, gain=1.0)
+        #nn.init.kaiming_normal_(m.weight.data,mode='fan_out',nonlinearity='relu')
+        torch.nn.init.orthogonal_(m.weight.data,gain=6)
+        #torch.nn.init.constant_(m.weight.data, 0.3)
 
 def initialize_path(n):
     if isinstance(n, nn.Conv2d):
@@ -133,6 +144,8 @@ def update(args, grad_net, classifier_net, optimizer, data, target, device):
     optimizer.zero_grad() # the start of updating the path's parameters
     p = data # assign data, initialization
     p.requires_grad=True # record the computation graph
+    aug = torch.zeros(p.size(0),10,p.size(2),p.size(3)).to(device)
+    p = torch.cat((p,aug),dim=1)
     t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
     t.requires_grad=True # record the computation graph
     if args.adaptive_solver: # check if we are using the adaptive solver
@@ -152,6 +165,8 @@ def update(args, grad_net, classifier_net, optimizer, data, target, device):
 
 def evaluate(args, grad_net, classifier_net, data, device):
     p=data
+    aug = torch.zeros(p.size(0),10,p.size(2),p.size(3)).to(device)
+    p = torch.cat((p,aug),dim=1)
     t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
     t.requires_grad=True # record the computation graph
     if args.adaptive_solver: # check if we are using the adaptive solver
@@ -328,11 +343,11 @@ def main():
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad).to(device) # define grad_net and assign to device
     classifier_net = Classifier().to(device) # define classifier network and assign to device
 
-    grad_net.apply(initialize_grad)
+    #grad_net.apply(initialize_grad)
     #grad_net.grad_g.apply(initialize_grad)
     #grad_net.grad_h.apply(initialize_grad)
     #grad_net.path.apply(initialize_path)
-    classifier_net.apply(initialize_classifier)
+    #classifier_net.apply(initialize_classifier)
 
     optimizer_grad = optim.AdamW(list(grad_net.grad_g.parameters())+list(grad_net.grad_h.parameters())+list(grad_net.grad_i.parameters()), lr=args.lr_grad) # define optimizer on the gradients
     optimizer_path = optim.AdamW(list(grad_net.path.parameters()), lr=args.lr_path) # define optimizer on the path
