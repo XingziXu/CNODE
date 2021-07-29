@@ -101,21 +101,24 @@ def initialize_grad(m):
     if isinstance(m, nn.Linear):
         torch.nn.init.normal_(m.weight.data, mean=0.0, std=1.0)
 
-def initialize_path(m):
-    if isinstance(m, nn.Conv2d):
-        torch.nn.init.normal_(m.weight.data, mean=0.0, std=1.0)
+def initialize_path(n):
+    if isinstance(n, nn.Conv2d):
+        #torch.nn.init.normal_(m.weight.data, mean=0.0, std=1.0)
         #torch.nn.init.eye_(m.weight.data)
-        #nn.init.kaiming_uniform_(m.weight.data,nonlinearity='relu')
-    if isinstance(m, nn.Linear):
-        torch.nn.init.normal_(m.weight.data, mean=0.0, std=1.0)
+        nn.init.kaiming_normal_(n.weight.data,nonlinearity='relu')
+    if isinstance(n, nn.Linear):
+        #torch.nn.init.normal_(m.weight.data, mean=0.0, std=1.0)
+        nn.init.kaiming_normal_(n.weight.data,nonlinearity='relu')
 
-def initialize_classifier(m):
-    if isinstance(m, nn.Conv2d):
-        torch.nn.init.normal_(m.weight.data, mean=0.0, std=1.0)
+def initialize_classifier(p):
+    #if isinstance(p, nn.Conv2d):
+    #    torch.nn.init.normal_(p.weight.data, mean=0.0, std=1.0)
         #torch.nn.init.eye_(m.weight.data)
         #nn.init.kaiming_uniform_(m.weight.data,nonlinearity='relu')
-    if isinstance(m, nn.Linear):
-        torch.nn.init.normal_(m.weight.data, mean=0.0, std=1.0)
+    if isinstance(p, nn.Linear):
+        torch.nn.init.constant_(p.weight.data, 0.3)
+        #torch.nn.init.sparse_(p.weight.data, sparsity=0.1)
+
 
 def get_n_params(model): # define a function to measure the number of parameters in a neural network
     pp=0
@@ -318,10 +321,11 @@ def main():
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad).to(device) # define grad_net and assign to device
     classifier_net = Classifier().to(device) # define classifier network and assign to device
 
-    grad_net.grad_g.apply(initialize_grad)
-    grad_net.grad_h.apply(initialize_grad)
-    grad_net.path.apply(initialize_path)
-    #classifier_net.apply(initialize_classifier)
+    grad_net.apply(initialize_grad)
+    #grad_net.grad_g.apply(initialize_grad)
+    #grad_net.grad_h.apply(initialize_grad)
+    #grad_net.path.apply(initialize_path)
+    classifier_net.apply(initialize_classifier)
 
     optimizer_grad = optim.AdamW(list(grad_net.grad_g.parameters())+list(grad_net.grad_h.parameters()), lr=args.lr_grad) # define optimizer on the gradients
     optimizer_path = optim.AdamW(list(grad_net.path.parameters()), lr=args.lr_path) # define optimizer on the path
