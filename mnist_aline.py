@@ -9,6 +9,8 @@ from torch.optim.lr_scheduler import StepLR
 from torchdiffeq import odeint as odeint
 from scipy.integrate import odeint as odeint_scipy
 from torch.autograd import Variable
+import numpy
+import random
 
 class Grad_net(nn.Module): # the Grad_net defines the networks for the path and for the gradients
     def __init__(self, width_path: int, width_grad: int):
@@ -118,6 +120,11 @@ def initialize_classifier(p):
     if isinstance(p, nn.Linear):
         torch.nn.init.constant_(p.weight.data, 0.3)
         #torch.nn.init.sparse_(p.weight.data, sparsity=0.1)
+
+def seed_worker(worker_id):
+    worker_seed = torch.initial_seed() % 2**32
+    numpy.random.seed(worker_seed)
+    random.seed(worker_seed)
 
 def get_n_params(model): # define a function to measure the number of parameters in a neural network
     pp=0
@@ -295,6 +302,7 @@ def main():
     use_cuda = not args.no_cuda and torch.cuda.is_available() # check if we have a GPU available
 
     torch.manual_seed(args.seed)
+    torch.use_deterministic_algorithms(True)
 
     device = torch.device("cuda" if use_cuda else "cpu") # check if we are using the GPU
 
