@@ -119,7 +119,6 @@ def initialize_classifier(p):
         torch.nn.init.constant_(p.weight.data, 0.3)
         #torch.nn.init.sparse_(p.weight.data, sparsity=0.1)
 
-
 def get_n_params(model): # define a function to measure the number of parameters in a neural network
     pp=0
     for p in list(model.parameters()):
