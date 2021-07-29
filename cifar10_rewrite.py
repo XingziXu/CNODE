@@ -108,6 +108,14 @@ class WeightClipper(object): # define a clamp on the weights of a network
             w = w.clamp(0, float('inf')) # clamp the path network's weights to be positive so that the generated path is monotonically increasing
             module.weight.data = w
 
+def initialize_weights(m):
+    if isinstance(m, nn.Conv2d):
+        torch.nn.init.normal_(m.weight.data, mean=0.0, std=1.0)
+        #torch.nn.init.eye_(m.weight.data)
+        #nn.init.kaiming_uniform_(m.weight.data,nonlinearity='relu')
+    if isinstance(m, nn.Linear):
+        torch.nn.init.normal_(m.weight.data, mean=0.0, std=1.0)
+
 def get_n_params(model): # define a function to measure the number of parameters in a neural network
     pp=0
     for p in list(model.parameters()):
@@ -309,6 +317,9 @@ def main():
 
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad).to(device) # define grad_net and assign to device
     classifier_net = Classifier().to(device) # define classifier network and assign to device
+
+    grad_net.apply(initialize_weights)
+    classifier_net.apply(initialize_weights)
 
     optimizer_grad = optim.AdamW(list(grad_net.grad_g.parameters())+list(grad_net.grad_h.parameters())+list(grad_net.grad_i.parameters()), lr=args.lr_grad, weight_decay=5e-4) # define optimizer on the gradients
     optimizer_path = optim.AdamW(list(grad_net.path.parameters()), lr=args.lr_path, weight_decay=5e-4) # define optimizer on the path
