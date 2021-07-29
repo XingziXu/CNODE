@@ -38,12 +38,12 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         )
         
         self.grad_h = nn.Sequential( # define the network for the gradient on y direction
-            nn.InstanceNorm2d(8),
+           # nn.InstanceNorm2d(8),
             nn.Conv2d(8,width_grad,1,1,0),
             nn.ReLU(),
             nn.Conv2d(width_grad,width_grad,3,1,1),
             nn.ReLU(),
-            nn.InstanceNorm2d(width_grad),
+           # nn.InstanceNorm2d(width_grad),
             nn.Conv2d(width_grad,6,1,1,0)
         )
 
@@ -302,7 +302,7 @@ def main():
     use_cuda = not args.no_cuda and torch.cuda.is_available() # check if we have a GPU available
 
     torch.manual_seed(args.seed)
-    torch.use_deterministic_algorithms(True)
+    #torch.use_deterministic_algorithms(True)
 
     device = torch.device("cuda" if use_cuda else "cpu") # check if we are using the GPU
 
@@ -333,11 +333,11 @@ def main():
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad).to(device) # define grad_net and assign to device
     classifier_net = Classifier().to(device) # define classifier network and assign to device
 
-    grad_net.apply(initialize_grad)
+    #grad_net.apply(initialize_grad)
     #grad_net.grad_g.apply(initialize_grad)
     #grad_net.grad_h.apply(initialize_grad)
     #grad_net.path.apply(initialize_path)
-    classifier_net.apply(initialize_classifier)
+    #classifier_net.apply(initialize_classifier)
 
     optimizer_grad = optim.AdamW(list(grad_net.grad_g.parameters())+list(grad_net.grad_h.parameters()), lr=args.lr_grad) # define optimizer on the gradients
     optimizer_path = optim.AdamW(list(grad_net.path.parameters()), lr=args.lr_path) # define optimizer on the path
