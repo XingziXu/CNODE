@@ -303,7 +303,7 @@ def main():
     classifier_net = Classifier().to(device) # define classifier network and assign to device
 
     grad_net.apply(initialize_weights)
-    classifier_net.apply(initialize_weights)
+    #classifier_net.apply(initialize_weights)
 
     optimizer_grad = optim.AdamW(list(grad_net.grad_g.parameters())+list(grad_net.grad_h.parameters()), lr=args.lr_grad) # define optimizer on the gradients
     optimizer_path = optim.AdamW(list(grad_net.path.parameters()), lr=args.lr_path) # define optimizer on the path
