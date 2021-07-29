@@ -110,11 +110,14 @@ class WeightClipper(object): # define a clamp on the weights of a network
 
 def initialize_grad(m):
     if isinstance(m, nn.Conv2d):
-        torch.nn.init.normal_(m.weight.data, mean=0.0, std=1.0)
-        #torch.nn.init.eye_(m.weight.data)
-        #nn.init.kaiming_uniform_(m.weight.data,nonlinearity='relu')
+        #torch.nn.init.xavier_normal_(m.weight.data, gain=1.0)
+        torch.nn.init.orthogonal_(m.weight.data,gain=6)
+        #nn.init.kaiming_normal_(m.weight.data,mode='fan_out',nonlinearity='relu')
     if isinstance(m, nn.Linear):
-        torch.nn.init.normal_(m.weight.data, mean=0.0, std=1.0)
+        #torch.nn.init.xavier_normal_(m.weight.data, gain=1.0)
+        #nn.init.kaiming_normal_(m.weight.data,mode='fan_out',nonlinearity='relu')
+        torch.nn.init.orthogonal_(m.weight.data,gain=6)
+        #torch.nn.init.constant_(m.weight.data, 0.3)
 
 def initialize_path(n):
     if isinstance(n, nn.Conv2d):
@@ -131,8 +134,8 @@ def initialize_classifier(p):
         #torch.nn.init.eye_(m.weight.data)
         #nn.init.kaiming_uniform_(m.weight.data,nonlinearity='relu')
     if isinstance(p, nn.Linear):
-        torch.nn.init.constant_(p.weight.data, 0.3)
-        #torch.nn.init.sparse_(p.weight.data, sparsity=0.1)
+        torch.nn.init.constant_(p.weight.data, 0.6)
+        #torch.nn.init.sparse_(p.weight.data,sparsity=0.5)
 
 def get_n_params(model): # define a function to measure the number of parameters in a neural network
     pp=0
