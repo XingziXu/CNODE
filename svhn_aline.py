@@ -117,12 +117,12 @@ class WeightClipper(object): # define a clamp on the weights of a network
 def initialize_grad(m):
     if isinstance(m, nn.Conv2d):
         #torch.nn.init.xavier_normal_(m.weight.data, gain=1.0)
-        torch.nn.init.uniform_(m.weight.data,a=0.0,b=1.0)
+        torch.nn.init.normal_(m.weight.data,mean=0.0,std=1.0)
         #nn.init.kaiming_normal_(m.weight.data,mode='fan_out',nonlinearity='relu')
     if isinstance(m, nn.Linear):
         #torch.nn.init.xavier_normal_(m.weight.data, gain=1.0)
         #nn.init.kaiming_normal_(m.weight.data,mode='fan_out',nonlinearity='relu')
-        torch.nn.init.uniform_(m.weight.data,a=0.0,b=1.0)
+        torch.nn.init.normal_(m.weight.data,mean=0.0,std=1.0)
         #torch.nn.init.constant_(m.weight.data, 0.3)
 
 def initialize_path(n):
