@@ -144,7 +144,7 @@ def update(args, grad_net, classifier_net, optimizer, data, target, device):
     t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
     t.requires_grad=True # record the computation graph
     if args.adaptive_solver: # check if we are using the adaptive solver
-        p = torch.squeeze(odeint(grad_net, p, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
+        p = torch.squeeze(odeint(grad_net, p, t,method="bosh3",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
         print("The number of steps taken in this training itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
         grad_net.nfe=0 # reset the number of function of evaluations
     else:
@@ -166,7 +166,7 @@ def evaluate(args, grad_net, classifier_net, data, device):
     t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
     t.requires_grad=True # record the computation graph
     if args.adaptive_solver: # check if we are using the adaptive solver
-        p = torch.squeeze(odeint(grad_net, p, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
+        p = torch.squeeze(odeint(grad_net, p, t,method="bosh3",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
         print("The number of steps taken in this testing itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
         grad_net.nfe=0 # reset the number of function of evaluations
     else:
@@ -259,7 +259,7 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
 def main():
     # Training settings
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
-    parser.add_argument('--batch-size', type=int, default=32, metavar='N',
+    parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
     parser.add_argument('--test-batch-size', type=int, default=64, metavar='N',
                         help='input batch size for testing (default: 1000)')
