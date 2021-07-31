@@ -26,26 +26,38 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         )
         
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
+            #nn.GroupNorm(16,16),
+            #nn.InstanceNorm2d(16),
             nn.Conv2d(16,width_grad,1,1,0),
             nn.ReLU(),
             nn.Conv2d(width_grad,width_grad,3,1,1),
             nn.ReLU(),
+            #nn.GroupNorm(width_grad,width_grad),
+            #nn.InstanceNorm2d(width_grad),
             nn.Conv2d(width_grad,13,1,1,0)
         )
         
         self.grad_h = nn.Sequential( # define the network for the gradient on y direction
+            nn.GroupNorm(16,16),
+            #nn.InstanceNorm2d(16),
             nn.Conv2d(16,width_grad,1,1,0),
             nn.ReLU(),
             nn.Conv2d(width_grad,width_grad,3,1,1),
             nn.ReLU(),
+            nn.GroupNorm(width_grad,width_grad),
+            #nn.InstanceNorm2d(width_grad),
             nn.Conv2d(width_grad,13,1,1,0)
         )
         
         self.grad_i = nn.Sequential( # define the network for the gradient on z direction
+            nn.GroupNorm(16,16),
+            #nn.InstanceNorm2d(16),
             nn.Conv2d(16,width_grad,1,1,0),
             nn.ReLU(),
             nn.Conv2d(width_grad,width_grad,3,1,1),
             nn.ReLU(),
+            nn.GroupNorm(width_grad,width_grad),
+            #nn.InstanceNorm2d(width_grad),
             nn.Conv2d(width_grad,13,1,1,0)
         )
 
@@ -104,13 +116,13 @@ class WeightClipper(object): # define a clamp on the weights of a network
 
 def initialize_grad(m):
     if isinstance(m, nn.Conv2d):
-        #torch.nn.init.xavier_normal_(m.weight.data, gain=1.0)
-        torch.nn.init.orthogonal_(m.weight.data,gain=6)
+        torch.nn.init.xavier_normal_(m.weight.data, gain=1.0)
+        #torch.nn.init.zeros_(m.weight.data)
         #nn.init.kaiming_normal_(m.weight.data,mode='fan_out',nonlinearity='relu')
     if isinstance(m, nn.Linear):
-        #torch.nn.init.xavier_normal_(m.weight.data, gain=1.0)
+        torch.nn.init.xavier_normal_(m.weight.data, gain=1.0)
         #nn.init.kaiming_normal_(m.weight.data,mode='fan_out',nonlinearity='relu')
-        torch.nn.init.orthogonal_(m.weight.data,gain=6)
+        #torch.nn.init.zeros_(m.weight.data)
         #torch.nn.init.constant_(m.weight.data, 0.3)
 
 def initialize_path(n):
@@ -343,7 +355,7 @@ def main():
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad).to(device) # define grad_net and assign to device
     classifier_net = Classifier().to(device) # define classifier network and assign to device
 
-    #grad_net.apply(initialize_grad)
+    grad_net.apply(initialize_grad)
     #grad_net.grad_g.apply(initialize_grad)
     #grad_net.grad_h.apply(initialize_grad)
     #grad_net.path.apply(initialize_path)
