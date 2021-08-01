@@ -76,9 +76,11 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 class Classifier(nn.Module): # define the linear classifier
     def __init__(self):
         super(Classifier, self).__init__()
-        self.classifier = nn.Linear(784,10)
+        self.classifier = nn.Linear(100,10)
+        self.pool = nn.AdaptiveAvgPool2d(10)
 
     def forward(self, x):
+        x = self.pool(x)
         x = torch.flatten(x,1) # flatten the input image&dimension into a vector
         x = self.classifier(x) # generate a 1x10 probability vector based on the flattened image&dimension
         return x

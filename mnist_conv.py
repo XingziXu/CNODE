@@ -80,8 +80,8 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 class Classifier(nn.Module): # define the linear classifier
     def __init__(self):
         super(Classifier, self).__init__()
-        self.classifier = nn.Linear(784,10)
-        self.pool = nn.AdaptiveAvgPool2d(28)
+        self.classifier = nn.Linear(100,10)
+        self.pool = nn.AdaptiveAvgPool2d(10)
 
     def forward(self, x):
         x = self.pool(x)
