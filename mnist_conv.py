@@ -81,8 +81,10 @@ class Classifier(nn.Module): # define the linear classifier
     def __init__(self):
         super(Classifier, self).__init__()
         self.classifier = nn.Linear(784,10)
+        self.pool = nn.AdaptiveAvgPool2d(28)
 
     def forward(self, x):
+        x = self.pool(x)
         x = torch.flatten(x,1) # flatten the input image&dimension into a vector
         x = self.classifier(x) # generate a 1x10 probability vector based on the flattened image&dimension
         return x
@@ -329,11 +331,11 @@ def main():
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad, width_conv=args.width_conv).to(device) # define grad_net and assign to device
     classifier_net = Classifier().to(device) # define classifier network and assign to device
 
-    grad_net.apply(initialize_grad)
+    #grad_net.apply(initialize_grad)
     #grad_net.grad_g.apply(initialize_grad)
     #grad_net.grad_h.apply(initialize_grad)
     #grad_net.path.apply(initialize_path)
-    classifier_net.apply(initialize_classifier)
+    #classifier_net.apply(initialize_classifier)
 
     optimizer_grad = optim.AdamW(list(grad_net.grad_g.parameters())+list(grad_net.grad_h.parameters()), lr=args.lr_grad) # define optimizer on the gradients
     optimizer_path = optim.AdamW(list(grad_net.path.parameters()), lr=args.lr_path) # define optimizer on the path
