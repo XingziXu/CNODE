@@ -78,10 +78,10 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         return dp
 
 class Classifier(nn.Module): # define the linear classifier
-    def __init__(self):
+    def __init__(self, width_aug: int, width_pool: int):
         super(Classifier, self).__init__()
-        self.classifier = nn.Linear(600,10)
-        self.pool = nn.AdaptiveAvgPool2d(10)
+        self.classifier = nn.Linear((width_aug+1)*width_pool*width_pool,10)
+        self.pool = nn.AdaptiveAvgPool2d(width_pool)
 
     def forward(self, x):
         x = self.pool(x)
@@ -300,8 +300,10 @@ def main():
                         help='width of the path network')
     parser.add_argument('--width-conv', type=int, default=16, metavar='LR',
                         help='width of the convolution')
-    parser.add_argument('--width-aug', type=int, default=5, metavar='LR',
+    parser.add_argument('--width-aug', type=int, default=8, metavar='LR',
                         help='width of the augmentation')
+    parser.add_argument('--width-pool', type=int, default=10, metavar='LR',
+                        help='width of the adaptive average pooling')
 
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available() # check if we have a GPU available
@@ -335,7 +337,7 @@ def main():
     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
 
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad, width_conv=args.width_conv, width_aug=args.width_aug).to(device) # define grad_net and assign to device
-    classifier_net = Classifier().to(device) # define classifier network and assign to device
+    classifier_net = Classifier(width_aug=args.width_aug, width_pool=args.width_pool).to(device) # define classifier network and assign to device
 
     #grad_net.apply(initialize_grad)
     #grad_net.grad_g.apply(initialize_grad)
