@@ -101,11 +101,14 @@ class WeightClipper(object): # define a clamp on the weights of a network
 
 def initialize_grad(m):
     if isinstance(m, nn.Conv2d):
-        torch.nn.init.normal_(m.weight.data, mean=0.0, std=1.0)
+        #torch.nn.init.xavier_normal_(m.weight.data,gain=0.8)
         #torch.nn.init.eye_(m.weight.data)
-        #nn.init.kaiming_uniform_(m.weight.data,nonlinearity='relu')
+        #nn.init.kaiming_normal_(m.weight.data,nonlinearity='relu')
+        nn.init.orthogonal_(m.weight.data,gain=0.6)
     if isinstance(m, nn.Linear):
-        torch.nn.init.normal_(m.weight.data, mean=0.0, std=1.0)
+        #torch.nn.init.xavier_normal_(m.weight.data,gain=0.8)
+        #nn.init.kaiming_normal_(m.weight.data,nonlinearity='relu')
+        nn.init.orthogonal_(m.weight.data,gain=0.6)
 
 def initialize_path(n):
     if isinstance(n, nn.Conv2d):
@@ -339,7 +342,7 @@ def main():
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad, width_conv=args.width_conv, width_aug=args.width_aug).to(device) # define grad_net and assign to device
     classifier_net = Classifier(width_aug=args.width_aug, width_pool=args.width_pool).to(device) # define classifier network and assign to device
 
-    #grad_net.apply(initialize_grad)
+    grad_net.apply(initialize_grad)
     #grad_net.grad_g.apply(initialize_grad)
     #grad_net.grad_h.apply(initialize_grad)
     #grad_net.path.apply(initialize_path)
