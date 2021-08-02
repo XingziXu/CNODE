@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms  
 from torch.optim.lr_scheduler import StepLR
-from torchdiffeq import odeint as odeint
+from torchdiffeq import odeint_adjoint as odeint
 from scipy.integrate import odeint as odeint_scipy
 from torch.autograd import Variable
 
@@ -54,17 +54,32 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 
         device = torch.device("cuda") # determine if the device is the gpu or cpu
         #device = torch.device("cpu")
-        
+        dt = 1e-5
+        t_l = t+dt
+        t_r = t-dt
+
         t_input = t.expand(x.size(0),1) # resize
         t_channel = ((t_input.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
         path_input = torch.cat((t_channel, p_i),dim=1) # concatenate the time and the image
         g_h = self.path(path_input) # calculate the position of the integration path
 
-        dg_dt = torch.autograd.grad(g_h[:,0].view(g_h.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the g position w.r.t. time
+        t_input_l = t_l.expand(x.size(0),1) # resize
+        t_channel_l = ((t_input_l.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
+        path_input_l = torch.cat((t_channel_l, p_i),dim=1) # concatenate the time and the image
+        g_h_l = self.path(path_input_l) # calculate the position of the integration path
+
+        t_input_r = t_r.expand(x.size(0),1) # resize
+        t_channel_r = ((t_input_r.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
+        path_input_r = torch.cat((t_channel_r, p_i),dim=1) # concatenate the time and the image
+        g_h_r = self.path(path_input_r) # calculate the position of the integration path
+
+        dg_dt_t = (g_h_r-g_h_l)/(2*dt)
+
+        dg_dt = dg_dt_t[:,0].view(dg_dt_t[:,0].size(),1) # calculate the gradients of the g position w.r.t. time
         dg_dt = dg_dt.view(dg_dt.size(0),1,1) # resize 
         dg_dt = dg_dt.expand(dg_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         dg_dt = dg_dt.view(dg_dt.size(0),1,x.size(2),x.size(3)) # resize 
-        dh_dt = torch.autograd.grad(g_h[:,1].view(g_h.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the h position w.r.t. time
+        dh_dt = dg_dt_t[:,1].view(dg_dt_t[:,1].size(),1) # calculate the gradients of the h position w.r.t. time
         dh_dt = dh_dt.view(dh_dt.size(0),1,1) # resize 
         dh_dt = dh_dt.expand(dh_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         dh_dt = dh_dt.view(dh_dt.size(0),1,x.size(2),x.size(3)) # resize 
@@ -101,11 +116,14 @@ class WeightClipper(object): # define a clamp on the weights of a network
 
 def initialize_grad(m):
     if isinstance(m, nn.Conv2d):
-        torch.nn.init.normal_(m.weight.data, mean=0.0, std=1.0)
+        #torch.nn.init.xavier_normal_(m.weight.data,gain=0.8)
         #torch.nn.init.eye_(m.weight.data)
-        #nn.init.kaiming_uniform_(m.weight.data,nonlinearity='relu')
+        #nn.init.kaiming_normal_(m.weight.data,nonlinearity='relu')
+        nn.init.orthogonal_(m.weight.data,gain=0.6)
     if isinstance(m, nn.Linear):
-        torch.nn.init.normal_(m.weight.data, mean=0.0, std=1.0)
+        #torch.nn.init.xavier_normal_(m.weight.data,gain=0.8)
+        #nn.init.kaiming_normal_(m.weight.data,nonlinearity='relu')
+        nn.init.orthogonal_(m.weight.data,gain=0.6)
 
 def initialize_path(n):
     if isinstance(n, nn.Conv2d):
@@ -122,8 +140,8 @@ def initialize_classifier(p):
         #torch.nn.init.eye_(m.weight.data)
         #nn.init.kaiming_uniform_(m.weight.data,nonlinearity='relu')
     if isinstance(p, nn.Linear):
-        torch.nn.init.constant_(p.weight.data, 0.3)
-        #torch.nn.init.sparse_(p.weight.data, sparsity=0.1)
+        #torch.nn.init.kaiming_normal_(p.weight.data,nonlinearity='leaky_relu')
+        torch.nn.init.sparse_(p.weight.data, sparsity=0.1)
 
 def get_n_params(model): # define a function to measure the number of parameters in a neural network
     pp=0
@@ -296,13 +314,13 @@ def main():
                         help='how often do we optimize the path network')
     parser.add_argument('--width-grad', type=int, default=64, metavar='LR',
                         help='width of the gradient network')
-    parser.add_argument('--width-path', type=int, default=2, metavar='LR',
+    parser.add_argument('--width-path', type=int, default=4, metavar='LR',
                         help='width of the path network')
     parser.add_argument('--width-conv', type=int, default=16, metavar='LR',
                         help='width of the convolution')
-    parser.add_argument('--width-aug', type=int, default=8, metavar='LR',
+    parser.add_argument('--width-aug', type=int, default=5, metavar='LR',
                         help='width of the augmentation')
-    parser.add_argument('--width-pool', type=int, default=10, metavar='LR',
+    parser.add_argument('--width-pool', type=int, default=8, metavar='LR',
                         help='width of the adaptive average pooling')
 
     args = parser.parse_args()
@@ -339,11 +357,11 @@ def main():
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad, width_conv=args.width_conv, width_aug=args.width_aug).to(device) # define grad_net and assign to device
     classifier_net = Classifier(width_aug=args.width_aug, width_pool=args.width_pool).to(device) # define classifier network and assign to device
 
-    #grad_net.apply(initialize_grad)
+    grad_net.apply(initialize_grad)
     #grad_net.grad_g.apply(initialize_grad)
     #grad_net.grad_h.apply(initialize_grad)
     #grad_net.path.apply(initialize_path)
-    #classifier_net.apply(initialize_classifier)
+    classifier_net.apply(initialize_classifier)
 
     optimizer_grad = optim.AdamW(list(grad_net.grad_g.parameters())+list(grad_net.grad_h.parameters()), lr=args.lr_grad) # define optimizer on the gradients
     optimizer_path = optim.AdamW(list(grad_net.path.parameters()), lr=args.lr_path) # define optimizer on the path
