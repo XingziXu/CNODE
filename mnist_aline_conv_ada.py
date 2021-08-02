@@ -55,25 +55,38 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         device = torch.device("cuda") # determine if the device is the gpu or cpu
         #device = torch.device("cpu")
         dt = 1e-5
-        t_l = t+dt
-        t_r = t-dt
+        t_r1 = t+dt
+        t_l1 = t-dt
+        t_r2 = t+2*dt
+        t_l2 = t-2*dt
 
         t_input = t.expand(x.size(0),1) # resize
         t_channel = ((t_input.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
         path_input = torch.cat((t_channel, p_i),dim=1) # concatenate the time and the image
         g_h = self.path(path_input) # calculate the position of the integration path
 
-        t_input_l = t_l.expand(x.size(0),1) # resize
-        t_channel_l = ((t_input_l.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
-        path_input_l = torch.cat((t_channel_l, p_i),dim=1) # concatenate the time and the image
-        g_h_l = self.path(path_input_l) # calculate the position of the integration path
+        t_input_l1 = t_l1.expand(x.size(0),1) # resize
+        t_channel_l1 = ((t_input_l1.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
+        path_input_l1 = torch.cat((t_channel_l1, p_i),dim=1) # concatenate the time and the image
+        g_h_l1 = self.path(path_input_l1) # calculate the position of the integration path
 
-        t_input_r = t_r.expand(x.size(0),1) # resize
-        t_channel_r = ((t_input_r.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
-        path_input_r = torch.cat((t_channel_r, p_i),dim=1) # concatenate the time and the image
-        g_h_r = self.path(path_input_r) # calculate the position of the integration path
+        t_input_r1 = t_r1.expand(x.size(0),1) # resize
+        t_channel_r1 = ((t_input_r1.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
+        path_input_r1 = torch.cat((t_channel_r1, p_i),dim=1) # concatenate the time and the image
+        g_h_r1 = self.path(path_input_r1) # calculate the position of the integration path
 
-        dg_dt_t = (g_h_r-g_h_l)/(2*dt)
+        t_input_l2 = t_l2.expand(x.size(0),1) # resize
+        t_channel_l2 = ((t_input_l2.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
+        path_input_l2 = torch.cat((t_channel_l2, p_i),dim=1) # concatenate the time and the image
+        g_h_l2 = self.path(path_input_l2) # calculate the position of the integration path
+
+        t_input_r2 = t_r2.expand(x.size(0),1) # resize
+        t_channel_r2 = ((t_input_r2.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
+        path_input_r2 = torch.cat((t_channel_r2, p_i),dim=1) # concatenate the time and the image
+        g_h_r2 = self.path(path_input_r2) # calculate the position of the integration path
+
+        #dg_dt_t = (g_h_r1-g_h_l1)/(2*dt) # central differences
+        dg_dt_t = (-g_h_r2+8*g_h_r1-8*g_h_l1+g_h_l2)/(12*dt) # five-point
 
         dg_dt = dg_dt_t[:,0].view(dg_dt_t[:,0].size(),1) # calculate the gradients of the g position w.r.t. time
         #dg_dt = torch.autograd.grad(g_h[:,0].view(g_h.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the g position w.r.t. time
