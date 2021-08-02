@@ -93,8 +93,8 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 class Classifier(nn.Module): # define the linear classifier
     def __init__(self):
         super(Classifier, self).__init__()
-        self.classifier = nn.Linear(300,10)
-        self.pool = nn.AdaptiveAvgPool2d(10)
+        self.classifier = nn.Linear(108,10)
+        self.pool = nn.AdaptiveAvgPool2d(6)
 
     def forward(self, x):
         x = self.pool(x)
@@ -290,9 +290,9 @@ def main():
                         help='random seed (default: 1)')
     parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                         help='how many batches to wait before logging training status')
-    parser.add_argument('--save-model', action='store_true', default=False,
+    parser.add_argument('--save-model', action='store_true', default=True,
                         help='For Saving the current Model')
-    parser.add_argument('--adaptive-solver', action='store_true', default=False,
+    parser.add_argument('--adaptive-solver', action='store_true', default=True,
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
@@ -310,7 +310,7 @@ def main():
                         help='width of the gradient network')
     parser.add_argument('--width-path', type=int, default=16, metavar='LR',
                         help='width of the path network')
-    parser.add_argument('--width-conv', type=int, default=16, metavar='LR',
+    parser.add_argument('--width-conv', type=int, default=32, metavar='LR',
                         help='width of the path network')
 
 
