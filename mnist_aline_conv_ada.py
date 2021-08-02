@@ -54,7 +54,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 
         device = torch.device("cuda") # determine if the device is the gpu or cpu
         #device = torch.device("cpu")
-        dt = 1e-5
+        dt = 0.5
         t_r1 = t+dt
         t_l1 = t-dt
         t_r2 = t+2*dt
@@ -85,16 +85,16 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         path_input_r2 = torch.cat((t_channel_r2, p_i),dim=1) # concatenate the time and the image
         g_h_r2 = self.path(path_input_r2) # calculate the position of the integration path
 
-        #dg_dt_t = (g_h_r1-g_h_l1)/(2*dt) # central differences
+        #dg_dt_t = (g_h_r1-g_h)/(dt) # central differences
         dg_dt_t = (-g_h_r2+8*g_h_r1-8*g_h_l1+g_h_l2)/(12*dt) # five-point
 
         dg_dt = dg_dt_t[:,0].view(dg_dt_t[:,0].size(),1) # calculate the gradients of the g position w.r.t. time
-        #dg_dt = torch.autograd.grad(g_h[:,0].view(g_h.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the g position w.r.t. time
+        #dg_dt1 = torch.autograd.grad(g_h[:,0].view(g_h.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the g position w.r.t. time
         dg_dt = dg_dt.view(dg_dt.size(0),1,1) # resize 
         dg_dt = dg_dt.expand(dg_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         dg_dt = dg_dt.view(dg_dt.size(0),1,x.size(2),x.size(3)) # resize 
         dh_dt = dg_dt_t[:,1].view(dg_dt_t[:,1].size(),1) # calculate the gradients of the h position w.r.t. time
-        #dh_dt = torch.autograd.grad(g_h[:,1].view(g_h.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the h position w.r.t. time
+        #dh_dt1 = torch.autograd.grad(g_h[:,1].view(g_h.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the h position w.r.t. time
         dh_dt = dh_dt.view(dh_dt.size(0),1,1) # resize 
         dh_dt = dh_dt.expand(dh_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         dh_dt = dh_dt.view(dh_dt.size(0),1,x.size(2),x.size(3)) # resize 
