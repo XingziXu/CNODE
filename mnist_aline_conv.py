@@ -125,8 +125,8 @@ def initialize_classifier(p):
         #torch.nn.init.eye_(m.weight.data)
         #nn.init.kaiming_uniform_(m.weight.data,nonlinearity='relu')
     if isinstance(p, nn.Linear):
-        torch.nn.init.constant_(p.weight.data, 0.3)
-        #torch.nn.init.sparse_(p.weight.data, sparsity=0.1)
+        #torch.nn.init.kaiming_normal_(p.weight.data,nonlinearity='leaky_relu')
+        torch.nn.init.sparse_(p.weight.data, sparsity=0.1)
 
 def get_n_params(model): # define a function to measure the number of parameters in a neural network
     pp=0
@@ -346,7 +346,7 @@ def main():
     #grad_net.grad_g.apply(initialize_grad)
     #grad_net.grad_h.apply(initialize_grad)
     #grad_net.path.apply(initialize_path)
-    #classifier_net.apply(initialize_classifier)
+    classifier_net.apply(initialize_classifier)
 
     optimizer_grad = optim.AdamW(list(grad_net.grad_g.parameters())+list(grad_net.grad_h.parameters()), lr=args.lr_grad) # define optimizer on the gradients
     optimizer_path = optim.AdamW(list(grad_net.path.parameters()), lr=args.lr_path) # define optimizer on the path
