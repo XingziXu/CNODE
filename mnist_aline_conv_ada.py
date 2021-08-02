@@ -76,10 +76,12 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         dg_dt_t = (g_h_r-g_h_l)/(2*dt)
 
         dg_dt = dg_dt_t[:,0].view(dg_dt_t[:,0].size(),1) # calculate the gradients of the g position w.r.t. time
+        #dg_dt = torch.autograd.grad(g_h[:,0].view(g_h.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the g position w.r.t. time
         dg_dt = dg_dt.view(dg_dt.size(0),1,1) # resize 
         dg_dt = dg_dt.expand(dg_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         dg_dt = dg_dt.view(dg_dt.size(0),1,x.size(2),x.size(3)) # resize 
         dh_dt = dg_dt_t[:,1].view(dg_dt_t[:,1].size(),1) # calculate the gradients of the h position w.r.t. time
+        #dh_dt = torch.autograd.grad(g_h[:,1].view(g_h.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the h position w.r.t. time
         dh_dt = dh_dt.view(dh_dt.size(0),1,1) # resize 
         dh_dt = dh_dt.expand(dh_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         dh_dt = dh_dt.view(dh_dt.size(0),1,x.size(2),x.size(3)) # resize 
