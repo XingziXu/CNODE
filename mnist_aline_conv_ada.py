@@ -133,12 +133,12 @@ def initialize_grad(m):
     if isinstance(m, nn.Conv2d):
         #torch.nn.init.xavier_normal_(m.weight.data,gain=0.8)
         #torch.nn.init.eye_(m.weight.data)
-        #nn.init.kaiming_normal_(m.weight.data,nonlinearity='relu')
-        nn.init.orthogonal_(m.weight.data,gain=0.6)
+        #nn.init.kaiming_uniform_(m.weight.data,nonlinearity='relu')
+        nn.init.orthogonal_(m.weight.data,gain=0.2)
     if isinstance(m, nn.Linear):
         #torch.nn.init.xavier_normal_(m.weight.data,gain=0.8)
-        #nn.init.kaiming_normal_(m.weight.data,nonlinearity='relu')
-        nn.init.orthogonal_(m.weight.data,gain=0.6)
+        #nn.init.kaiming_uniform_(m.weight.data,nonlinearity='relu')
+        nn.init.orthogonal_(m.weight.data,gain=0.2)
 
 def initialize_path(n):
     if isinstance(n, nn.Conv2d):
