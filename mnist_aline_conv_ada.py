@@ -373,7 +373,7 @@ def main():
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad, width_conv=args.width_conv, width_aug=args.width_aug).to(device) # define grad_net and assign to device
     classifier_net = Classifier(width_aug=args.width_aug, width_pool=args.width_pool).to(device) # define classifier network and assign to device
 
-    grad_net.apply(initialize_grad)
+    #grad_net.apply(initialize_grad)
     #grad_net.grad_g.apply(initialize_grad)
     #grad_net.grad_h.apply(initialize_grad)
     #grad_net.path.apply(initialize_path)
