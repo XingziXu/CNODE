@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms  
 from torch.optim.lr_scheduler import StepLR
-from torchdiffeq import odeint as odeint
+from torchdiffeq import odeint_adjoint as odeint
 from scipy.integrate import odeint as odeint_scipy
 from torch.autograd import Variable
 
@@ -384,7 +384,7 @@ def main():
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad).to(device) # define grad_net and assign to device
     classifier_net = Classifier().to(device) # define classifier network and assign to device
 
-    grad_net.apply(initialize_grad)
+    #grad_net.apply(initialize_grad)
     #grad_net.grad_g.apply(initialize_grad)
     #grad_net.grad_h.apply(initialize_grad)
     #grad_net.path.apply(initialize_path)
