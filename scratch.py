@@ -15,42 +15,48 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         super().__init__()
         self.nfe=0 # initialize the number of function evaluations
         
-        #self.conv1 = nn.Conv2d(1,width_conv,3, padding=1, bias=False)
+        self.conv1 = nn.Conv2d(3,width_conv,3, padding=1, bias=False)
         
-        self.conv2 = nn.Conv2d(width_aug+1+2,width_conv,1)
+        self.conv2 = nn.Conv2d(width_conv+width_aug,3+width_aug,1)
 
         self.path = nn.Sequential( # define the network for the integration path
-        nn.Conv2d(2,width_path,1,1,0),
+        nn.Conv2d(4,width_path,1,1,0),
         nn.Sigmoid(),
         nn.Conv2d(width_path,width_path,3,1,1),
         nn.Sigmoid(),
         nn.Conv2d(width_path,3,1,1,0),
         nn.Flatten(),
-        nn.Linear(2352,2)
+        nn.Linear(3072,3)
         )
         
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
-            #nn.InstanceNorm2d(width_aug+1+2),
-            nn.GroupNorm(width_aug+1+2,width_aug+1+2),
-            nn.Conv2d(width_aug+1+2,width_aug+1+2,3, padding=1, bias=False),
-            nn.Softplus(),
-            nn.Conv2d(width_aug+1+2,width_aug+1+2,3, padding=1, bias=False),
-            nn.Softplus(),
-            #nn.InstanceNorm2d(width_grad),
-            nn.GroupNorm(width_aug+1+2,width_aug+1+2),
-            nn.Conv2d(width_aug+1+2,width_aug+1+2, 1)
+            nn.InstanceNorm2d(width_conv+width_aug+3),
+            nn.Conv2d(width_conv+width_aug+3,width_grad,1,1,0),
+            nn.ReLU(),
+            nn.Conv2d(width_grad,width_grad,3,1,1),
+            nn.ReLU(),
+            nn.InstanceNorm2d(width_grad),
+            nn.Conv2d(width_grad,width_conv+width_aug,1,1,0)
         )
         
         self.grad_h = nn.Sequential( # define the network for the gradient on y direction
-            #nn.InstanceNorm2d(width_aug+1+2),
-            nn.GroupNorm(width_aug+1+2,width_aug+1+2),
-            nn.Conv2d(width_aug+1+2,width_aug+1+2,3, padding=1, bias=False),
-            nn.Softplus(),
-            nn.Conv2d(width_aug+1+2,width_aug+1+2,3, padding=1, bias=False),
-            nn.Softplus(),
-            #nn.InstanceNorm2d(width_grad),
-            nn.GroupNorm(width_aug+1+2,width_aug+1+2),
-            nn.Conv2d(width_aug+1+2,width_aug+1+2, 1)
+            nn.InstanceNorm2d(width_conv+width_aug+3),
+            nn.Conv2d(width_conv+width_aug+3,width_grad,1,1,0),
+            nn.ReLU(),
+            nn.Conv2d(width_grad,width_grad,3,1,1),
+            nn.ReLU(),
+            nn.InstanceNorm2d(width_grad),
+            nn.Conv2d(width_grad,width_conv+width_aug,1,1,0)
+        )
+
+        self.grad_i = nn.Sequential( # define the network for the gradient on x direction
+            nn.InstanceNorm2d(width_conv+width_aug+3),
+            nn.Conv2d(width_conv+width_aug+3,width_grad,1,1,0),
+            nn.ReLU(),
+            nn.Conv2d(width_grad,width_grad,3,1,1),
+            nn.ReLU(),
+            nn.InstanceNorm2d(width_grad),
+            nn.Conv2d(width_grad,width_conv+width_aug,1,1,0)
         )
 
     def forward(self, t, x):
@@ -58,6 +64,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 
         device = torch.device("cuda") # determine if the device is the gpu or cpu
         #device = torch.device("cpu")
+        
         dt = 0.5
         t_r1 = t+dt
         t_l1 = t-dt
@@ -67,54 +74,68 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         t_input = t.expand(x.size(0),1) # resize
         t_channel = ((t_input.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
         path_input = torch.cat((t_channel, p_i),dim=1) # concatenate the time and the image
-        g_h = self.path(path_input) # calculate the position of the integration path
+        g_h_i = self.path(path_input) # calculate the position of the integration path
 
         t_input_l1 = t_l1.expand(x.size(0),1) # resize
         t_channel_l1 = ((t_input_l1.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
         path_input_l1 = torch.cat((t_channel_l1, p_i),dim=1) # concatenate the time and the image
-        g_h_l1 = self.path(path_input_l1) # calculate the position of the integration path
+        g_h_i_l1 = self.path(path_input_l1) # calculate the position of the integration path
 
         t_input_r1 = t_r1.expand(x.size(0),1) # resize
         t_channel_r1 = ((t_input_r1.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
         path_input_r1 = torch.cat((t_channel_r1, p_i),dim=1) # concatenate the time and the image
-        g_h_r1 = self.path(path_input_r1) # calculate the position of the integration path
+        g_h_i_r1 = self.path(path_input_r1) # calculate the position of the integration path
 
         t_input_l2 = t_l2.expand(x.size(0),1) # resize
         t_channel_l2 = ((t_input_l2.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
         path_input_l2 = torch.cat((t_channel_l2, p_i),dim=1) # concatenate the time and the image
-        g_h_l2 = self.path(path_input_l2) # calculate the position of the integration path
+        g_h_i_l2 = self.path(path_input_l2) # calculate the position of the integration path
 
         t_input_r2 = t_r2.expand(x.size(0),1) # resize
         t_channel_r2 = ((t_input_r2.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
         path_input_r2 = torch.cat((t_channel_r2, p_i),dim=1) # concatenate the time and the image
-        g_h_r2 = self.path(path_input_r2) # calculate the position of the integration path
+        g_h_i_r2 = self.path(path_input_r2) # calculate the position of the integration path
 
         #dg_dt_t = (g_h_r1-g_h)/(dt) # central differences
-        dg_dt_t = (-g_h_r2+8*g_h_r1-8*g_h_l1+g_h_l2)/(12*dt) # five-point
+        dg_dt_t = (-g_h_i_r2+8*g_h_i_r1-8*g_h_i_l1+g_h_i_l2)/(12*dt) # five-point
 
         dg_dt = dg_dt_t[:,0].view(dg_dt_t[:,0].size(),1) # calculate the gradients of the g position w.r.t. time
-        #dg_dt1 = torch.autograd.grad(g_h[:,0].view(g_h.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the g position w.r.t. time
+        #dg_dt1 = torch.autograd.grad(g_h_i[:,0].view(g_h_i.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the g position w.r.t. time
+        
+        #print(torch.abs(dg_dt.view(256,1)-dg_dt1).max())
+        
         dg_dt = dg_dt.view(dg_dt.size(0),1,1) # resize 
         dg_dt = dg_dt.expand(dg_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         dg_dt = dg_dt.view(dg_dt.size(0),1,x.size(2),x.size(3)) # resize 
-        dh_dt = dg_dt_t[:,1].view(dg_dt_t[:,1].size(),1) # calculate the gradients of the h position w.r.t. time
-        #dh_dt1 = torch.autograd.grad(g_h[:,1].view(g_h.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the h position w.r.t. time
+        #dh_dt1 = torch.autograd.grad(g_h_i[:,1].view(g_h_i.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the h position w.r.t. time
+        dh_dt = dg_dt_t[:,1].view(dg_dt_t[:,1].size(),1) # calculate the gradients of the g position w.r.t. time
+        
+        #print(torch.abs(dh_dt.view(256,1)-dh_dt1).max())
+
         dh_dt = dh_dt.view(dh_dt.size(0),1,1) # resize 
         dh_dt = dh_dt.expand(dh_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         dh_dt = dh_dt.view(dh_dt.size(0),1,x.size(2),x.size(3)) # resize 
+        #di_dt1 = torch.autograd.grad(g_h_i[:,2].view(g_h_i.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the i position w.r.t. time
+        di_dt = dg_dt_t[:,2].view(dg_dt_t[:,2].size(),1) # calculate the gradients of the g position w.r.t. time
         
-        g_h_input = g_h.view(g_h.size(0),g_h.size(1),1) # resize 
-        g_h_input = g_h_input.expand(g_h.size(0),g_h.size(1),x.size(2)*x.size(3)) # resize 
-        g_h_input = g_h_input.view((g_h.size(0),g_h.size(1),x.size(2),x.size(3))) # resize 
-        x_aug=torch.cat((x,g_h_input),dim=1) # append the dimension information to the image
-        dp = torch.mul(self.grad_g(x_aug),dg_dt) + torch.mul(self.grad_h(x_aug),dh_dt) # calculate the change in p
+        #print(torch.abs(di_dt.view(256,1)-di_dt1).max())
+        
+        di_dt = di_dt.view(di_dt.size(0),1,1) # resize 
+        di_dt = di_dt.expand(di_dt.size(0),1,x.size(2)*x.size(3)) # resize 
+        di_dt = di_dt.view(di_dt.size(0),1,x.size(2),x.size(3)) # resize 
+        
+        g_h_i_input = g_h_i.view(g_h_i.size(0),g_h_i.size(1),1) # resize 
+        g_h_i_input = g_h_i_input.expand(g_h_i.size(0),g_h_i.size(1),x.size(2)*x.size(3)) # resize 
+        g_h_i_input = g_h_i_input.view((g_h_i.size(0),g_h_i.size(1),x.size(2),x.size(3))) # resize 
+        x_aug=torch.cat((x,g_h_i_input),dim=1) # append the dimension information to the image
+        dp = torch.mul(self.grad_g(x_aug),dg_dt) + torch.mul(self.grad_h(x_aug),dh_dt) + torch.mul(self.grad_i(x_aug),di_dt) # calculate the change in p
         #print(t.item())
         return dp
 
 class Classifier(nn.Module): # define the linear classifier
-    def __init__(self, width_conv: int, width_pool: int):
+    def __init__(self, width_aug: int, width_pool: int):
         super(Classifier, self).__init__()
-        self.classifier = nn.Linear(width_conv*width_pool*width_pool,10)
+        self.classifier = nn.Linear((width_aug+3)*width_pool*width_pool,10)
         self.pool = nn.AdaptiveAvgPool2d(width_pool)
 
     def forward(self, x):
@@ -175,6 +196,7 @@ def update(args, grad_net, classifier_net, optimizer, data, target, device):
     optimizer.zero_grad() # the start of updating the path's parameters
     p = data # assign data, initialization
     p.requires_grad=True # record the computation graph
+    p = grad_net.conv1(p)
     aug = torch.zeros(p.size(0),args.width_aug,p.size(2),p.size(3)).to(device)
     p = torch.cat((p,aug),dim=1)
     t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
@@ -197,6 +219,7 @@ def update(args, grad_net, classifier_net, optimizer, data, target, device):
 def evaluate(args, grad_net, classifier_net, data, device):
     p = data # assign data, initialization
     p.requires_grad=True # record the computation graph
+    p = grad_net.conv1(p)
     aug = torch.zeros(p.size(0),args.width_aug,p.size(2),p.size(3)).to(device)
     p = torch.cat((p,aug),dim=1)
     t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
@@ -332,7 +355,7 @@ def main():
                         help='how often do we optimize the path network')
     parser.add_argument('--width-grad', type=int, default=64, metavar='LR',
                         help='width of the gradient network')
-    parser.add_argument('--width-path', type=int, default=4, metavar='LR',
+    parser.add_argument('--width-path', type=int, default=8, metavar='LR',
                         help='width of the path network')
     parser.add_argument('--width-conv', type=int, default=16, metavar='LR',
                         help='width of the convolution')
@@ -361,29 +384,29 @@ def main():
         validation_kwargs.update(cuda_kwargs)
 
     transform=transforms.Compose([
-        transforms.Resize(28),
+        transforms.Resize(32),
         transforms.ToTensor()
         ])
-    dataset1 = datasets.MNIST('../data', train=True, download=True,
+    dataset1 = datasets.CIFAR10('../data', train=True, download=True,
                        transform=transform)
-    dataset2 = datasets.MNIST('../data', train=False, download=True,
+    dataset2 = datasets.CIFAR10('../data', train=False, download=True,
                        transform=transform)
-    
+ 
     train_loader = torch.utils.data.DataLoader(dataset1,**train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
 
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad, width_conv=args.width_conv, width_aug=args.width_aug).to(device) # define grad_net and assign to device
-    classifier_net = Classifier(width_conv=args.width_conv, width_pool=args.width_pool).to(device) # define classifier network and assign to device
+    classifier_net = Classifier(width_aug=args.width_aug, width_pool=args.width_pool).to(device) # define classifier network and assign to device
 
-    grad_net.apply(initialize_grad)
+    #grad_net.apply(initialize_grad)
     #grad_net.grad_g.apply(initialize_grad)
     #grad_net.grad_h.apply(initialize_grad)
     #grad_net.path.apply(initialize_path)
     #classifier_net.apply(initialize_classifier)
 
-    optimizer_grad = optim.AdamW(list(grad_net.grad_g.parameters())+list(grad_net.grad_h.parameters())+list(grad_net.conv2.parameters()), lr=args.lr_grad) # define optimizer on the gradients
-    optimizer_path = optim.AdamW(list(grad_net.path.parameters()), lr=args.lr_path) # define optimizer on the path
-    optimizer_classifier = optim.AdamW(list(classifier_net.parameters()), lr=args.lr_classifier) # define optimizer on the classifier
+    optimizer_grad = optim.AdamW(list(grad_net.grad_g.parameters())+list(grad_net.grad_h.parameters())+list(grad_net.grad_i.parameters())+list(grad_net.conv1.parameters())+list(grad_net.conv2.parameters()), lr=args.lr_grad, weight_decay=5e-4) # define optimizer on the gradients
+    optimizer_path = optim.AdamW(list(grad_net.path.parameters()), lr=args.lr_path, weight_decay=5e-4) # define optimizer on the path
+    optimizer_classifier = optim.AdamW(list(classifier_net.parameters()), lr=args.lr_classifier, weight_decay=5e-4) # define optimizer on the classifier
     
     print("The number of parameters used is {}".format(get_n_params(grad_net)+get_n_params(classifier_net))) # print the number of parameters in our model
 
