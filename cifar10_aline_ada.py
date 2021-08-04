@@ -306,6 +306,7 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
         torch.save(grad_net.state_dict(), "grad_net.pt") # save gradients and path model
         torch.save(classifier_net.state_dict(), "classifer_net.pt") # save classifier model
         print("The current models are saved") # confirm all models are saved
+    return 100. * correct / len(validation_loader.dataset)
 
 def main():
     # Training settings
@@ -403,9 +404,13 @@ def main():
 
     print('setup complete')
 
+    accu = 0.0
     for epoch in range(1, args.epochs + 1):
         train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, optimizer_path, optimizer_classifier, epoch)
-        validation(args, grad_net, classifier_net, device, test_loader)
+        accu_new = validation(args, grad_net, classifier_net, device, test_loader)
+        if accu_new > accu:
+            accu = accu_new
+        print('The best accuracy is ({:.4f}%)\n'.format(accu))
         scheduler_grad.step()
         scheduler_path.step()
         scheduler_classifier.step()
