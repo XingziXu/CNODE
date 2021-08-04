@@ -7,17 +7,17 @@ import torch.optim as optim
 from torchvision import datasets, transforms  
 from torch.optim.lr_scheduler import StepLR
 from torchdiffeq import odeint_adjoint as odeint
+from scipy.integrate import odeint as odeint_scipy
 from torch.autograd import Variable
 
 class Grad_net(nn.Module): # the Grad_net defines the networks for the path and for the gradients
-    def __init__(self, width_path: int, width_grad: int, width_aug: int):
+    def __init__(self, width_path: int, width_grad: int, width_conv: int, width_aug: int):
         super().__init__()
         self.nfe=0 # initialize the number of function evaluations
         
-        self.norm1 = nn.BatchNorm2d(1)
         #self.conv1 = nn.Conv2d(1,width_conv,3, padding=1, bias=False)
         
-        #self.conv2 = nn.Conv2d(width_conv+width_aug,1+width_aug,1)
+        self.conv2 = nn.Conv2d(width_aug+1+2,width_conv,1)
 
         self.path = nn.Sequential( # define the network for the integration path
         nn.Conv2d(2,width_path,1,1,0),
@@ -30,23 +30,27 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         )
         
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
-            #nn.InstanceNorm2d(width_conv+width_aug+2),
-            nn.Conv2d(width_aug+3,width_grad,3,padding=1),
+            #nn.InstanceNorm2d(width_aug+1+2),
+            nn.GroupNorm(width_aug+1+2,width_aug+1+2),
+            nn.Conv2d(width_aug+1+2,width_aug+1+2,3, padding=1, bias=False),
             nn.Softplus(),
-            nn.Conv2d(width_grad,width_grad,3,padding=1),
+            nn.Conv2d(width_aug+1+2,width_aug+1+2,3, padding=1, bias=False),
             nn.Softplus(),
             #nn.InstanceNorm2d(width_grad),
-            nn.Conv2d(width_grad,width_aug+1,3,padding=1)
+            nn.GroupNorm(width_aug+1+2,width_aug+1+2),
+            nn.Conv2d(width_aug+1+2,width_aug+1+2, 1)
         )
         
         self.grad_h = nn.Sequential( # define the network for the gradient on y direction
-            #nn.InstanceNorm2d(width_conv+width_aug+2),
-            nn.Conv2d(width_aug+3,width_grad,3,padding=1),
+            #nn.InstanceNorm2d(width_aug+1+2),
+            nn.GroupNorm(width_aug+1+2,width_aug+1+2),
+            nn.Conv2d(width_aug+1+2,width_aug+1+2,3, padding=1, bias=False),
             nn.Softplus(),
-            nn.Conv2d(width_grad,width_grad,3,padding=1),
+            nn.Conv2d(width_aug+1+2,width_aug+1+2,3, padding=1, bias=False),
             nn.Softplus(),
             #nn.InstanceNorm2d(width_grad),
-            nn.Conv2d(width_grad,width_aug+1,3,padding=1)
+            nn.GroupNorm(width_aug+1+2,width_aug+1+2),
+            nn.Conv2d(width_aug+1+2,width_aug+1+2, 1)
         )
 
     def forward(self, t, x):
@@ -108,10 +112,10 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         return dp
 
 class Classifier(nn.Module): # define the linear classifier
-    def __init__(self, width_aug: int, width_pool: int):
+    def __init__(self, width_conv: int, width_pool: int):
         super(Classifier, self).__init__()
-        self.classifier = nn.Linear(width_aug+1,10)
-        self.pool = nn.AvgPool2d(width_pool)
+        self.classifier = nn.Linear(width_conv*width_pool*width_pool,10)
+        self.pool = nn.AdaptiveAvgPool2d(width_pool)
 
     def forward(self, x):
         x = self.pool(x)
@@ -171,7 +175,6 @@ def update(args, grad_net, classifier_net, optimizer, data, target, device):
     optimizer.zero_grad() # the start of updating the path's parameters
     p = data # assign data, initialization
     p.requires_grad=True # record the computation graph
-    p = grad_net.norm1(p)
     aug = torch.zeros(p.size(0),args.width_aug,p.size(2),p.size(3)).to(device)
     p = torch.cat((p,aug),dim=1)
     t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
@@ -183,7 +186,7 @@ def update(args, grad_net, classifier_net, optimizer, data, target, device):
     else:
         p = torch.squeeze(odeint(grad_net, p, t, method="euler")[1]) # solve the neural line integral with the euler's solver
         grad_net.nfe=0 # reset the number of function of evaluations
-    output = classifier_net(p) # classify the transformed images
+    output = classifier_net(grad_net.conv2(p)) # classify the transformed images
     soft_max = nn.Softmax(dim=1) # define a soft max calculator
     output = soft_max(output) # get the prediction results by getting the most probable ones
     loss = F.cross_entropy(output, target) # calculate the function loss
@@ -194,7 +197,6 @@ def update(args, grad_net, classifier_net, optimizer, data, target, device):
 def evaluate(args, grad_net, classifier_net, data, device):
     p = data # assign data, initialization
     p.requires_grad=True # record the computation graph
-    p = grad_net.norm1(p)
     aug = torch.zeros(p.size(0),args.width_aug,p.size(2),p.size(3)).to(device)
     p = torch.cat((p,aug),dim=1)
     t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
@@ -206,7 +208,7 @@ def evaluate(args, grad_net, classifier_net, data, device):
     else:
         p = torch.squeeze(odeint(grad_net, p, t, method="euler")[1]) # solve the neural line integral with the euler's solver
         grad_net.nfe=0 # reset the number of function of evaluations
-    output = classifier_net(p) # classify the transformed images
+    output = classifier_net(grad_net.conv2(p)) # classify the transformed images
     soft_max = nn.Softmax(dim=1) # define a soft max calculator
     output = soft_max(output) # get the prediction results by getting the most probable ones
     return output
@@ -289,6 +291,7 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
         torch.save(grad_net.state_dict(), "grad_net.pt") # save gradients and path model
         torch.save(classifier_net.state_dict(), "classifer_net.pt") # save classifier model
         print("The current models are saved") # confirm all models are saved
+    return 100. * correct / len(validation_loader.dataset)
 
 def main():
     # Training settings
@@ -317,23 +320,25 @@ def main():
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
-    parser.add_argument('--lr-grad', type=float, default=1e-2, metavar='LR',
+    parser.add_argument('--lr-grad', type=float, default=1e-3, metavar='LR',
                         help='learning rate for the gradients (default: 1e-3)')
-    parser.add_argument('--lr-path', type=float, default=1e-2, metavar='LR',
+    parser.add_argument('--lr-path', type=float, default=1e-3, metavar='LR',
                         help='learning rate for the path (default: 1e-3)')
-    parser.add_argument('--lr-classifier', type=float, default=1e-2, metavar='LR',
+    parser.add_argument('--lr-classifier', type=float, default=1e-3, metavar='LR',
                         help='learning rate for the classifier(default: 1e-3)')
     parser.add_argument('--tol', type=float, default=1e-3, metavar='LR',
                         help='learning rate (default: 1e-3)')
     parser.add_argument('--training-frequency', type=int, default=1, metavar='LR',
                         help='how often do we optimize the path network')
-    parser.add_argument('--width-grad', type=int, default=46, metavar='LR',
+    parser.add_argument('--width-grad', type=int, default=64, metavar='LR',
                         help='width of the gradient network')
     parser.add_argument('--width-path', type=int, default=4, metavar='LR',
                         help='width of the path network')
-    parser.add_argument('--width-aug', type=int, default=31, metavar='LR',
+    parser.add_argument('--width-conv', type=int, default=16, metavar='LR',
+                        help='width of the convolution')
+    parser.add_argument('--width-aug', type=int, default=5, metavar='LR',
                         help='width of the augmentation')
-    parser.add_argument('--width-pool', type=int, default=28, metavar='LR',
+    parser.add_argument('--width-pool', type=int, default=8, metavar='LR',
                         help='width of the adaptive average pooling')
 
     args = parser.parse_args()
@@ -367,8 +372,8 @@ def main():
     train_loader = torch.utils.data.DataLoader(dataset1,**train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
 
-    grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad, width_aug=args.width_aug).to(device) # define grad_net and assign to device
-    classifier_net = Classifier(width_aug=args.width_aug, width_pool=args.width_pool).to(device) # define classifier network and assign to device
+    grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad, width_conv=args.width_conv, width_aug=args.width_aug).to(device) # define grad_net and assign to device
+    classifier_net = Classifier(width_conv=args.width_conv, width_pool=args.width_pool).to(device) # define classifier network and assign to device
 
     grad_net.apply(initialize_grad)
     #grad_net.grad_g.apply(initialize_grad)
@@ -376,9 +381,9 @@ def main():
     #grad_net.path.apply(initialize_path)
     #classifier_net.apply(initialize_classifier)
 
-    optimizer_grad = optim.Adam(list(grad_net.grad_g.parameters())+list(grad_net.grad_h.parameters())+list(grad_net.norm1.parameters()), lr=args.lr_grad) # define optimizer on the gradients
-    optimizer_path = optim.Adam(list(grad_net.path.parameters()), lr=args.lr_path) # define optimizer on the path
-    optimizer_classifier = optim.Adam(list(classifier_net.parameters()), lr=args.lr_classifier) # define optimizer on the classifier
+    optimizer_grad = optim.AdamW(list(grad_net.grad_g.parameters())+list(grad_net.grad_h.parameters())+list(grad_net.conv2.parameters()), lr=args.lr_grad) # define optimizer on the gradients
+    optimizer_path = optim.AdamW(list(grad_net.path.parameters()), lr=args.lr_path) # define optimizer on the path
+    optimizer_classifier = optim.AdamW(list(classifier_net.parameters()), lr=args.lr_classifier) # define optimizer on the classifier
     
     print("The number of parameters used is {}".format(get_n_params(grad_net)+get_n_params(classifier_net))) # print the number of parameters in our model
 
@@ -388,9 +393,13 @@ def main():
 
     print('setup complete')
 
+    accu = 0.0
     for epoch in range(1, args.epochs + 1):
         train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, optimizer_path, optimizer_classifier, epoch)
-        validation(args, grad_net, classifier_net, device, test_loader)
+        accu_new = validation(args, grad_net, classifier_net, device, test_loader)
+        if accu_new > accu:
+            accu = accu_new
+        print('The best accuracy is ({:.4f}%)\n'.format(accu))
         scheduler_grad.step()
         scheduler_path.step()
         scheduler_classifier.step()

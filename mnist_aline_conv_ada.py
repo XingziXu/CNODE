@@ -314,7 +314,7 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
-    parser.add_argument('--adaptive-solver', action='store_true', default=False,
+    parser.add_argument('--adaptive-solver', action='store_true', default=True,
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
@@ -379,9 +379,9 @@ def main():
     #grad_net.path.apply(initialize_path)
     #classifier_net.apply(initialize_classifier)
 
-    optimizer_grad = optim.AdamW(list(grad_net.grad_g.parameters())+list(grad_net.grad_h.parameters())+list(grad_net.conv1.parameters())+list(grad_net.conv2.parameters()), lr=args.lr_grad) # define optimizer on the gradients
-    optimizer_path = optim.AdamW(list(grad_net.path.parameters()), lr=args.lr_path) # define optimizer on the path
-    optimizer_classifier = optim.AdamW(list(classifier_net.parameters()), lr=args.lr_classifier) # define optimizer on the classifier
+    optimizer_grad = optim.AdamW(list(grad_net.grad_g.parameters())+list(grad_net.grad_h.parameters())+list(grad_net.conv1.parameters())+list(grad_net.conv2.parameters()), lr=args.lr_grad, weight_decay=5e-4) # define optimizer on the gradients
+    optimizer_path = optim.AdamW(list(grad_net.path.parameters()), lr=args.lr_path, weight_decay=5e-4) # define optimizer on the path
+    optimizer_classifier = optim.AdamW(list(classifier_net.parameters()), lr=args.lr_classifier, weight_decay=5e-4) # define optimizer on the classifier
     
     print("The number of parameters used is {}".format(get_n_params(grad_net)+get_n_params(classifier_net))) # print the number of parameters in our model
 
