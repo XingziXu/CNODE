@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms  
 from torch.optim.lr_scheduler import StepLR
-from torchdiffeq import odeint_adjoint as odeint
+from torchdiffeq import odeint as odeint
 from scipy.integrate import odeint as odeint_scipy
 from torch.autograd import Variable
 
@@ -30,32 +30,38 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         )
         
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
-            nn.InstanceNorm2d(width_conv+width_aug+3),
+            #nn.InstanceNorm2d(width_conv+width_aug+3),
+            nn.GroupNorm(width_conv+width_aug+3,width_conv+width_aug+3),
             nn.Conv2d(width_conv+width_aug+3,width_grad,1,1,0),
-            nn.ReLU(),
+            nn.Softplus(),
             nn.Conv2d(width_grad,width_grad,3,1,1),
-            nn.ReLU(),
-            nn.InstanceNorm2d(width_grad),
+            nn.Softplus(),
+            #nn.InstanceNorm2d(width_grad),
+            nn.GroupNorm(width_grad,width_grad),
             nn.Conv2d(width_grad,width_conv+width_aug,1,1,0)
         )
         
         self.grad_h = nn.Sequential( # define the network for the gradient on y direction
-            nn.InstanceNorm2d(width_conv+width_aug+3),
+            #nn.InstanceNorm2d(width_conv+width_aug+3),
+            nn.GroupNorm(width_conv+width_aug+3,width_conv+width_aug+3),
             nn.Conv2d(width_conv+width_aug+3,width_grad,1,1,0),
-            nn.ReLU(),
+            nn.Softplus(),
             nn.Conv2d(width_grad,width_grad,3,1,1),
-            nn.ReLU(),
-            nn.InstanceNorm2d(width_grad),
+            nn.Softplus(),
+            #nn.InstanceNorm2d(width_grad),
+            nn.GroupNorm(width_grad,width_grad),
             nn.Conv2d(width_grad,width_conv+width_aug,1,1,0)
         )
 
         self.grad_i = nn.Sequential( # define the network for the gradient on x direction
-            nn.InstanceNorm2d(width_conv+width_aug+3),
+            #nn.InstanceNorm2d(width_conv+width_aug+3),
+            nn.GroupNorm(width_conv+width_aug+3,width_conv+width_aug+3),
             nn.Conv2d(width_conv+width_aug+3,width_grad,1,1,0),
-            nn.ReLU(),
+            nn.Softplus(),
             nn.Conv2d(width_grad,width_grad,3,1,1),
-            nn.ReLU(),
-            nn.InstanceNorm2d(width_grad),
+            nn.Softplus(),
+            #nn.InstanceNorm2d(width_grad),
+            nn.GroupNorm(width_grad,width_grad),
             nn.Conv2d(width_grad,width_conv+width_aug,1,1,0)
         )
 
@@ -329,7 +335,7 @@ def main():
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--gamma', type=float, default=0.9, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
-    parser.add_argument('--step-size', type=int, default=40, metavar='M',
+    parser.add_argument('--step-size', type=int, default=5, metavar='M',
                         help='how many epochs to we change the learning rate, default is 5')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
@@ -339,7 +345,7 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
-    parser.add_argument('--adaptive-solver', action='store_true', default=True,
+    parser.add_argument('--adaptive-solver', action='store_true', default=False,
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
@@ -351,7 +357,7 @@ def main():
                         help='learning rate for the classifier(default: 1e-3)')
     parser.add_argument('--tol', type=float, default=1e-3, metavar='LR',
                         help='learning rate (default: 1e-3)')
-    parser.add_argument('--weight-decay', type=float, default=6e-4, metavar='LR',
+    parser.add_argument('--weight-decay', type=float, default=5e-4, metavar='LR',
                         help='weight decay (default: 5e-4)')
     parser.add_argument('--training-frequency', type=int, default=1, metavar='LR',
                         help='how often do we optimize the path network')
