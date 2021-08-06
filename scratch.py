@@ -30,44 +30,44 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         )
         
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
-            nn.InstanceNorm2d(width_conv+width_aug+3),
-            #nn.GroupNorm(width_conv+width_aug+3,width_conv+width_aug+3),
+            #nn.InstanceNorm2d(width_conv+width_aug+3),
+            nn.GroupNorm(width_conv+width_aug+3,width_conv+width_aug+3),
             nn.Conv2d(width_conv+width_aug+3,width_grad,1,1,0),
             #nn.Softplus(),
             nn.ReLU(),
             nn.Conv2d(width_grad,width_grad,3,1,1),
             #nn.Softplus(),
             nn.ReLU(),
-            nn.InstanceNorm2d(width_grad),
-            #nn.GroupNorm(width_grad,width_grad),
+            #nn.InstanceNorm2d(width_grad),
+            nn.GroupNorm(width_grad,width_grad),
             nn.Conv2d(width_grad,width_conv+width_aug,1,1,0)
         )
         
         self.grad_h = nn.Sequential( # define the network for the gradient on y direction
-            nn.InstanceNorm2d(width_conv+width_aug+3),
-            #nn.GroupNorm(width_conv+width_aug+3,width_conv+width_aug+3),
+            #nn.InstanceNorm2d(width_conv+width_aug+3),
+            nn.GroupNorm(width_conv+width_aug+3,width_conv+width_aug+3),
             nn.Conv2d(width_conv+width_aug+3,width_grad,1,1,0),
             #nn.Softplus(),
             nn.ReLU(),
             nn.Conv2d(width_grad,width_grad,3,1,1),
             #nn.Softplus(),
             nn.ReLU(),
-            nn.InstanceNorm2d(width_grad),
-            #nn.GroupNorm(width_grad,width_grad),
+            #nn.InstanceNorm2d(width_grad),
+            nn.GroupNorm(width_grad,width_grad),
             nn.Conv2d(width_grad,width_conv+width_aug,1,1,0)
         )
 
         self.grad_i = nn.Sequential( # define the network for the gradient on x direction
-            nn.InstanceNorm2d(width_conv+width_aug+3),
-            #nn.GroupNorm(width_conv+width_aug+3,width_conv+width_aug+3),
+            #nn.InstanceNorm2d(width_conv+width_aug+3),
+            nn.GroupNorm(width_conv+width_aug+3,width_conv+width_aug+3),
             nn.Conv2d(width_conv+width_aug+3,width_grad,1,1,0),
             #nn.Softplus(),
             nn.ReLU(),
             nn.Conv2d(width_grad,width_grad,3,1,1),
             #nn.Softplus(),
             nn.ReLU(),
-            nn.InstanceNorm2d(width_grad),
-            #nn.GroupNorm(width_grad,width_grad),
+            #nn.InstanceNorm2d(width_grad),
+            nn.GroupNorm(width_grad,width_grad),
             nn.Conv2d(width_grad,width_conv+width_aug,1,1,0)
         )
 
