@@ -156,14 +156,14 @@ class WeightClipper(object): # define a clamp on the weights of a network
 
 def initialize_grad(m):
     if isinstance(m, nn.Conv2d):
-        #torch.nn.init.xavier_normal_(m.weight.data,gain=0.8)
-        #torch.nn.init.eye_(m.weight.data)
-        #nn.init.kaiming_uniform_(m.weight.data,nonlinearity='relu')
-        nn.init.orthogonal_(m.weight.data,gain=0.2)
+        #torch.nn.init.xavier_normal_(m.weight.data,gain=1.4)
+        torch.nn.init.orthogonal_(m.weight.data,gain=0.8)
+        #nn.init.kaiming_normal_(m.weight.data,nonlinearity='relu')
+        #nn.init.dirac_(m.weight.data)
     if isinstance(m, nn.Linear):
-        #torch.nn.init.xavier_normal_(m.weight.data,gain=0.8)
-        #nn.init.kaiming_uniform_(m.weight.data,nonlinearity='relu')
-        nn.init.orthogonal_(m.weight.data,gain=0.2)
+        #torch.nn.init.xavier_normal_(m.weight.data,gain=1.4)
+        #nn.init.kaiming_normal_(m.weight.data,nonlinearity='relu')
+        nn.init.orthogonal_(m.weight.data, gain=0.8)
 
 def initialize_path(n):
     if isinstance(n, nn.Conv2d):
@@ -339,7 +339,7 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
-    parser.add_argument('--adaptive-solver', action='store_true', default=False,
+    parser.add_argument('--adaptive-solver', action='store_true', default=True,
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
@@ -351,7 +351,7 @@ def main():
                         help='learning rate for the classifier(default: 1e-3)')
     parser.add_argument('--tol', type=float, default=1e-3, metavar='LR',
                         help='learning rate (default: 1e-3)')
-    parser.add_argument('--weight-decay', type=float, default=3e-4, metavar='LR',
+    parser.add_argument('--weight-decay', type=float, default=6e-4, metavar='LR',
                         help='weight decay (default: 5e-4)')
     parser.add_argument('--training-frequency', type=int, default=1, metavar='LR',
                         help='how often do we optimize the path network')
@@ -424,7 +424,7 @@ def main():
         accu_new = validation(args, grad_net, classifier_net, device, test_loader)
         if accu_new > accu:
             accu = accu_new
-        print('The best accuracy is ({:.4f}%)\n'.format(accu))
+        print('The best accuracy is {:.4f}%\n'.format(accu))
         scheduler_grad.step()
         scheduler_path.step()
         scheduler_classifier.step()
