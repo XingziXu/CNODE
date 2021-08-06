@@ -351,11 +351,11 @@ def main():
                         help='learning rate for the classifier(default: 1e-3)')
     parser.add_argument('--tol', type=float, default=1e-3, metavar='LR',
                         help='learning rate (default: 1e-3)')
-    parser.add_argument('--weight-decay', type=float, default=3e-4, metavar='LR',
+    parser.add_argument('--weight-decay', type=float, default=5e-4, metavar='LR',
                         help='weight decay (default: 5e-4)')
     parser.add_argument('--training-frequency', type=int, default=1, metavar='LR',
                         help='how often do we optimize the path network')
-    parser.add_argument('--width-grad', type=int, default=64, metavar='LR',
+    parser.add_argument('--width-grad', type=int, default=44, metavar='LR',
                         help='width of the gradient network')
     parser.add_argument('--width-path', type=int, default=8, metavar='LR',
                         help='width of the path network')
