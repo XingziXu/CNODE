@@ -1,82 +1,80 @@
+from torchdyn.torchdyn.core import NeuralODE
+from torchdyn.torchdyn.datasets import *
+from torchdyn import *
+
+# quick run for automated notebook validation
+dry_run = False
+
+d = ToyDataset()
+X, yn = d.generate(n_samples=512, noise=1e-1, dataset_type='moons')
+
+import matplotlib.pyplot as plt
+
+colors = ['orange', 'blue'] 
+fig = plt.figure(figsize=(3,3))
+ax = fig.add_subplot(111)
+for i in range(len(X)):
+    ax.scatter(X[i,0], X[i,1], s=1, color=colors[yn[i].int()])
+#plt.show()
+
 import torch
+import torch.utils.data as data
+device = torch.device("cpu") # all of this works in GPU as well :)
+
+X_train = torch.Tensor(X).to(device)
+y_train = torch.LongTensor(yn.long()).to(device)
+train = data.TensorDataset(X_train, y_train)
+trainloader = data.DataLoader(train, batch_size=len(X), shuffle=True)
+
 import torch.nn as nn
-from torch.utils.data import DataLoader
-from torchvision import datasets, transforms
-
 import pytorch_lightning as pl
-from pytorch_lightning.loggers import WandbLogger
-from pytorch_lightning.metrics.functional import accuracy
-from utils import get_cifar_dloaders, CIFARLearner
 
-from torchdyn.torchdyn.models import *; from torchdyn import *
-
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-trainloader, testloader = get_cifar_dloaders(batch_size=64)
-
-class Augmenter(nn.Module):
-    """Augmentation class. Can handle several types of augmentation strategies for Neural DEs.
-    :param augment_dims: number of augmented dimensions to initialize
-    :type augment_dims: int
-    :param augment_idx: index of dimension to augment
-    :type augment_idx: int
-    :param augment_func: nn.Module applied to the input datasets of dimension `d` to determine the augmented initial condition of dimension `d + a`.
-                        `a` is defined implicitly in `augment_func` e.g. augment_func=nn.Linear(2, 5) augments a 2 dimensional input with 3 additional dimensions.
-    :type augment_func: nn.Module
-    :param order: whether to augment before datasets [augmentation, x] or after [x, augmentation] along dimension `augment_idx`. Options: ('first', 'last')
-    :type order: str
-    """
-    def __init__(self, augment_idx:int=1, augment_dims:int=5, augment_func=None, order='first'):
+class Learner(pl.LightningModule):
+    def __init__(self, t_span:torch.Tensor, model:nn.Module):
         super().__init__()
-        self.augment_dims, self.augment_idx, self.augment_func = augment_dims, augment_idx, augment_func
-        self.order = order
+        self.model, self.t_span = model, t_span
+    
+    def forward(self, x):
+        return self.model(x)
+    
+    def training_step(self, batch, batch_idx):
+        x, y = batch      
+        t_eval, y_hat = self.model(x, t_span)
+        y_hat = y_hat[-1] # select last point of solution trajectory
+        loss = nn.CrossEntropyLoss()(y_hat, y)
+        return {'loss': loss}   
+    
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.model.parameters(), lr=0.01)
 
-    def forward(self, x: torch.Tensor):
-        if not self.augment_func:
-            new_dims = list(x.shape)
-            new_dims[self.augment_idx] = self.augment_dims
+    def train_dataloader(self):
+        return trainloader
 
-            # if-else check for augmentation order
-            if self.order == 'first':
-                x = torch.cat([torch.zeros(new_dims).to(x), x],
-                              self.augment_idx)
-            else:
-                x = torch.cat([x, torch.zeros(new_dims).to(x)],
-                              self.augment_idx)
-        else:
-            # if-else check for augmentation order
-            if self.order == 'first':
-                x = torch.cat([self.augment_func(x).to(x), x],
-                              self.augment_idx)
-            else:
-                x = torch.cat([x, self.augment_func(x).to(x)],
-                               self.augment_idx)
-        return x
+f = nn.Sequential(
+        nn.Linear(2, 16),
+        nn.Tanh(),
+        nn.Linear(16, 2)                       
+    )
+t_span = torch.linspace(0, 1, 5)
 
-func = nn.Sequential(nn.GroupNorm(42, 42),
-                     nn.Conv2d(42, 42, 3, padding=1, bias=False),
-                     nn.Softplus(),                   
-                     nn.Conv2d(42, 42, 3, padding=1, bias=False),
-                     nn.Softplus(), 
-                     nn.GroupNorm(42, 42),
-                     nn.Conv2d(42, 42, 1)
-                     ).to(device)
+model = NeuralODE(f, sensitivity='adjoint', solver='dopri5').to(device)
 
-nde = NeuralODE(func, 
-               solver='dopri5',
-               sensitivity='adjoint',
-               atol=1e-4,
-               rtol=1e-4).to(device)
+t_span = torch.linspace(0,1,100)
+t_eval, trajectory = model(X_train, t_span)
+trajectory = trajectory.detach().cpu()
 
-# NOTE: the first noop `Augmenter` is used only to keep the `nde` at index `2`. Used to extract NFEs in CIFARLearner.
-model = nn.Sequential(Augmenter(1, 0), # does nothing
-                      Augmenter(1, 39),
-                      nde,
-                      nn.Conv2d(42, 6, 1),
-                      nn.AdaptiveAvgPool2d(4),
-                      nn.Flatten(),                     
-                      nn.Linear(6*16, 10)).to(device)
+f = nn.Sequential(
+        nn.Linear(2, 16),
+        nn.Tanh(),
+        nn.Linear(16, 2)                       
+    )
 
-learn = CIFARLearner(model, trainloader, testloader)
-trainer = pl.Trainer(max_epochs=20, gpus=1)
-                     
+model = NeuralODE(f, sensitivity='adjoint', solver='rk4', solver_adjoint='dopri5', atol_adjoint=1e-4, rtol_adjoint=1e-4).to(device)
+
+learn = Learner(t_span, model)
+if dry_run: trainer = pl.Trainer(min_epochs=1, max_epochs=1)
+else: trainer = pl.Trainer(min_epochs=200, max_epochs=300)
 trainer.fit(learn)
+
+t_eval, trajectory = model(X_train, t_span)
+trajectory = trajectory.detach().cpu()
