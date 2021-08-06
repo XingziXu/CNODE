@@ -90,7 +90,6 @@ def update(args, grad_net, classifier_net, optimizer, data, target, device):
 def evaluate(args, grad_net, classifier_net, data, device):
     p = data # assign data, initialization
     p.requires_grad=True # record the computation graph
-    p = grad_net.conv1(p)
     aug = torch.zeros(p.size(0),39,p.size(2),p.size(3)).to(device)
     p = torch.cat((p,aug),dim=1)
     t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
