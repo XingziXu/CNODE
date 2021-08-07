@@ -190,7 +190,7 @@ def main():
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--gamma', type=float, default=0.9, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
-    parser.add_argument('--step-size', type=int, default=40, metavar='M',
+    parser.add_argument('--step-size', type=int, default=5, metavar='M',
                         help='how many epochs to we change the learning rate, default is 5')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
@@ -210,7 +210,7 @@ def main():
                         help='learning rate for the path (default: 1e-3)')
     parser.add_argument('--lr-classifier', type=float, default=1e-3, metavar='LR',
                         help='learning rate for the classifier(default: 1e-3)')
-    parser.add_argument('--tol', type=float, default=1e-3, metavar='LR',
+    parser.add_argument('--tol', type=float, default=1e-4, metavar='LR',
                         help='learning rate (default: 1e-3)')
     parser.add_argument('--weight-decay', type=float, default=5e-4, metavar='LR',
                         help='weight decay (default: 5e-4)')
