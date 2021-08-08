@@ -371,7 +371,7 @@ def main():
                         help='width of the convolution')
     parser.add_argument('--width-grad', type=int, default=45, metavar='LR',
                         help='width of the convolution')
-    parser.add_argument('--width-pool', type=int, default=22, metavar='LR',
+    parser.add_argument('--width-pool', type=int, default=16, metavar='LR',
                         help='width of the adaptive average pooling')
 
     args = parser.parse_args()
