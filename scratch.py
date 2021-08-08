@@ -331,9 +331,9 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
 def main():
     # Training settings
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
-    parser.add_argument('--batch-size', type=int, default=256, metavar='N',
+    parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
-    parser.add_argument('--test-batch-size', type=int, default=64, metavar='N',
+    parser.add_argument('--test-batch-size', type=int, default=500, metavar='N',
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
@@ -373,7 +373,7 @@ def main():
                         help='width of the path network')
     parser.add_argument('--width-conv', type=int, default=16, metavar='LR',
                         help='width of the convolution')
-    parser.add_argument('--width-aug', type=int, default=5, metavar='LR',
+    parser.add_argument('--width-aug', type=int, default=32, metavar='LR',
                         help='width of the augmentation')
     parser.add_argument('--width-pool', type=int, default=8, metavar='LR',
                         help='width of the adaptive average pooling')
