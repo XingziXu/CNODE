@@ -11,7 +11,7 @@ from scipy.integrate import odeint as odeint_scipy
 from torch.autograd import Variable
 
 class Grad_net(nn.Module): # the Grad_net defines the networks for the path and for the gradients
-    def __init__(self, width_path: int, width_conv1: int, width_conv2: int):
+    def __init__(self, width_path: int, width_conv1: int, width_conv2: int, width_grad: int):
         super().__init__()
         self.nfe=0 # initialize the number of function evaluations
         
@@ -32,43 +32,43 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
             #nn.InstanceNorm2d(width_conv+width_aug+3),
             nn.GroupNorm(width_conv1+3,width_conv1+3),
-            nn.Conv2d(width_conv1+3,width_conv1+3, 3, padding=1, bias=False),
+            nn.Conv2d(width_conv1+3,width_grad, 3, padding=1, bias=False),
             #nn.Softplus(),
             nn.ReLU(),
-            nn.Conv2d(width_conv1+3,width_conv1+3, 3, padding=1, bias=False),
+            nn.Conv2d(width_grad,width_grad, 3, padding=1, bias=False),
             #nn.Softplus(),
             nn.ReLU(),
             #nn.InstanceNorm2d(width_grad),
-            nn.GroupNorm(width_conv1+3,width_conv1+3),
-            nn.Conv2d(width_conv1+3,width_conv1, 1)
+            nn.GroupNorm(width_grad,width_grad),
+            nn.Conv2d(width_grad,width_conv1, 1)
         )
         
         self.grad_h = nn.Sequential( # define the network for the gradient on y direction
             #nn.InstanceNorm2d(width_conv+width_aug+3),
             nn.GroupNorm(width_conv1+3,width_conv1+3),
-            nn.Conv2d(width_conv1+3,width_conv1+3, 3, padding=1, bias=False),
+            nn.Conv2d(width_conv1+3,width_grad, 3, padding=1, bias=False),
             #nn.Softplus(),
             nn.ReLU(),
-            nn.Conv2d(width_conv1+3,width_conv1+3, 3, padding=1, bias=False),
+            nn.Conv2d(width_grad,width_grad, 3, padding=1, bias=False),
             #nn.Softplus(),
             nn.ReLU(),
             #nn.InstanceNorm2d(width_grad),
-            nn.GroupNorm(width_conv1+3,width_conv1+3),
-            nn.Conv2d(width_conv1+3,width_conv1, 1)
+            nn.GroupNorm(width_grad,width_grad),
+            nn.Conv2d(width_grad,width_conv1, 1)
         )
 
         self.grad_i = nn.Sequential( # define the network for the gradient on x direction
             #nn.InstanceNorm2d(width_conv+width_aug+3),
             nn.GroupNorm(width_conv1+3,width_conv1+3),
-            nn.Conv2d(width_conv1+3,width_conv1+3, 3, padding=1, bias=False),
+            nn.Conv2d(width_conv1+3,width_grad, 3, padding=1, bias=False),
             #nn.Softplus(),
             nn.ReLU(),
-            nn.Conv2d(width_conv1+3,width_conv1+3, 3, padding=1, bias=False),
+            nn.Conv2d(width_grad,width_grad, 3, padding=1, bias=False),
             #nn.Softplus(),
             nn.ReLU(),
             #nn.InstanceNorm2d(width_grad),
-            nn.GroupNorm(width_conv1+3,width_conv1+3),
-            nn.Conv2d(width_conv1+3,width_conv1, 1)
+            nn.GroupNorm(width_grad,width_grad),
+            nn.Conv2d(width_grad,width_conv1, 1)
         )
 
     def forward(self, t, x):
@@ -369,6 +369,8 @@ def main():
                         help='width of the convolution')
     parser.add_argument('--width-conv2', type=int, default=6, metavar='LR',
                         help='width of the convolution')
+    parser.add_argument('--width-grad', type=int, default=45, metavar='LR',
+                        help='width of the convolution')
     parser.add_argument('--width-pool', type=int, default=4, metavar='LR',
                         help='width of the adaptive average pooling')
 
@@ -403,7 +405,7 @@ def main():
     train_loader = torch.utils.data.DataLoader(dataset1,**train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
 
-    grad_net = Grad_net(width_path=args.width_path, width_conv1=args.width_conv1, width_conv2=args.width_conv2).to(device) # define grad_net and assign to device
+    grad_net = Grad_net(width_path=args.width_path, width_conv1=args.width_conv1, width_conv2=args.width_conv2, width_grad=args.width_grad).to(device) # define grad_net and assign to device
     classifier_net = Classifier(width_pool=args.width_pool, width_conv2=args.width_conv2).to(device) # define classifier network and assign to device
 
     #grad_net.apply(initialize_grad)
