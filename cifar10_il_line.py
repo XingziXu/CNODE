@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms  
 from torch.optim.lr_scheduler import StepLR
-from torchdiffeq import odeint_adjoint as odeint
+from torchdiffeq import odeint as odeint
 from scipy.integrate import odeint as odeint_scipy
 from torch.autograd import Variable
 
@@ -347,7 +347,7 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
-    parser.add_argument('--adaptive-solver', action='store_true', default=True,
+    parser.add_argument('--adaptive-solver', action='store_true', default=False,
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
@@ -367,11 +367,11 @@ def main():
                         help='width of the path network')
     parser.add_argument('--width-conv1', type=int, default=42, metavar='LR',
                         help='width of the convolution')
-    parser.add_argument('--width-conv2', type=int, default=6, metavar='LR',
+    parser.add_argument('--width-conv2', type=int, default=64, metavar='LR',
                         help='width of the convolution')
-    parser.add_argument('--width-grad', type=int, default=45, metavar='LR',
+    parser.add_argument('--width-grad', type=int, default=43, metavar='LR',
                         help='width of the convolution')
-    parser.add_argument('--width-pool', type=int, default=16, metavar='LR',
+    parser.add_argument('--width-pool', type=int, default=8, metavar='LR',
                         help='width of the adaptive average pooling')
 
     args = parser.parse_args()
