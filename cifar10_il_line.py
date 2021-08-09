@@ -168,14 +168,14 @@ class WeightClipper(object): # define a clamp on the weights of a network
 
 def initialize_grad(m):
     if isinstance(m, nn.Conv2d):
-        #torch.nn.init.xavier_normal_(m.weight.data,gain=1.4)
-        torch.nn.init.orthogonal_(m.weight.data,gain=0.8)
-        #nn.init.kaiming_normal_(m.weight.data,nonlinearity='relu')
+        #nn.init.xavier_normal_(m.weight.data,gain=0.7)
         #nn.init.dirac_(m.weight.data)
-    if isinstance(m, nn.Linear):
-        #torch.nn.init.xavier_normal_(m.weight.data,gain=1.4)
         #nn.init.kaiming_normal_(m.weight.data,nonlinearity='relu')
-        nn.init.orthogonal_(m.weight.data, gain=0.8)
+        nn.init.orthogonal_(m.weight.data,gain=0.9)
+    if isinstance(m, nn.Linear):
+        #nn.init.xavier_normal_(m.weight.data,gain=0.7)
+        #nn.init.kaiming_normal_(m.weight.data,nonlinearity='relu')
+        nn.init.orthogonal_(m.weight.data,gain=0.9)
 
 def initialize_path(n):
     if isinstance(n, nn.Conv2d):
@@ -192,8 +192,8 @@ def initialize_classifier(p):
         #torch.nn.init.eye_(m.weight.data)
         #nn.init.kaiming_uniform_(m.weight.data,nonlinearity='relu')
     if isinstance(p, nn.Linear):
-        #torch.nn.init.kaiming_normal_(p.weight.data,nonlinearity='leaky_relu')
-        torch.nn.init.sparse_(p.weight.data, sparsity=0.1)
+        #torch.nn.init.kaiming_normal_(p.weight.data,nonlinearity='relu')
+        nn.init.orthogonal_(p.weight.data,gain=1.2)
 
 def get_n_params(model): # define a function to measure the number of parameters in a neural network
     pp=0
@@ -408,11 +408,11 @@ def main():
     grad_net = Grad_net(width_path=args.width_path, width_conv1=args.width_conv1, width_conv2=args.width_conv2, width_grad=args.width_grad).to(device) # define grad_net and assign to device
     classifier_net = Classifier(width_pool=args.width_pool, width_conv2=args.width_conv2).to(device) # define classifier network and assign to device
 
-    #grad_net.apply(initialize_grad)
+    grad_net.apply(initialize_grad)
     #grad_net.grad_g.apply(initialize_grad)
     #grad_net.grad_h.apply(initialize_grad)
     #grad_net.path.apply(initialize_path)
-    #classifier_net.apply(initialize_classifier)
+    classifier_net.apply(initialize_classifier)
 
     optimizer_grad = optim.AdamW(list(grad_net.grad_g.parameters())+list(grad_net.grad_h.parameters())+list(grad_net.grad_i.parameters())+list(grad_net.conv1.parameters())+list(grad_net.conv2.parameters()), lr=args.lr_grad, weight_decay=args.weight_decay) # define optimizer on the gradients
     optimizer_path = optim.AdamW(list(grad_net.path.parameters()), lr=args.lr_path, weight_decay=args.weight_decay) # define optimizer on the path
