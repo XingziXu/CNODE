@@ -373,7 +373,7 @@ def main():
                         help='width of the path network')
     parser.add_argument('--width-conv1', type=int, default=16, metavar='LR',
                         help='width of the convolution')
-    parser.add_argument('--width-conv2', type=int, default=35, metavar='LR',
+    parser.add_argument('--width-conv2', type=int, default=64, metavar='LR',
                         help='width of the convolution')
     parser.add_argument('--width-aug', type=int, default=32, metavar='LR',
                         help='width of the augmentation')

@@ -365,13 +365,13 @@ def main():
                         help='how often do we optimize the path network')
     parser.add_argument('--width-grad', type=int, default=64, metavar='LR',
                         help='width of the gradient network')
-    parser.add_argument('--width-path', type=int, default=8, metavar='LR',
+    parser.add_argument('--width-path', type=int, default=12, metavar='LR',
                         help='width of the path network')
-    parser.add_argument('--width-conv2', type=int, default=6, metavar='LR',
+    parser.add_argument('--width-conv2', type=int, default=128, metavar='LR',
                         help='width of the convolution')
-    parser.add_argument('--width-aug', type=int, default=32, metavar='LR',
+    parser.add_argument('--width-aug', type=int, default=39, metavar='LR',
                         help='width of the augmentation')
-    parser.add_argument('--width-pool', type=int, default=8, metavar='LR',
+    parser.add_argument('--width-pool', type=int, default=6, metavar='LR',
                         help='width of the adaptive average pooling')
 
     args = parser.parse_args()
