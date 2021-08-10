@@ -344,11 +344,11 @@ def main():
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad, width_conv1=args.width_conv1, width_conv2=args.width_conv2, width_aug=args.width_aug).to(device) # define grad_net and assign to device
     classifier_net = Classifier(width_conv2=args.width_conv2, width_pool=args.width_pool).to(device) # define classifier network and assign to device
 
-    grad_net.apply(initialize_grad)
+    #grad_net.apply(initialize_grad)
     #grad_net.grad_g.apply(initialize_grad)
     #grad_net.grad_h.apply(initialize_grad)
     #grad_net.path.apply(initialize_path)
-    classifier_net.apply(initialize_classifier)
+    #classifier_net.apply(initialize_classifier)
 
     optimizer_grad = optim.AdamW(list(grad_net.parameters())+list(classifier_net.parameters()), lr=args.lr_grad, weight_decay=args.weight_decay) # define optimizer on the gradients
     
