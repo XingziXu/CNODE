@@ -21,23 +21,24 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 
         self.path = nn.Sequential( # define the network for the integration path
         nn.Conv2d(4,width_path,1,1,0),
-        nn.Sigmoid(),
+        nn.RReLU(),
         nn.Conv2d(width_path,width_path,3,1,1),
-        nn.Sigmoid(),
+        nn.RReLU(),
         nn.Conv2d(width_path,3,1,1,0),
         nn.Flatten(),
-        nn.Linear(3072,3)
+        nn.Linear(3072,3),
+        nn.Softsign()
         )
         
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
             #nn.InstanceNorm2d(width_conv+width_aug+3),
-            nn.GroupNorm(width_conv1+width_aug+3,width_conv1+width_aug+3),
-            nn.Conv2d(width_conv1+width_aug+3,width_grad, 3, padding=1, bias=False),
-            nn.Softplus(),
-            #nn.ReLU(),
+            nn.GroupNorm(width_conv1+width_aug,width_conv1+width_aug),
+            nn.Conv2d(width_conv1+width_aug,width_grad, 3, padding=1, bias=False),
+            #nn.Softplus(),
+            nn.ReLU(),
             nn.Conv2d(width_grad,width_grad, 3, padding=1, bias=False),
-            nn.Softplus(),
-            #nn.ReLU(),
+            #nn.Softplus(),
+            nn.ReLU(),
             #nn.InstanceNorm2d(width_grad),
             nn.GroupNorm(width_grad,width_grad),
             nn.Conv2d(width_grad,width_conv1+width_aug, 1)
@@ -45,13 +46,13 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 
         self.grad_h = nn.Sequential( # define the network for the gradient on x direction
             #nn.InstanceNorm2d(width_conv+width_aug+3),
-            nn.GroupNorm(width_conv1+width_aug+3,width_conv1+width_aug+3),
-            nn.Conv2d(width_conv1+width_aug+3,width_grad, 3, padding=1, bias=False),
-            nn.Softplus(),
-            #nn.ReLU(),
+            nn.GroupNorm(width_conv1+width_aug,width_conv1+width_aug),
+            nn.Conv2d(width_conv1+width_aug,width_grad, 3, padding=1, bias=False),
+            #nn.Softplus(),
+            nn.ReLU(),
             nn.Conv2d(width_grad,width_grad, 3, padding=1, bias=False),
-            nn.Softplus(),
-            #nn.ReLU(),
+            #nn.Softplus(),
+            nn.ReLU(),
             #nn.InstanceNorm2d(width_grad),
             nn.GroupNorm(width_grad,width_grad),
             nn.Conv2d(width_grad,width_conv1+width_aug, 1)
@@ -59,13 +60,13 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 
         self.grad_i = nn.Sequential( # define the network for the gradient on x direction
             #nn.InstanceNorm2d(width_conv+width_aug+3),
-            nn.GroupNorm(width_conv1+width_aug+3,width_conv1+width_aug+3),
-            nn.Conv2d(width_conv1+width_aug+3,width_grad, 3, padding=1, bias=False),
-            nn.Softplus(),
-            #nn.ReLU(),
+            nn.GroupNorm(width_conv1+width_aug,width_conv1+width_aug),
+            nn.Conv2d(width_conv1+width_aug,width_grad, 3, padding=1, bias=False),
+            #nn.Softplus(),
+            nn.ReLU(),
             nn.Conv2d(width_grad,width_grad, 3, padding=1, bias=False),
-            nn.Softplus(),
-            #nn.ReLU(),
+            #nn.Softplus(),
+            nn.ReLU(),
             #nn.InstanceNorm2d(width_grad),
             nn.GroupNorm(width_grad,width_grad),
             nn.Conv2d(width_grad,width_conv1+width_aug, 1)
@@ -78,69 +79,24 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         #device = torch.device("cpu")
         
         dt = 0.5
-        t_r1 = t+dt
-        t_l1 = t-dt
-        t_r2 = t+2*dt
-        t_l2 = t-2*dt
-
         t_input = t.expand(x.size(0),1) # resize
         t_channel = ((t_input.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
         path_input = torch.cat((t_channel, p_i),dim=1) # concatenate the time and the image
         g_h_i = self.path(path_input) # calculate the position of the integration path
 
-        t_input_l1 = t_l1.expand(x.size(0),1) # resize
-        t_channel_l1 = ((t_input_l1.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
-        path_input_l1 = torch.cat((t_channel_l1, p_i),dim=1) # concatenate the time and the image
-        g_h_i_l1 = self.path(path_input_l1) # calculate the position of the integration path
-
-        t_input_r1 = t_r1.expand(x.size(0),1) # resize
-        t_channel_r1 = ((t_input_r1.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
-        path_input_r1 = torch.cat((t_channel_r1, p_i),dim=1) # concatenate the time and the image
-        g_h_i_r1 = self.path(path_input_r1) # calculate the position of the integration path
-
-        t_input_l2 = t_l2.expand(x.size(0),1) # resize
-        t_channel_l2 = ((t_input_l2.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
-        path_input_l2 = torch.cat((t_channel_l2, p_i),dim=1) # concatenate the time and the image
-        g_h_i_l2 = self.path(path_input_l2) # calculate the position of the integration path
-
-        t_input_r2 = t_r2.expand(x.size(0),1) # resize
-        t_channel_r2 = ((t_input_r2.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
-        path_input_r2 = torch.cat((t_channel_r2, p_i),dim=1) # concatenate the time and the image
-        g_h_i_r2 = self.path(path_input_r2) # calculate the position of the integration path
-
-        #dg_dt_t = (g_h_r1-g_h)/(dt) # central differences
-        dg_dt_t = (-g_h_i_r2+8*g_h_i_r1-8*g_h_i_l1+g_h_i_l2)/(12*dt) # five-point
-
-        dg_dt = dg_dt_t[:,0].view(dg_dt_t[:,0].size(),1) # calculate the gradients of the g position w.r.t. time
-        #dg_dt1 = torch.autograd.grad(g_h_i[:,0].view(g_h_i.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the g position w.r.t. time
-        
-        #print(torch.abs(dg_dt.view(256,1)-dg_dt1).max())
-        
-        dg_dt = dg_dt.view(dg_dt.size(0),1,1) # resize 
+        dg_dt = g_h_i[:,0].view(g_h_i.size(0),1,1) # resize 
         dg_dt = dg_dt.expand(dg_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         dg_dt = dg_dt.view(dg_dt.size(0),1,x.size(2),x.size(3)) # resize 
-        #dh_dt1 = torch.autograd.grad(g_h_i[:,1].view(g_h_i.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the h position w.r.t. time
-        dh_dt = dg_dt_t[:,1].view(dg_dt_t[:,1].size(),1) # calculate the gradients of the g position w.r.t. time
-        
-        #print(torch.abs(dh_dt.view(256,1)-dh_dt1).max())
 
-        dh_dt = dh_dt.view(dh_dt.size(0),1,1) # resize 
+        dh_dt = g_h_i[:,1].view(g_h_i.size(0),1,1) # resize 
         dh_dt = dh_dt.expand(dh_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         dh_dt = dh_dt.view(dh_dt.size(0),1,x.size(2),x.size(3)) # resize 
-        #di_dt1 = torch.autograd.grad(g_h_i[:,2].view(g_h_i.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the i position w.r.t. time
-        di_dt = dg_dt_t[:,2].view(dg_dt_t[:,2].size(),1) # calculate the gradients of the g position w.r.t. time
-        
-        #print(torch.abs(di_dt.view(256,1)-di_dt1).max())
-        
-        di_dt = di_dt.view(di_dt.size(0),1,1) # resize 
+
+        di_dt = g_h_i[:,2].view(g_h_i.size(0),1,1) # resize 
         di_dt = di_dt.expand(di_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         di_dt = di_dt.view(di_dt.size(0),1,x.size(2),x.size(3)) # resize 
         
-        g_h_i_input = g_h_i.view(g_h_i.size(0),g_h_i.size(1),1) # resize 
-        g_h_i_input = g_h_i_input.expand(g_h_i.size(0),g_h_i.size(1),x.size(2)*x.size(3)) # resize 
-        g_h_i_input = g_h_i_input.view((g_h_i.size(0),g_h_i.size(1),x.size(2),x.size(3))) # resize 
-        x_aug=torch.cat((x,g_h_i_input),dim=1) # append the dimension information to the image
-        dp = torch.mul(self.grad_g(x_aug),dg_dt) + torch.mul(self.grad_h(x_aug),dh_dt) + torch.mul(self.grad_i(x_aug),di_dt) # calculate the change in p
+        dp = torch.mul(self.grad_g(x),dg_dt) + torch.mul(self.grad_h(x),dh_dt) + torch.mul(self.grad_i(x),di_dt) # calculate the change in p
         #print(t.item())
         return dp
 
@@ -155,16 +111,6 @@ class Classifier(nn.Module): # define the linear classifier
         x = torch.flatten(x,1) # flatten the input image&dimension into a vector
         x = self.classifier(x) # generate a 1x10 probability vector based on the flattened image&dimension
         return x
-
-class WeightClipper(object): # define a clamp on the weights of a network
-    def __init__(self, frequency=5):
-        self.frequency = frequency
-
-    def __call__(self, module):
-        if hasattr(module, 'weight'):
-            w = module.weight.data
-            w = w.clamp(0, float('inf')) # clamp the path network's weights to be positive so that the generated path is monotonically increasing
-            module.weight.data = w
 
 def initialize_grad(m):
     if isinstance(m, nn.Conv2d):
@@ -251,17 +197,11 @@ def evaluate(args, grad_net, classifier_net, data, device):
 def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, epoch):
     grad_net.train() # set network on training mode
     classifier_net.train() # set network on training mode
-    if args.clipper:
-        clipper = WeightClipper() # define a clipper, make sure the path is monotonically increasing from the beginning
-        grad_net.path.apply(clipper) # force the weights of the path network to be non-negative. this ensures that the integration is monotonically increasing
     for batch_idx, (data, target) in enumerate(train_loader): # for each batch
         data, target = data.to(device), target.to(device) # assign data to device
         global p_i # claim the initial image batch as a global variable
         p_i = data
         loss_grad = update(args, grad_net, classifier_net, optimizer_grad, data, target, device) # update gradient networks' weights
-        if args.clipper:
-            clipper = WeightClipper() # define a clipper
-            grad_net.path.apply(clipper) # force the weights of the path network to be non-negative. this ensures that the integration is monotonically increasing
         if batch_idx % args.log_interval == 0: # print training loss and training process
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
@@ -351,7 +291,7 @@ def main():
                         help='learning rate for the path (default: 1e-3)')
     parser.add_argument('--lr-classifier', type=float, default=1e-3, metavar='LR',
                         help='learning rate for the classifier(default: 1e-3)')
-    parser.add_argument('--tol', type=float, default=1e-3, metavar='LR',
+    parser.add_argument('--tol', type=float, default=1e-4, metavar='LR',
                         help='learning rate (default: 1e-3)')
     parser.add_argument('--weight-decay', type=float, default=5e-4, metavar='LR',
                         help='weight decay (default: 5e-4)')
@@ -404,11 +344,11 @@ def main():
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad, width_conv1=args.width_conv1, width_conv2=args.width_conv2, width_aug=args.width_aug).to(device) # define grad_net and assign to device
     classifier_net = Classifier(width_conv2=args.width_conv2, width_pool=args.width_pool).to(device) # define classifier network and assign to device
 
-    grad_net.apply(initialize_grad)
+    #grad_net.apply(initialize_grad)
     #grad_net.grad_g.apply(initialize_grad)
     #grad_net.grad_h.apply(initialize_grad)
     #grad_net.path.apply(initialize_path)
-    classifier_net.apply(initialize_classifier)
+    #classifier_net.apply(initialize_classifier)
 
     optimizer_grad = optim.AdamW(list(grad_net.parameters())+list(classifier_net.parameters()), lr=args.lr_grad, weight_decay=args.weight_decay) # define optimizer on the gradients
     
