@@ -21,13 +21,13 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 
         self.path = nn.Sequential( # define the network for the integration path
         nn.Conv2d(4,width_path,1,1,0),
-        nn.Sigmoid(),
+        nn.RReLU(),
         nn.Conv2d(width_path,width_path,3,1,1),
-        nn.Sigmoid(),
+        nn.RReLU(),
         nn.Conv2d(width_path,3,1,1,0),
         nn.Flatten(),
         nn.Linear(3072,3),
-        nn.ReLU()
+        nn.Softsign()
         )
         
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
