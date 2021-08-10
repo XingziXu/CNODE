@@ -31,8 +31,8 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
             #nn.InstanceNorm2d(width_conv+width_aug+3),
-            nn.GroupNorm(width_conv1+width_aug+3,width_conv1+width_aug+3),
-            nn.Conv2d(width_conv1+width_aug+3,width_grad, 3, padding=1, bias=False),
+            nn.GroupNorm(width_conv1+width_aug,width_conv1+width_aug),
+            nn.Conv2d(width_conv1+width_aug,width_grad, 3, padding=1, bias=False),
             nn.Softplus(),
             #nn.ReLU(),
             nn.Conv2d(width_grad,width_grad, 3, padding=1, bias=False),
@@ -45,8 +45,8 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 
         self.grad_h = nn.Sequential( # define the network for the gradient on x direction
             #nn.InstanceNorm2d(width_conv+width_aug+3),
-            nn.GroupNorm(width_conv1+width_aug+3,width_conv1+width_aug+3),
-            nn.Conv2d(width_conv1+width_aug+3,width_grad, 3, padding=1, bias=False),
+            nn.GroupNorm(width_conv1+width_aug,width_conv1+width_aug),
+            nn.Conv2d(width_conv1+width_aug,width_grad, 3, padding=1, bias=False),
             nn.Softplus(),
             #nn.ReLU(),
             nn.Conv2d(width_grad,width_grad, 3, padding=1, bias=False),
@@ -59,8 +59,8 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 
         self.grad_i = nn.Sequential( # define the network for the gradient on x direction
             #nn.InstanceNorm2d(width_conv+width_aug+3),
-            nn.GroupNorm(width_conv1+width_aug+3,width_conv1+width_aug+3),
-            nn.Conv2d(width_conv1+width_aug+3,width_grad, 3, padding=1, bias=False),
+            nn.GroupNorm(width_conv1+width_aug,width_conv1+width_aug),
+            nn.Conv2d(width_conv1+width_aug,width_grad, 3, padding=1, bias=False),
             nn.Softplus(),
             #nn.ReLU(),
             nn.Conv2d(width_grad,width_grad, 3, padding=1, bias=False),
@@ -136,11 +136,11 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         di_dt = di_dt.expand(di_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         di_dt = di_dt.view(di_dt.size(0),1,x.size(2),x.size(3)) # resize 
         
-        g_h_i_input = g_h_i.view(g_h_i.size(0),g_h_i.size(1),1) # resize 
-        g_h_i_input = g_h_i_input.expand(g_h_i.size(0),g_h_i.size(1),x.size(2)*x.size(3)) # resize 
-        g_h_i_input = g_h_i_input.view((g_h_i.size(0),g_h_i.size(1),x.size(2),x.size(3))) # resize 
-        x_aug=torch.cat((x,g_h_i_input),dim=1) # append the dimension information to the image
-        dp = torch.mul(self.grad_g(x_aug),dg_dt) + torch.mul(self.grad_h(x_aug),dh_dt) + torch.mul(self.grad_i(x_aug),di_dt) # calculate the change in p
+        #g_h_i_input = g_h_i.view(g_h_i.size(0),g_h_i.size(1),1) # resize 
+        #g_h_i_input = g_h_i_input.expand(g_h_i.size(0),g_h_i.size(1),x.size(2)*x.size(3)) # resize 
+        #g_h_i_input = g_h_i_input.view((g_h_i.size(0),g_h_i.size(1),x.size(2),x.size(3))) # resize 
+        #x_aug=torch.cat((x,g_h_i_input),dim=1) # append the dimension information to the image
+        dp = torch.mul(self.grad_g(x),dg_dt) + torch.mul(self.grad_h(x),dh_dt) + torch.mul(self.grad_i(x),di_dt) # calculate the change in p
         #print(t.item())
         return dp
 
