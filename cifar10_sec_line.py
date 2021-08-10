@@ -32,15 +32,43 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
             #nn.InstanceNorm2d(width_conv+width_aug+3),
             nn.GroupNorm(width_conv1+width_aug+3,width_conv1+width_aug+3),
-            nn.Conv2d(width_conv1+width_aug+3,width_grad,1,1,0),
-            #nn.Softplus(),
-            nn.ReLU(),
-            nn.Conv2d(width_grad,width_grad,3,1,1),
-            #nn.Softplus(),
-            nn.ReLU(),
+            nn.Conv2d(width_conv1+width_aug+3,width_grad, 3, padding=1, bias=False),
+            nn.Softplus(),
+            #nn.ReLU(),
+            nn.Conv2d(width_grad,width_grad, 3, padding=1, bias=False),
+            nn.Softplus(),
+            #nn.ReLU(),
             #nn.InstanceNorm2d(width_grad),
             nn.GroupNorm(width_grad,width_grad),
-            nn.Conv2d(width_grad,width_conv1+width_aug,1,1,0)
+            nn.Conv2d(width_grad,width_conv1+width_aug, 1)
+        )
+
+        self.grad_h = nn.Sequential( # define the network for the gradient on x direction
+            #nn.InstanceNorm2d(width_conv+width_aug+3),
+            nn.GroupNorm(width_conv1+width_aug+3,width_conv1+width_aug+3),
+            nn.Conv2d(width_conv1+width_aug+3,width_grad, 3, padding=1, bias=False),
+            nn.Softplus(),
+            #nn.ReLU(),
+            nn.Conv2d(width_grad,width_grad, 3, padding=1, bias=False),
+            nn.Softplus(),
+            #nn.ReLU(),
+            #nn.InstanceNorm2d(width_grad),
+            nn.GroupNorm(width_grad,width_grad),
+            nn.Conv2d(width_grad,width_conv1+width_aug, 1)
+        )
+
+        self.grad_i = nn.Sequential( # define the network for the gradient on x direction
+            #nn.InstanceNorm2d(width_conv+width_aug+3),
+            nn.GroupNorm(width_conv1+width_aug+3,width_conv1+width_aug+3),
+            nn.Conv2d(width_conv1+width_aug+3,width_grad, 3, padding=1, bias=False),
+            nn.Softplus(),
+            #nn.ReLU(),
+            nn.Conv2d(width_grad,width_grad, 3, padding=1, bias=False),
+            nn.Softplus(),
+            #nn.ReLU(),
+            #nn.InstanceNorm2d(width_grad),
+            nn.GroupNorm(width_grad,width_grad),
+            nn.Conv2d(width_grad,width_conv1+width_aug, 1)
         )
 
     def forward(self, t, x):
@@ -112,7 +140,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         g_h_i_input = g_h_i_input.expand(g_h_i.size(0),g_h_i.size(1),x.size(2)*x.size(3)) # resize 
         g_h_i_input = g_h_i_input.view((g_h_i.size(0),g_h_i.size(1),x.size(2),x.size(3))) # resize 
         x_aug=torch.cat((x,g_h_i_input),dim=1) # append the dimension information to the image
-        dp = torch.mul(self.grad_g(x_aug),dg_dt) + torch.mul(self.grad_g(x_aug),dh_dt) + torch.mul(self.grad_g(x_aug),di_dt) # calculate the change in p
+        dp = torch.mul(self.grad_g(x_aug),dg_dt) + torch.mul(self.grad_h(x_aug),dh_dt) + torch.mul(self.grad_i(x_aug),di_dt) # calculate the change in p
         #print(t.item())
         return dp
 
@@ -329,17 +357,17 @@ def main():
                         help='weight decay (default: 5e-4)')
     parser.add_argument('--training-frequency', type=int, default=1, metavar='LR',
                         help='how often do we optimize the path network')
-    parser.add_argument('--width-grad', type=int, default=64, metavar='LR',
+    parser.add_argument('--width-grad', type=int, default=42, metavar='LR',
                         help='width of the gradient network')
     parser.add_argument('--width-path', type=int, default=8, metavar='LR',
                         help='width of the path network')
-    parser.add_argument('--width-conv1', type=int, default=16, metavar='LR',
+    parser.add_argument('--width-conv1', type=int, default=21, metavar='LR',
                         help='width of the convolution')
-    parser.add_argument('--width-conv2', type=int, default=64, metavar='LR',
+    parser.add_argument('--width-conv2', type=int, default=6, metavar='LR',
                         help='width of the convolution')
-    parser.add_argument('--width-aug', type=int, default=32, metavar='LR',
+    parser.add_argument('--width-aug', type=int, default=21, metavar='LR',
                         help='width of the augmentation')
-    parser.add_argument('--width-pool', type=int, default=8, metavar='LR',
+    parser.add_argument('--width-pool', type=int, default=4, metavar='LR',
                         help='width of the adaptive average pooling')
 
     args = parser.parse_args()
