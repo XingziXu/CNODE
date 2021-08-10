@@ -16,49 +16,11 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         self.nfe=0 # initialize the number of function evaluations
         
         self.conv2 = nn.Conv2d(width_aug+3,width_conv2,1)
-
-        self.path = nn.Sequential( # define the network for the integration path
-        nn.Conv2d(4,width_path,1,1,0),
-        nn.Sigmoid(),
-        nn.Conv2d(width_path,width_path,3,1,1),
-        nn.Sigmoid(),
-        nn.Conv2d(width_path,3,1,1,0),
-        nn.Flatten(),
-        nn.Linear(3072,3)
-        )
         
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
             #nn.InstanceNorm2d(width_conv+width_aug+3),
-            nn.GroupNorm(3+width_aug+3,3+width_aug+3),
-            nn.Conv2d(3+width_aug+3,width_grad, 3, padding=1, bias=False),
-            nn.Softplus(),
-            #nn.ReLU(),
-            nn.Conv2d(width_grad,width_grad, 3, padding=1, bias=False),
-            nn.Softplus(),
-            #nn.ReLU(),
-            #nn.InstanceNorm2d(width_grad),
-            nn.GroupNorm(width_grad,width_grad),
-            nn.Conv2d(width_grad,3+width_aug,1)
-        )
-        
-        self.grad_h = nn.Sequential( # define the network for the gradient on y direction
-            #nn.InstanceNorm2d(width_conv+width_aug+3),
-            nn.GroupNorm(3+width_aug+3,3+width_aug+3),
-            nn.Conv2d(3+width_aug+3,width_grad, 3, padding=1, bias=False),
-            nn.Softplus(),
-            #nn.ReLU(),
-            nn.Conv2d(width_grad,width_grad, 3, padding=1, bias=False),
-            nn.Softplus(),
-            #nn.ReLU(),
-            #nn.InstanceNorm2d(width_grad),
-            nn.GroupNorm(width_grad,width_grad),
-            nn.Conv2d(width_grad,3+width_aug,1)
-        )
-
-        self.grad_i = nn.Sequential( # define the network for the gradient on x direction
-            #nn.InstanceNorm2d(width_conv+width_aug+3),
-            nn.GroupNorm(3+width_aug+3,3+width_aug+3),
-            nn.Conv2d(3+width_aug+3,width_grad, 3, padding=1, bias=False),
+            nn.GroupNorm(3+width_aug,3+width_aug),
+            nn.Conv2d(3+width_aug,width_grad, 3, padding=1, bias=False),
             nn.Softplus(),
             #nn.ReLU(),
             nn.Conv2d(width_grad,width_grad, 3, padding=1, bias=False),
@@ -75,70 +37,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         device = torch.device("cuda") # determine if the device is the gpu or cpu
         #device = torch.device("cpu")
         
-        dt = 0.5
-        t_r1 = t+dt
-        t_l1 = t-dt
-        t_r2 = t+2*dt
-        t_l2 = t-2*dt
-
-        t_input = t.expand(x.size(0),1) # resize
-        t_channel = ((t_input.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
-        path_input = torch.cat((t_channel, p_i),dim=1) # concatenate the time and the image
-        g_h_i = self.path(path_input) # calculate the position of the integration path
-
-        t_input_l1 = t_l1.expand(x.size(0),1) # resize
-        t_channel_l1 = ((t_input_l1.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
-        path_input_l1 = torch.cat((t_channel_l1, p_i),dim=1) # concatenate the time and the image
-        g_h_i_l1 = self.path(path_input_l1) # calculate the position of the integration path
-
-        t_input_r1 = t_r1.expand(x.size(0),1) # resize
-        t_channel_r1 = ((t_input_r1.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
-        path_input_r1 = torch.cat((t_channel_r1, p_i),dim=1) # concatenate the time and the image
-        g_h_i_r1 = self.path(path_input_r1) # calculate the position of the integration path
-
-        t_input_l2 = t_l2.expand(x.size(0),1) # resize
-        t_channel_l2 = ((t_input_l2.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
-        path_input_l2 = torch.cat((t_channel_l2, p_i),dim=1) # concatenate the time and the image
-        g_h_i_l2 = self.path(path_input_l2) # calculate the position of the integration path
-
-        t_input_r2 = t_r2.expand(x.size(0),1) # resize
-        t_channel_r2 = ((t_input_r2.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
-        path_input_r2 = torch.cat((t_channel_r2, p_i),dim=1) # concatenate the time and the image
-        g_h_i_r2 = self.path(path_input_r2) # calculate the position of the integration path
-
-        #dg_dt_t = (g_h_r1-g_h)/(dt) # central differences
-        dg_dt_t = (-g_h_i_r2+8*g_h_i_r1-8*g_h_i_l1+g_h_i_l2)/(12*dt) # five-point
-
-        dg_dt = dg_dt_t[:,0].view(dg_dt_t[:,0].size(),1) # calculate the gradients of the g position w.r.t. time
-        #dg_dt1 = torch.autograd.grad(g_h_i[:,0].view(g_h_i.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the g position w.r.t. time
-        
-        #print(torch.abs(dg_dt.view(256,1)-dg_dt1).max())
-        
-        dg_dt = dg_dt.view(dg_dt.size(0),1,1) # resize 
-        dg_dt = dg_dt.expand(dg_dt.size(0),1,x.size(2)*x.size(3)) # resize 
-        dg_dt = dg_dt.view(dg_dt.size(0),1,x.size(2),x.size(3)) # resize 
-        #dh_dt1 = torch.autograd.grad(g_h_i[:,1].view(g_h_i.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the h position w.r.t. time
-        dh_dt = dg_dt_t[:,1].view(dg_dt_t[:,1].size(),1) # calculate the gradients of the g position w.r.t. time
-        
-        #print(torch.abs(dh_dt.view(256,1)-dh_dt1).max())
-
-        dh_dt = dh_dt.view(dh_dt.size(0),1,1) # resize 
-        dh_dt = dh_dt.expand(dh_dt.size(0),1,x.size(2)*x.size(3)) # resize 
-        dh_dt = dh_dt.view(dh_dt.size(0),1,x.size(2),x.size(3)) # resize 
-        #di_dt1 = torch.autograd.grad(g_h_i[:,2].view(g_h_i.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the i position w.r.t. time
-        di_dt = dg_dt_t[:,2].view(dg_dt_t[:,2].size(),1) # calculate the gradients of the g position w.r.t. time
-        
-        #print(torch.abs(di_dt.view(256,1)-di_dt1).max())
-        
-        di_dt = di_dt.view(di_dt.size(0),1,1) # resize 
-        di_dt = di_dt.expand(di_dt.size(0),1,x.size(2)*x.size(3)) # resize 
-        di_dt = di_dt.view(di_dt.size(0),1,x.size(2),x.size(3)) # resize 
-        
-        g_h_i_input = g_h_i.view(g_h_i.size(0),g_h_i.size(1),1) # resize 
-        g_h_i_input = g_h_i_input.expand(g_h_i.size(0),g_h_i.size(1),x.size(2)*x.size(3)) # resize 
-        g_h_i_input = g_h_i_input.view((g_h_i.size(0),g_h_i.size(1),x.size(2),x.size(3))) # resize 
-        x_aug=torch.cat((x,g_h_i_input),dim=1) # append the dimension information to the image
-        dp = torch.mul(self.grad_g(x_aug),dg_dt) + torch.mul(self.grad_h(x_aug),dh_dt) + torch.mul(self.grad_i(x_aug),di_dt) # calculate the change in p
+        dp = self.grad_g(x) # calculate the change in p
         #print(t.item())
         return dp
 
@@ -247,17 +146,9 @@ def evaluate(args, grad_net, classifier_net, data, device):
 def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, epoch):
     grad_net.train() # set network on training mode
     classifier_net.train() # set network on training mode
-    if args.clipper:
-        clipper = WeightClipper() # define a clipper, make sure the path is monotonically increasing from the beginning
-        grad_net.path.apply(clipper) # force the weights of the path network to be non-negative. this ensures that the integration is monotonically increasing
     for batch_idx, (data, target) in enumerate(train_loader): # for each batch
         data, target = data.to(device), target.to(device) # assign data to device
-        global p_i # claim the initial image batch as a global variable
-        p_i = data
         loss_grad = update(args, grad_net, classifier_net, optimizer_grad, data, target, device) # update gradient networks' weights
-        if args.clipper:
-            clipper = WeightClipper() # define a clipper
-            grad_net.path.apply(clipper) # force the weights of the path network to be non-negative. this ensures that the integration is monotonically increasing
         if batch_idx % args.log_interval == 0: # print training loss and training process
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
@@ -356,7 +247,7 @@ def main():
                         help='how often do we optimize the path network')
     parser.add_argument('--width-grad', type=int, default=42, metavar='LR',
                         help='width of the gradient network')
-    parser.add_argument('--width-path', type=int, default=8, metavar='LR',
+    parser.add_argument('--width-path', type=int, default=12, metavar='LR',
                         help='width of the path network')
     parser.add_argument('--width-conv2', type=int, default=6, metavar='LR',
                         help='width of the convolution')
