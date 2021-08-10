@@ -26,13 +26,13 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         nn.Sigmoid(),
         nn.Conv2d(width_path,3,1,1,0),
         nn.Flatten(),
-        nn.Linear(3072,2)
+        nn.Linear(3072,3)
         )
         
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
             #nn.InstanceNorm2d(width_conv+width_aug+3),
-            nn.GroupNorm(width_conv1+2,width_conv1+2),
-            nn.Conv2d(width_conv1+2,width_grad, 3, padding=1, bias=False),
+            nn.GroupNorm(width_conv1+3,width_conv1+3),
+            nn.Conv2d(width_conv1+3,width_grad, 3, padding=1, bias=False),
             #nn.Softplus(),
             nn.ReLU(),
             nn.Conv2d(width_grad,width_grad, 3, padding=1, bias=False),
@@ -45,8 +45,22 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         
         self.grad_h = nn.Sequential( # define the network for the gradient on y direction
             #nn.InstanceNorm2d(width_conv+width_aug+3),
-            nn.GroupNorm(width_conv1+2,width_conv1+2),
-            nn.Conv2d(width_conv1+2,width_grad, 3, padding=1, bias=False),
+            nn.GroupNorm(width_conv1+3,width_conv1+3),
+            nn.Conv2d(width_conv1+3,width_grad, 3, padding=1, bias=False),
+            #nn.Softplus(),
+            nn.ReLU(),
+            nn.Conv2d(width_grad,width_grad, 3, padding=1, bias=False),
+            #nn.Softplus(),
+            nn.ReLU(),
+            #nn.InstanceNorm2d(width_grad),
+            nn.GroupNorm(width_grad,width_grad),
+            nn.Conv2d(width_grad,width_conv1, 1)
+        )
+
+        self.grad_i = nn.Sequential( # define the network for the gradient on x direction
+            #nn.InstanceNorm2d(width_conv+width_aug+3),
+            nn.GroupNorm(width_conv1+3,width_conv1+3),
+            nn.Conv2d(width_conv1+3,width_grad, 3, padding=1, bias=False),
             #nn.Softplus(),
             nn.ReLU(),
             nn.Conv2d(width_grad,width_grad, 3, padding=1, bias=False),
@@ -114,13 +128,19 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         dh_dt = dh_dt.expand(dh_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         dh_dt = dh_dt.view(dh_dt.size(0),1,x.size(2),x.size(3)) # resize 
         #di_dt1 = torch.autograd.grad(g_h_i[:,2].view(g_h_i.size(0),1), t_input, grad_outputs=torch.ones(x.size(0),1).to(device), create_graph=True)[0] # calculate the gradients of the i position w.r.t. time
-        #di_dt = dg_dt_t[:,2].view(dg_dt_t[:,2].size(),1) # calculate the gradients of the g position w.r.t. time
+        di_dt = dg_dt_t[:,2].view(dg_dt_t[:,2].size(),1) # calculate the gradients of the g position w.r.t. time
+        
+        #print(torch.abs(di_dt.view(256,1)-di_dt1).max())
+        
+        di_dt = di_dt.view(di_dt.size(0),1,1) # resize 
+        di_dt = di_dt.expand(di_dt.size(0),1,x.size(2)*x.size(3)) # resize 
+        di_dt = di_dt.view(di_dt.size(0),1,x.size(2),x.size(3)) # resize 
         
         g_h_i_input = g_h_i.view(g_h_i.size(0),g_h_i.size(1),1) # resize 
         g_h_i_input = g_h_i_input.expand(g_h_i.size(0),g_h_i.size(1),x.size(2)*x.size(3)) # resize 
         g_h_i_input = g_h_i_input.view((g_h_i.size(0),g_h_i.size(1),x.size(2),x.size(3))) # resize 
         x_aug=torch.cat((x,g_h_i_input),dim=1) # append the dimension information to the image
-        dp = torch.mul(self.grad_g(x_aug),dg_dt) + torch.mul(self.grad_h(x_aug),dh_dt) # calculate the change in p
+        dp = torch.mul(self.grad_g(x_aug),dg_dt) + torch.mul(self.grad_h(x_aug),dh_dt) + torch.mul(self.grad_i(x_aug),di_dt) # calculate the change in p
         #print(t.item())
         return dp
 
@@ -378,9 +398,9 @@ def main():
         transforms.ToTensor(),
         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
         ])
-    dataset1 = datasets.CIFAR10('../data', train=True, download=True,
+    dataset1 = datasets.SVHN('../data', download=True, split="train",
                        transform=transform)
-    dataset2 = datasets.CIFAR10('../data', train=False, download=True,
+    dataset2 = datasets.SVHN('../data', download=True, split="test",
                        transform=transform)
  
     train_loader = torch.utils.data.DataLoader(dataset1,**train_kwargs)
@@ -395,7 +415,7 @@ def main():
     #grad_net.path.apply(initialize_path)
     classifier_net.apply(initialize_classifier)
 
-    optimizer_grad = optim.AdamW(list(grad_net.grad_g.parameters())+list(grad_net.grad_h.parameters())+list(grad_net.conv1.parameters())+list(grad_net.conv2.parameters()), lr=args.lr_grad, weight_decay=args.weight_decay) # define optimizer on the gradients
+    optimizer_grad = optim.AdamW(list(grad_net.grad_g.parameters())+list(grad_net.grad_h.parameters())+list(grad_net.grad_i.parameters())+list(grad_net.conv1.parameters())+list(grad_net.conv2.parameters()), lr=args.lr_grad, weight_decay=args.weight_decay) # define optimizer on the gradients
     optimizer_path = optim.AdamW(list(grad_net.path.parameters()), lr=args.lr_path, weight_decay=args.weight_decay) # define optimizer on the path
     optimizer_classifier = optim.AdamW(list(classifier_net.parameters()), lr=args.lr_classifier, weight_decay=args.weight_decay) # define optimizer on the classifier
     
