@@ -248,7 +248,7 @@ def evaluate(args, grad_net, classifier_net, data, device):
     output = soft_max(output) # get the prediction results by getting the most probable ones
     return output
 
-def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, optimizer_path, optimizer_classifier, epoch):
+def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, epoch):
     grad_net.train() # set network on training mode
     classifier_net.train() # set network on training mode
     if args.clipper:
@@ -258,24 +258,14 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
         data, target = data.to(device), target.to(device) # assign data to device
         global p_i # claim the initial image batch as a global variable
         p_i = data
-        if batch_idx % args.training_frequency == 0: # check if it is time to optimize parameters of the gradients, path, and classifier
-            loss_grad = update(args, grad_net, classifier_net, optimizer_grad, data, target, device) # update gradient networks' weights
-            loss_path = update(args, grad_net, classifier_net, optimizer_path, data, target, device) # update path network's weights
-            if args.clipper:
-                clipper = WeightClipper() # define a clipper
-                grad_net.path.apply(clipper) # force the weights of the path network to be non-negative. this ensures that the integration is monotonically increasing
-            loss_classifier = update(args, grad_net, classifier_net, optimizer_classifier, data, target, device) # update classifier network's weights
-            if batch_idx % args.log_interval == 0: # print training loss and training process
-                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                    epoch, batch_idx * len(data), len(train_loader.dataset),
-                    100. * batch_idx / len(train_loader), loss_classifier.item()))
-        else: # otherwise, we only update the gradient networks and the classifier network
-            loss_grad = update(args, grad_net, classifier_net, optimizer_grad, data, target, device) # update gradient networks' weights
-            loss_classifier = update(args, grad_net, classifier_net, optimizer_classifier, data, target, device) # update classifier network's weights
-            if batch_idx % args.log_interval == 0: # print training loss and training process
-                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                    epoch, batch_idx * len(data), len(train_loader.dataset),
-                    100. * batch_idx / len(train_loader), loss_classifier.item()))
+        loss_grad = update(args, grad_net, classifier_net, optimizer_grad, data, target, device) # update gradient networks' weights
+        if args.clipper:
+            clipper = WeightClipper() # define a clipper
+            grad_net.path.apply(clipper) # force the weights of the path network to be non-negative. this ensures that the integration is monotonically increasing
+        if batch_idx % args.log_interval == 0: # print training loss and training process
+            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                epoch, batch_idx * len(data), len(train_loader.dataset),
+                100. * batch_idx / len(train_loader), loss_grad.item()))
 
 def test(args, grad_net, classifier_net, device, test_loader):
     grad_net.eval() # set the network on evaluation mode
@@ -420,28 +410,22 @@ def main():
     #grad_net.path.apply(initialize_path)
     classifier_net.apply(initialize_classifier)
 
-    optimizer_grad = optim.AdamW(list(grad_net.grad_g.parameters())+list(grad_net.grad_h.parameters())+list(grad_net.grad_i.parameters())+list(grad_net.conv1.parameters())+list(grad_net.conv2.parameters()), lr=args.lr_grad, weight_decay=args.weight_decay) # define optimizer on the gradients
-    optimizer_path = optim.AdamW(list(grad_net.path.parameters()), lr=args.lr_path, weight_decay=args.weight_decay) # define optimizer on the path
-    optimizer_classifier = optim.AdamW(list(classifier_net.parameters()), lr=args.lr_classifier, weight_decay=args.weight_decay) # define optimizer on the classifier
+    optimizer_grad = optim.AdamW(list(grad_net.parameters())+list(classifier_net.parameters()), lr=args.lr_grad, weight_decay=args.weight_decay) # define optimizer on the gradients
     
     print("The number of parameters used is {}".format(get_n_params(grad_net)+get_n_params(classifier_net))) # print the number of parameters in our model
 
     scheduler_grad = StepLR(optimizer_grad, step_size=args.step_size, gamma=args.gamma) # define scheduler for the gradients' network
-    scheduler_path = StepLR(optimizer_path, step_size=args.step_size, gamma=args.gamma) # define scheduler for the path's network
-    scheduler_classifier = StepLR(optimizer_classifier, step_size=args.step_size, gamma=args.gamma) # define scheduler for the classifier's network
 
     print('setup complete')
 
     accu = 0.0
     for epoch in range(1, args.epochs + 1):
-        train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, optimizer_path, optimizer_classifier, epoch)
+        train(args, grad_net, classifier_net, device, train_loader, optimizer_grad,  epoch)
         accu_new = validation(args, grad_net, classifier_net, device, test_loader)
         if accu_new > accu:
             accu = accu_new
         print('The best accuracy is {:.4f}%\n'.format(accu))
         scheduler_grad.step()
-        scheduler_path.step()
-        scheduler_classifier.step()
     test(args, grad_net, classifier_net, device, test_loader)
 
 if __name__ == '__main__':
