@@ -168,12 +168,12 @@ class WeightClipper(object): # define a clamp on the weights of a network
 
 def initialize_grad(m):
     if isinstance(m, nn.Conv2d):
-        #nn.init.xavier_normal_(m.weight.data,gain=0.7)
-        #nn.init.dirac_(m.weight.data)
+        #nn.init.xavier_normal_(m.weight.data,gain=0.9)
+        #nn.init.sparse_(m.weight.data,sparsity=0.1)
         #nn.init.kaiming_normal_(m.weight.data,nonlinearity='relu')
         nn.init.orthogonal_(m.weight.data,gain=0.9)
     if isinstance(m, nn.Linear):
-        #nn.init.xavier_normal_(m.weight.data,gain=0.7)
+        #nn.init.xavier_normal_(m.weight.data,gain=0.9)
         #nn.init.kaiming_normal_(m.weight.data,nonlinearity='relu')
         nn.init.orthogonal_(m.weight.data,gain=0.9)
 
@@ -193,7 +193,8 @@ def initialize_classifier(p):
         #nn.init.kaiming_uniform_(m.weight.data,nonlinearity='relu')
     if isinstance(p, nn.Linear):
         #torch.nn.init.kaiming_normal_(p.weight.data,nonlinearity='relu')
-        nn.init.orthogonal_(p.weight.data,gain=1.2)
+        nn.init.sparse_(p.weight.data,sparsity=0.06)
+        #nn.init.constant_(p.weight.data,0.5)
 
 def get_n_params(model): # define a function to measure the number of parameters in a neural network
     pp=0
