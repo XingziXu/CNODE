@@ -42,34 +42,6 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
             nn.GroupNorm(width_grad,width_grad),
             nn.Conv2d(width_grad,width_conv1+width_aug,1,1,0)
         )
-        
-        self.grad_h = nn.Sequential( # define the network for the gradient on y direction
-            #nn.InstanceNorm2d(width_conv+width_aug+3),
-            nn.GroupNorm(width_conv1+width_aug+3,width_conv1+width_aug+3),
-            nn.Conv2d(width_conv1+width_aug+3,width_grad,1,1,0),
-            #nn.Softplus(),
-            nn.ReLU(),
-            nn.Conv2d(width_grad,width_grad,3,1,1),
-            #nn.Softplus(),
-            nn.ReLU(),
-            #nn.InstanceNorm2d(width_grad),
-            nn.GroupNorm(width_grad,width_grad),
-            nn.Conv2d(width_grad,width_conv1+width_aug,1,1,0)
-        )
-
-        self.grad_i = nn.Sequential( # define the network for the gradient on x direction
-            #nn.InstanceNorm2d(width_conv+width_aug+3),
-            nn.GroupNorm(width_conv1+width_aug+3,width_conv1+width_aug+3),
-            nn.Conv2d(width_conv1+width_aug+3,width_grad,1,1,0),
-            #nn.Softplus(),
-            nn.ReLU(),
-            nn.Conv2d(width_grad,width_grad,3,1,1),
-            #nn.Softplus(),
-            nn.ReLU(),
-            #nn.InstanceNorm2d(width_grad),
-            nn.GroupNorm(width_grad,width_grad),
-            nn.Conv2d(width_grad,width_conv1+width_aug,1,1,0)
-        )
 
     def forward(self, t, x):
         self.nfe+=1 # each time we evaluate the function, the number of evaluations adds one
@@ -140,7 +112,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         g_h_i_input = g_h_i_input.expand(g_h_i.size(0),g_h_i.size(1),x.size(2)*x.size(3)) # resize 
         g_h_i_input = g_h_i_input.view((g_h_i.size(0),g_h_i.size(1),x.size(2),x.size(3))) # resize 
         x_aug=torch.cat((x,g_h_i_input),dim=1) # append the dimension information to the image
-        dp = torch.mul(self.grad_g(x_aug),dg_dt) + torch.mul(self.grad_h(x_aug),dh_dt) + torch.mul(self.grad_i(x_aug),di_dt) # calculate the change in p
+        dp = torch.mul(self.grad_g(x_aug),dg_dt) + torch.mul(self.grad_g(x_aug),dh_dt) + torch.mul(self.grad_g(x_aug),di_dt) # calculate the change in p
         #print(t.item())
         return dp
 
