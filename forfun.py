@@ -23,15 +23,15 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
             #nn.InstanceNorm2d(width_conv+width_aug+3),
             nn.GroupNorm(width_conv1+width_aug,width_conv1+width_aug),
-            nn.Conv2d(width_conv1+width_aug,width_grad,1,1,0),
+            nn.Conv2d(width_conv1+width_aug,width_grad, 3, padding=1, bias=False),
             #nn.Softplus(),
             nn.ReLU(),
-            nn.Conv2d(width_grad,width_grad,3,1,1),
+            nn.Conv2d(width_grad,width_grad, 3, padding=1, bias=False),
             #nn.Softplus(),
             nn.ReLU(),
             #nn.InstanceNorm2d(width_grad),
             nn.GroupNorm(width_grad,width_grad),
-            nn.Conv2d(width_grad,width_conv1+width_aug,1,1,0)
+            nn.Conv2d(width_grad,width_conv1+width_aug, 1)
         )
         
 
@@ -194,8 +194,6 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
     correct = 0 # initialize the number of correct predictions
     for data, target in validation_loader: # for each data batch
         data, target = data.to(device), target.to(device) # assign data to the device
-        global p_i # claim the initial image batch as a global variable
-        p_i = data
         output = evaluate(args, grad_net, classifier_net, data, device)
         test_loss += F.cross_entropy(output, target, reduction='sum').item()  # sum up batch loss
         pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
@@ -252,17 +250,17 @@ def main():
                         help='weight decay (default: 5e-4)')
     parser.add_argument('--training-frequency', type=int, default=1, metavar='LR',
                         help='how often do we optimize the path network')
-    parser.add_argument('--width-grad', type=int, default=120, metavar='LR',
+    parser.add_argument('--width-grad', type=int, default=42, metavar='LR',
                         help='width of the gradient network')
     parser.add_argument('--width-path', type=int, default=8, metavar='LR',
                         help='width of the path network')
-    parser.add_argument('--width-conv1', type=int, default=16, metavar='LR',
+    parser.add_argument('--width-conv1', type=int, default=21, metavar='LR',
                         help='width of the convolution')
-    parser.add_argument('--width-conv2', type=int, default=64, metavar='LR',
+    parser.add_argument('--width-conv2', type=int, default=6, metavar='LR',
                         help='width of the convolution')
-    parser.add_argument('--width-aug', type=int, default=32, metavar='LR',
+    parser.add_argument('--width-aug', type=int, default=21, metavar='LR',
                         help='width of the augmentation')
-    parser.add_argument('--width-pool', type=int, default=8, metavar='LR',
+    parser.add_argument('--width-pool', type=int, default=4, metavar='LR',
                         help='width of the adaptive average pooling')
 
     args = parser.parse_args()
