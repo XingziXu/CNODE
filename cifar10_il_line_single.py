@@ -20,11 +20,11 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         self.conv2 = nn.Conv2d(width_conv1,width_conv2,1)
 
         self.path = nn.Sequential( # define the network for the integration path
-        nn.Conv2d(4,width_path,1,1,0),
+        nn.Conv2d(4,width_path,3, padding=1, bias=False),
         nn.RReLU(),
-        nn.Conv2d(width_path,width_path,3,1,1),
+        nn.Conv2d(width_path,width_path,3, padding=1, bias=False),
         nn.RReLU(),
-        nn.Conv2d(width_path,3,1,1,0),
+        nn.Conv2d(width_path,3,1),
         nn.Flatten(),
         nn.Linear(3072,3),
         nn.Softsign()
