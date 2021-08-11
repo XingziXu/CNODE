@@ -21,11 +21,11 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
             #nn.InstanceNorm2d(width_conv+width_aug+3),
             nn.GroupNorm(3+width_aug,3+width_aug),
             nn.Conv2d(3+width_aug,width_grad, 3, padding=1, bias=False),
-            nn.Softplus(),
-            #nn.ReLU(),
+            #nn.Softplus(),
+            nn.ReLU(),
             nn.Conv2d(width_grad,width_grad, 3, padding=1, bias=False),
-            nn.Softplus(),
-            #nn.ReLU(),
+            #nn.Softplus(),
+            nn.ReLU(),
             #nn.InstanceNorm2d(width_grad),
             nn.GroupNorm(width_grad,width_grad),
             nn.Conv2d(width_grad,3+width_aug,1)
@@ -245,7 +245,7 @@ def main():
                         help='weight decay (default: 5e-4)')
     parser.add_argument('--training-frequency', type=int, default=1, metavar='LR',
                         help='how often do we optimize the path network')
-    parser.add_argument('--width-grad', type=int, default=42, metavar='LR',
+    parser.add_argument('--width-grad', type=int, default=90, metavar='LR',
                         help='width of the gradient network')
     parser.add_argument('--width-path', type=int, default=12, metavar='LR',
                         help='width of the path network')
