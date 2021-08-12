@@ -27,7 +27,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         nn.Conv2d(width_path,3,1),
         nn.Flatten(),
         nn.Linear(2352,2),
-        nn.Hardtanh()
+        nn.ReLU6()
         )
 
 
