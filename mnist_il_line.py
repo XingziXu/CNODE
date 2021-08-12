@@ -33,22 +33,22 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
             nn.InstanceNorm2d(width_conv1),
-            nn.Conv2d(width_conv1,width_grad,3, padding=1, bias=False),
+            nn.Conv2d(width_conv1,width_grad,1,1,0),
             nn.ReLU(),
-            nn.Conv2d(width_grad,width_grad,3, padding=1, bias=False),
+            nn.Conv2d(width_grad,width_grad,3,1,1),
             nn.ReLU(),
             nn.InstanceNorm2d(width_grad),
-            nn.Conv2d(width_grad,width_conv1,1)
+            nn.Conv2d(width_grad,width_conv1,1,1,0)
         )
         
         self.grad_h = nn.Sequential( # define the network for the gradient on y direction
             nn.InstanceNorm2d(width_conv1),
-            nn.Conv2d(width_conv1,width_grad,3, padding=1, bias=False),
+            nn.Conv2d(width_conv1,width_grad,1,1,0),
             nn.ReLU(),
-            nn.Conv2d(width_grad,width_grad,3, padding=1, bias=False),
+            nn.Conv2d(width_grad,width_grad,3,1,1),
             nn.ReLU(),
             nn.InstanceNorm2d(width_grad),
-            nn.Conv2d(width_grad,width_conv1,1)
+            nn.Conv2d(width_grad,width_conv1,1,1,0)
         )
 
     def forward(self, t, x):
