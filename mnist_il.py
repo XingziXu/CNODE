@@ -11,7 +11,7 @@ from scipy.integrate import odeint as odeint_scipy
 from torch.autograd import Variable
 
 class Grad_net(nn.Module): # the Grad_net defines the networks for the path and for the gradients
-    def __init__(self, width_path: int, width_grad: int, width_conv: int, width_aug: int):
+    def __init__(self, width_grad: int, width_conv: int, width_aug: int):
         super().__init__()
         self.nfe=0 # initialize the number of function evaluations
         
@@ -247,8 +247,6 @@ def main():
                         help='how often do we optimize the path network')
     parser.add_argument('--width-grad', type=int, default=96, metavar='LR',
                         help='width of the gradient network')
-    parser.add_argument('--width-path', type=int, default=4, metavar='LR',
-                        help='width of the path network')
     parser.add_argument('--width-conv', type=int, default=16, metavar='LR',
                         help='width of the convolution')
     parser.add_argument('--width-aug', type=int, default=5, metavar='LR',
@@ -287,7 +285,7 @@ def main():
     train_loader = torch.utils.data.DataLoader(dataset1,**train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
 
-    grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad, width_conv=args.width_conv, width_aug=args.width_aug).to(device) # define grad_net and assign to device
+    grad_net = Grad_net(width_grad=args.width_grad, width_conv=args.width_conv, width_aug=args.width_aug).to(device) # define grad_net and assign to device
     classifier_net = Classifier(width_aug=args.width_aug, width_pool=args.width_pool).to(device) # define classifier network and assign to device
 
     #grad_net.apply(initialize_grad)
