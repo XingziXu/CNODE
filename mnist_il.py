@@ -243,8 +243,6 @@ def main():
                         help='width of the convolution')
     parser.add_argument('--width-conv2', type=int, default=6, metavar='LR',
                         help='width of the convolution')
-    parser.add_argument('--width-aug', type=int, default=5, metavar='LR',
-                        help='width of the augmentation')
     parser.add_argument('--width-pool', type=int, default=8, metavar='LR',
                         help='width of the adaptive average pooling')
 
