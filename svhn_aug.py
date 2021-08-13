@@ -12,7 +12,7 @@ from scipy.integrate import odeint as odeint_scipy
 from torch.autograd import Variable
 
 class Grad_net(nn.Module): # the Grad_net defines the networks for the path and for the gradients
-    def __init__(self, width_path: int, width_grad: int, width_conv2: int, width_aug: int):
+    def __init__(self, width_grad: int, width_conv2: int, width_aug: int):
         super().__init__()
         self.nfe=0 # initialize the number of function evaluations
         
@@ -286,7 +286,7 @@ def main():
     train_loader = torch.utils.data.DataLoader(dataset1,**train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
 
-    grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad, width_conv2=args.width_conv2, width_aug=args.width_aug).to(device) # define grad_net and assign to device
+    grad_net = Grad_net(width_grad=args.width_grad, width_conv2=args.width_conv2, width_aug=args.width_aug).to(device) # define grad_net and assign to device
     classifier_net = Classifier(width_conv2=args.width_conv2, width_pool=args.width_pool).to(device) # define classifier network and assign to device
 
     #grad_net.apply(initialize_grad)
