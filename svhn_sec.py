@@ -124,7 +124,7 @@ def update(args, grad_net, classifier_net, optimizer, data, target, device):
         print("The number of steps taken in this training itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
         grad_net.nfe=0 # reset the number of function of evaluations
     else:
-        p = torch.squeeze(odeint_adjoint(grad_net, p, t, method="euler")[1]) # solve the neural line integral with the euler's solver
+        p = torch.squeeze(odeint(grad_net, p, t, method="euler")[1]) # solve the neural line integral with the euler's solver
         grad_net.nfe=0 # reset the number of function of evaluations
     output = classifier_net(grad_net.conv2(p)) # classify the transformed images
     soft_max = nn.Softmax(dim=1) # define a soft max calculator
