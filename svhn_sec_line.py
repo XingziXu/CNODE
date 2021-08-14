@@ -22,13 +22,13 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 
         self.path = nn.Sequential( # define the network for the integration path
         nn.Conv2d(4,width_path,1,1,0),
-        nn.RReLU(),
+        nn.Softsign(),
         nn.Conv2d(width_path,width_path,3,1,1),
-        nn.RReLU(),
+        nn.Softsign(),
         nn.Conv2d(width_path,3,1,1,0),
         nn.Flatten(),
         nn.Linear(3072,3),
-        nn.Softsign()
+        nn.ReLU6()
         )
         
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
@@ -116,22 +116,23 @@ class Classifier(nn.Module): # define the linear classifier
 def initialize_grad(m):
     if isinstance(m, nn.Conv2d):
         #nn.init.xavier_normal_(m.weight.data,gain=0.7)
-        #nn.init.dirac_(m.weight.data)
+        #nn.init.orthogonal_(m.weight.data,gain=0.9)
         #nn.init.kaiming_normal_(m.weight.data,nonlinearity='relu')
-        nn.init.orthogonal_(m.weight.data,gain=0.9)
+        nn.init.xavier_normal_(m.weight.data,gain=1.0)
     if isinstance(m, nn.Linear):
-        #nn.init.xavier_normal_(m.weight.data,gain=0.7)
+        #nn.init.orthogonal_(m.weight.data,gain=0.9)
         #nn.init.kaiming_normal_(m.weight.data,nonlinearity='relu')
-        nn.init.orthogonal_(m.weight.data,gain=0.9)
+        nn.init.xavier_normal_(m.weight.data,gain=1.0)
 
 def initialize_path(n):
     if isinstance(n, nn.Conv2d):
-        #torch.nn.init.normal_(m.weight.data, mean=0.0, std=1.0)
-        #torch.nn.init.eye_(m.weight.data)
-        nn.init.kaiming_normal_(n.weight.data,nonlinearity='relu')
+        nn.init.orthogonal_(n.weight.data, gain=1.0)
+        #nn.init.xavier_uniform_(n.weight.data,gain=1.0)
+        #nn.init.kaiming_normal_(n.weight.data,nonlinearity='relu')
     if isinstance(n, nn.Linear):
-        #torch.nn.init.normal_(m.weight.data, mean=0.0, std=1.0)
-        nn.init.kaiming_normal_(n.weight.data,nonlinearity='relu')
+        #nn.init.xavier_uniform_(n.weight.data,gain=1.0)
+        nn.init.orthogonal_(n.weight.data, gain=1.0)
+        #nn.init.kaiming_normal_(n.weight.data,nonlinearity='relu')
 
 def initialize_classifier(p):
     #if isinstance(p, nn.Conv2d):
@@ -348,6 +349,7 @@ def main():
     #grad_net.apply(initialize_grad)
     #grad_net.grad_g.apply(initialize_grad)
     #grad_net.grad_h.apply(initialize_grad)
+    #grad_net.grad_i.apply(initialize_grad)
     #grad_net.path.apply(initialize_path)
     #classifier_net.apply(initialize_classifier)
 
