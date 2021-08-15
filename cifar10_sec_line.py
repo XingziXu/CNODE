@@ -299,7 +299,7 @@ def main():
                         help='how often do we optimize the path network')
     parser.add_argument('--width-grad', type=int, default=42, metavar='LR',
                         help='width of the gradient network')
-    parser.add_argument('--width-path', type=int, default=10, metavar='LR',
+    parser.add_argument('--width-path', type=int, default=8, metavar='LR',
                         help='width of the path network')
     parser.add_argument('--width-conv1', type=int, default=21, metavar='LR',
                         help='width of the convolution')
