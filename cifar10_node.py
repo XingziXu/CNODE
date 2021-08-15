@@ -241,9 +241,9 @@ def main():
                         help='weight decay (default: 5e-4)')
     parser.add_argument('--training-frequency', type=int, default=1, metavar='LR',
                         help='how often do we optimize the path network')
-    parser.add_argument('--width-grad', type=int, default=111, metavar='LR',
+    parser.add_argument('--width-grad', type=int, default=110, metavar='LR',
                         help='width of the gradient network')
-    parser.add_argument('--width-conv2', type=int, default=3, metavar='LR',
+    parser.add_argument('--width-conv2', type=int, default=6, metavar='LR',
                         help='width of the convolution')
     parser.add_argument('--width-pool', type=int, default=4, metavar='LR',
                         help='width of the adaptive average pooling')
