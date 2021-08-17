@@ -25,11 +25,11 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
             #nn.InstanceNorm2d(width_conv+width_aug+3),
             nn.GroupNorm(width_conv1+width_aug,width_conv1+width_aug),
             nn.Conv2d(width_conv1+width_aug,width_grad, 3, padding=1, bias=False),
-            #nn.Softplus(),
-            nn.ReLU(),
+            nn.Softplus(),
+            #nn.ReLU(),
             nn.Conv2d(width_grad,width_grad, 3, padding=1, bias=False),
-            #nn.Softplus(),
-            nn.ReLU(),
+            nn.Softplus(),
+            #nn.ReLU(),
             #nn.InstanceNorm2d(width_grad),
             nn.GroupNorm(width_grad,width_grad),
             nn.Conv2d(width_grad,width_conv1+width_aug, 1)
@@ -235,7 +235,7 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
-    parser.add_argument('--adaptive-solver', action='store_true', default=False,
+    parser.add_argument('--adaptive-solver', action='store_true', default=True,
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
