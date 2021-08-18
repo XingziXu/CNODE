@@ -20,13 +20,13 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 
         self.path = nn.Sequential( # define the network for the integration path
         nn.Conv2d(4,width_path,1,1,0),
-        nn.Softsign(),
+        nn.Tanh(),
         nn.Conv2d(width_path,width_path,3,1,1),
-        nn.Softsign(),
+        nn.Tanh(),
         nn.Conv2d(width_path,3,1,1,0),
         nn.Flatten(),
         nn.Linear(3072,3),
-        nn.ReLU6()
+        #nn.Hardsigmoid()
         )
         
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
@@ -278,7 +278,7 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
-    parser.add_argument('--adaptive-solver', action='store_true', default=True,
+    parser.add_argument('--adaptive-solver', action='store_true', default=False,
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
