@@ -19,13 +19,13 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 
         self.path = nn.Sequential( # define the network for the integration path
         nn.Conv2d(4,width_path,1,1,0),
-        nn.RReLU(),
+        nn.PReLU(),
         nn.Conv2d(width_path,width_path,3,1,1),
-        nn.RReLU(),
+        nn.PReLU(),
         nn.Conv2d(width_path,3,1,1,0),
         nn.Flatten(),
         nn.Linear(3072,3),
-        nn.Softsign()
+        nn.LogSigmoid()
         )
         
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
@@ -291,7 +291,7 @@ def main():
                         help='how often do we optimize the path network')
     parser.add_argument('--width-grad', type=int, default=60, metavar='LR',
                         help='width of the gradient network')
-    parser.add_argument('--width-path', type=int, default=10, metavar='LR',
+    parser.add_argument('--width-path', type=int, default=8, metavar='LR',
                         help='width of the path network')
     parser.add_argument('--width-conv2', type=int, default=6, metavar='LR',
                         help='width of the convolution')
