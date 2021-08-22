@@ -13,77 +13,66 @@ from torch.autograd import Variable
 from random import random
 from torch.utils.data import Dataset, DataLoader
 import matplotlib.pyplot as plt
+from math import pi
+from torch.distributions import Normal
 
-def random_point_in_sphere(dim, min_radius, max_radius):
-    """Returns a point sampled uniformly at random from a sphere if min_radius
-    is 0. Else samples a point approximately uniformly on annulus.
-
-    Parameters
-    ----------
-    dim : int
-        Dimension of sphere
-
-    min_radius : float
-        Minimum distance of sampled point from origin.
-
-    max_radius : float
-        Maximum distance of sampled point from origin.
-    """
-    # Sample distance of point from origin
-    unif = random()
-    distance = (max_radius - min_radius) * (unif ** (1. / dim)) + min_radius
-    # Sample direction of point away from origin
-    direction = torch.randn(dim)
-    unit_direction = direction / torch.norm(direction, 2)
-    return distance * unit_direction
-
-class ConcentricSphere(Dataset):
-    """Dataset of concentric d-dimensional spheres. Points in the inner sphere
-    are mapped to -1, while points in the outer sphere are mapped 1.
+class ShiftedSines(Dataset):
+    """Dataset of two shifted sine curves. Points from the curve shifted upward
+    are mapped to 1, while points from the curve shifted downward are mapped to
+    1.
 
     Parameters
     ----------
     dim : int
-        Dimension of spheres.
+        Dimension of datapoints.
 
-    inner_range : (float, float)
-        Minimum and maximum radius of inner sphere. For example if inner_range
-        is (1., 2.) then all points in inner sphere will lie a distance of
-        between 1.0 and 2.0 from the origin.
+    shift : float
+        Size of shift/gap between the two curves.
 
-    outer_range : (float, float)
-        Minimum and maximum radius of outer sphere.
+    num_points_upper : int
+        Number of points in upper curve.
 
-    num_points_inner : int
-        Number of points in inner cluster
+    num_points_lower : int
+        Number of points in lower curve.
 
-    num_points_outer : int
-        Number of points in outer cluster
+    noise_scale : float
+        Defaults to 0.0 (i.e. no noise). Otherwise, corresponds to standard
+        deviation of white noise added to each point.
     """
-    def __init__(self, dim, inner_range, outer_range, num_points_inner,
-                 num_points_outer):
+    def __init__(self, dim, shift, num_points_upper, num_points_lower,
+                 noise_scale):
         self.dim = dim
-        self.inner_range = inner_range
-        self.outer_range = outer_range
-        self.num_points_inner = num_points_inner
-        self.num_points_outer = num_points_outer
+        self.shift = shift
+        self.num_points_upper = num_points_upper
+        self.num_points_lower = num_points_lower
+        self.noise_scale = noise_scale
+
+        noise = Normal(loc=0., scale=self.noise_scale)
 
         self.data = []
         self.targets = []
 
-        # Generate data for inner sphere
-        for _ in range(self.num_points_inner):
-            self.data.append(
-                random_point_in_sphere(dim, inner_range[0], inner_range[1])
-            )
-            self.targets.append(torch.Tensor([-1]))
+        # Generate data for upper curve and lower curve
+        for i in range(self.num_points_upper + self.num_points_lower):
+            if i < self.num_points_upper:
+                label = 1
+                y_shift = shift / 2.
+            else:
+                label = -1
+                y_shift = - shift / 2.
 
-        # Generate data for outer sphere
-        for _ in range(self.num_points_outer):
-            self.data.append(
-                random_point_in_sphere(dim, outer_range[0], outer_range[1])
-            )
-            self.targets.append(torch.Tensor([1]))
+            x = 2 * torch.rand(1) - 1  # Random point between -1 and 1
+            y = torch.sin(pi * x) + noise.sample() + y_shift
+
+            if self.dim == 1:
+                self.data.append(torch.Tensor([y]))
+            elif self.dim == 2:
+                self.data.append(torch.cat([x, y]))
+            else:
+                random_higher_dims = 2 * torch.rand(self.dim - 2) - 1
+                self.data.append(torch.cat([x, y, random_higher_dims]))
+
+            self.targets.append(torch.Tensor([label]))
 
     def __getitem__(self, index):
         return self.data[index], self.targets[index]
@@ -97,26 +86,26 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         self.nfe=0 # initialize the number of function evaluations
 
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
-            nn.Linear(2,32),
+            nn.Linear(7,28),
             nn.ReLU(),
-            nn.Linear(32,32),
+            nn.Linear(28,28),
             nn.ReLU(),
-            nn.Linear(32,2)
+            nn.Linear(28,7)
         )
 
     def forward(self, t, x):
         self.nfe+=1 # each time we evaluate the function, the number of evaluations adds one
 
-        x = x.view(x.size(0),1,1,2)
+        x = x.view(x.size(0),1,1,7)
         dp = self.grad_g(x)# + torch.mul(self.grad_g(x),di_dt) # calculate the change in p
-        dp = dp.view(dp.size(0),2)
+        dp = dp.view(dp.size(0),7)
         #print(t.item())
         return dp
 
 class Classifier(nn.Module): # define the linear classifier
     def __init__(self, width_conv2: int, width_pool: int):
         super(Classifier, self).__init__()
-        self.classifier = nn.Linear(2,2)
+        self.classifier = nn.Linear(7,2)
 
     def forward(self, x):
         x = self.classifier(x) # generate a 1x10 probability vector based on the flattened image&dimension
@@ -165,6 +154,8 @@ def update(args, grad_net, classifier_net, optimizer, data, target, device):
     optimizer.zero_grad() # the start of updating the path's parameters
     p = data # assign data, initialization
     p.requires_grad=True # record the computation graph
+    aug = torch.zeros(p.size(0),5).to(device)
+    p = torch.cat((p,aug),dim=1)
     t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
     t.requires_grad=True # record the computation graph
     if args.adaptive_solver: # check if we are using the adaptive solver
@@ -190,6 +181,8 @@ def update(args, grad_net, classifier_net, optimizer, data, target, device):
 def evaluate(args, grad_net, classifier_net, data, device):
     p = data # assign data, initialization
     p.requires_grad=True # record the computation graph
+    aug = torch.zeros(p.size(0),5).to(device)
+    p = torch.cat((p,aug),dim=1)
     t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
     t.requires_grad=True # record the computation graph
     if args.adaptive_solver: # check if we are using the adaptive solver
@@ -302,7 +295,7 @@ def main():
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=300, metavar='N',
+    parser.add_argument('--epochs', type=int, default=25, metavar='N',
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--gamma', type=float, default=0.9, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
@@ -316,7 +309,7 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
-    parser.add_argument('--adaptive-solver', action='store_true', default=True,
+    parser.add_argument('--adaptive-solver', action='store_true', default=False,
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
@@ -359,7 +352,8 @@ def main():
         validation_kwargs.update(cuda_kwargs)
 
 
-    data_object = ConcentricSphere(dim=2,inner_range=[0.0,0.5],outer_range=[1.0,1.5],num_points_inner=500,num_points_outer=1000)
+    #data_object = ConcentricSphere(dim=2,inner_range=[0.0,0.5],outer_range=[1.0,1.5],num_points_inner=500,num_points_outer=1000)
+    data_object = ShiftedSines(dim=2, shift=1.4, num_points_upper=1500, num_points_lower=1500,noise_scale=0.1)
 
     #train_set, val_set = torch.utils.data.random_split(data_object, [1350, 150])
     
