@@ -63,7 +63,7 @@ class ShiftedSines(Dataset):
                 label = -1
                 y_shift = - shift / 2.
                 x_shift = - shift / 2.
-                scale = 1.5
+                scale = 2
 
             phi =  2 * pi * torch.rand(1) - 1  # Random point between -1 and 1
             x = phi * torch.cos(scale * phi) + noise.sample()
@@ -272,9 +272,9 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
     o1 = o1.detach().numpy()
     outer1 = o1[o1[:,2]==1.]
     inner1 = o1[o1[:,2]==0.]
-    plt.scatter(outer1[:,0],outer1[:,1],color='r')
-    plt.scatter(inner1[:,0],inner1[:,1])
-    plt.show()
+    #plt.scatter(outer1[:,0],outer1[:,1],color='r')
+    #plt.scatter(inner1[:,0],inner1[:,1])
+    #plt.show()
     test_loss /= len(validation_loader.dataset) # calculate test loss
 
     print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format( # print test loss and accuracy

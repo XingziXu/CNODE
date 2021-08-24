@@ -63,7 +63,7 @@ class ShiftedSines(Dataset):
                 label = -1
                 y_shift = - shift / 2.
                 x_shift = - shift / 2.
-                scale = 1.5
+                scale = 2
 
             phi =  2 * pi * torch.rand(1) - 1  # Random point between -1 and 1
             x = phi * torch.cos(scale * phi) + noise.sample()
