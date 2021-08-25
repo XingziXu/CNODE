@@ -355,7 +355,7 @@ def main():
             accu = accu_new
         print('The best accuracy is {:.4f}%\n'.format(accu))
         scheduler_grad.step()
-    test(args, grad_net, classifier_net, device, test_loader)
+    #test(args, grad_net, classifier_net, device, test_loader)
 
 if __name__ == '__main__':
     main()
