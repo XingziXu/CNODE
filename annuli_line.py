@@ -313,9 +313,9 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
     o1 = o1.detach().numpy()
     outer1 = o1[o1[:,2]==1.]
     inner1 = o1[o1[:,2]==0.]
-    plt.scatter(outer1[:,0],outer1[:,1],color='r')
-    plt.scatter(inner1[:,0],inner1[:,1])
-    plt.show()
+    #plt.scatter(outer1[:,0],outer1[:,1],color='r')
+    #plt.scatter(inner1[:,0],inner1[:,1])
+    #plt.show()
     test_loss /= len(validation_loader.dataset) # calculate test loss
 
     print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format( # print test loss and accuracy
@@ -337,7 +337,7 @@ def main():
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=250, metavar='N',
+    parser.add_argument('--epochs', type=int, default=25, metavar='N',
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--gamma', type=float, default=0.9, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
@@ -351,7 +351,7 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
-    parser.add_argument('--adaptive-solver', action='store_true', default=True,
+    parser.add_argument('--adaptive-solver', action='store_true', default=False,
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
@@ -396,10 +396,10 @@ def main():
 
     data_object = ConcentricSphere(dim=2,inner_range=[0.0,0.5],outer_range=[1.0,1.5],num_points_inner=500,num_points_outer=1000)
 
-    #train_set, val_set = torch.utils.data.random_split(data_object, [1350, 150])
+    train_set, val_set = torch.utils.data.random_split(data_object, [1350, 150])
     
-    train_loader = DataLoader(data_object,batch_size=args.batch_size,shuffle=True)
-    test_loader = DataLoader(data_object,batch_size=args.batch_size,shuffle=True)
+    train_loader = DataLoader(train_set,batch_size=args.batch_size,shuffle=True)
+    test_loader = DataLoader(val_set,batch_size=args.batch_size,shuffle=True)
 
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad, width_conv2=args.width_conv2).to(device) # define grad_net and assign to device
     classifier_net = Classifier(width_conv2=args.width_conv2, width_pool=args.width_pool).to(device) # define classifier network and assign to device

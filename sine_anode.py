@@ -86,26 +86,26 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         self.nfe=0 # initialize the number of function evaluations
 
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
-            nn.Linear(7,28),
+            nn.Linear(3,32),
             nn.ReLU(),
-            nn.Linear(28,28),
+            nn.Linear(32,32),
             nn.ReLU(),
-            nn.Linear(28,7)
+            nn.Linear(32,3)
         )
 
     def forward(self, t, x):
         self.nfe+=1 # each time we evaluate the function, the number of evaluations adds one
 
-        x = x.view(x.size(0),1,1,7)
+        x = x.view(x.size(0),1,1,3)
         dp = self.grad_g(x)# + torch.mul(self.grad_g(x),di_dt) # calculate the change in p
-        dp = dp.view(dp.size(0),7)
+        dp = dp.view(dp.size(0),3)
         #print(t.item())
         return dp
 
 class Classifier(nn.Module): # define the linear classifier
     def __init__(self, width_conv2: int, width_pool: int):
         super(Classifier, self).__init__()
-        self.classifier = nn.Linear(7,2)
+        self.classifier = nn.Linear(3,2)
 
     def forward(self, x):
         x = self.classifier(x) # generate a 1x10 probability vector based on the flattened image&dimension
@@ -154,7 +154,7 @@ def update(args, grad_net, classifier_net, optimizer, data, target, device):
     optimizer.zero_grad() # the start of updating the path's parameters
     p = data # assign data, initialization
     p.requires_grad=True # record the computation graph
-    aug = torch.zeros(p.size(0),5).to(device)
+    aug = torch.zeros(p.size(0),1).to(device)
     p = torch.cat((p,aug),dim=1)
     t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
     t.requires_grad=True # record the computation graph
@@ -181,7 +181,7 @@ def update(args, grad_net, classifier_net, optimizer, data, target, device):
 def evaluate(args, grad_net, classifier_net, data, device):
     p = data # assign data, initialization
     p.requires_grad=True # record the computation graph
-    aug = torch.zeros(p.size(0),5).to(device)
+    aug = torch.zeros(p.size(0),1).to(device)
     p = torch.cat((p,aug),dim=1)
     t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
     t.requires_grad=True # record the computation graph
@@ -269,10 +269,12 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
         correct += pred.eq(target.view_as(pred)).sum().item() # sum up the number of correct predictions
 
     o1 = o1.detach().numpy()
-    outer1 = o1[o1[:,2]==1.]
-    inner1 = o1[o1[:,2]==0.]
-    #plt.scatter(outer1[:,0],outer1[:,1],color='r')
-    #plt.scatter(inner1[:,0],inner1[:,1])
+    outer1 = o1[o1[:,3]==1.]
+    inner1 = o1[o1[:,3]==0.]
+    #fig = plt.figure()
+    #ax = fig.add_subplot(111, projection='3d')
+    #ax.scatter(outer1[:,0],outer1[:,1],outer1[:,2],color='r')
+    #ax.scatter(inner1[:,0],inner1[:,1],inner1[:,2])
     #plt.show()
     test_loss /= len(validation_loader.dataset) # calculate test loss
 
@@ -309,7 +311,7 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
-    parser.add_argument('--adaptive-solver', action='store_true', default=False,
+    parser.add_argument('--adaptive-solver', action='store_true', default=True,
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
@@ -355,10 +357,10 @@ def main():
     #data_object = ConcentricSphere(dim=2,inner_range=[0.0,0.5],outer_range=[1.0,1.5],num_points_inner=500,num_points_outer=1000)
     data_object = ShiftedSines(dim=2, shift=1.4, num_points_upper=1500, num_points_lower=1500,noise_scale=0.1)
 
-    #train_set, val_set = torch.utils.data.random_split(data_object, [1350, 150])
+    train_set, val_set = torch.utils.data.random_split(data_object, [2700, 300])
     
-    train_loader = DataLoader(data_object,batch_size=args.batch_size,shuffle=True)
-    test_loader = DataLoader(data_object,batch_size=args.batch_size,shuffle=True)
+    train_loader = DataLoader(train_set,batch_size=args.batch_size,shuffle=True)
+    test_loader = DataLoader(val_set,batch_size=args.batch_size,shuffle=True)
 
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad, width_conv2=args.width_conv2).to(device) # define grad_net and assign to device
     classifier_net = Classifier(width_conv2=args.width_conv2, width_pool=args.width_pool).to(device) # define classifier network and assign to device

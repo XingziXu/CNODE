@@ -361,10 +361,10 @@ def main():
 
     data_object = ConcentricSphere(dim=2,inner_range=[0.0,0.5],outer_range=[1.0,1.5],num_points_inner=500,num_points_outer=1000)
 
-    #train_set, val_set = torch.utils.data.random_split(data_object, [1350, 150])
+    train_set, val_set = torch.utils.data.random_split(data_object, [1350, 150])
     
-    train_loader = DataLoader(data_object,batch_size=args.batch_size,shuffle=True)
-    test_loader = DataLoader(data_object,batch_size=args.batch_size,shuffle=True)
+    train_loader = DataLoader(train_set,batch_size=args.batch_size,shuffle=True)
+    test_loader = DataLoader(val_set,batch_size=args.batch_size,shuffle=True)
 
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad, width_conv2=args.width_conv2).to(device) # define grad_net and assign to device
     classifier_net = Classifier(width_conv2=args.width_conv2, width_pool=args.width_pool).to(device) # define classifier network and assign to device
