@@ -23,10 +23,10 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
             nn.GroupNorm(3,3),
             nn.Conv2d(3,width_grad, 3, padding=1, bias=False),
             #nn.Softplus(),
-            nn.ReLU(),
+            nn.Softplus(),
             nn.Conv2d(width_grad,width_grad, 3, padding=1, bias=False),
             #nn.Softplus(),
-            nn.ReLU(),
+            nn.Softplus(),
             #nn.InstanceNorm2d(width_grad),
             nn.GroupNorm(width_grad,width_grad),
             nn.Conv2d(width_grad,3,1)
