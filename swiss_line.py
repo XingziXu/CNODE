@@ -1,5 +1,6 @@
 from __future__ import print_function
 import argparse
+import numpy
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -15,6 +16,8 @@ from torch.utils.data import Dataset, DataLoader
 import matplotlib.pyplot as plt
 from math import pi
 from torch.distributions import Normal
+import numpy as np
+from scipy.interpolate import make_interp_spline
 
 class ShiftedSines(Dataset):
     """Dataset of two shifted sine curves. Points from the curve shifted upward
@@ -92,10 +95,10 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 
         self.path = nn.Sequential( # define the network for the integration path
             nn.Linear(3,20),
-            #nn.Softmax(),
-            nn.Softmax(),
+            nn.Softplus(),
+            #nn.LogSigmoid(),
             nn.Linear(20,20),
-            #nn.Softshrink(),
+            nn.Softplus(),
             nn.Linear(20,2)
         )
 
@@ -118,12 +121,14 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 
     def forward(self, t, x):
         self.nfe+=1 # each time we evaluate the function, the number of evaluations adds one
-
         t_input = t.expand(x.size(0),1) # resize
+        #print(t)
         #t_channel = ((t_input.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
         path_input = torch.cat((t_input, p_i),dim=1) # concatenate the time and the image
         path_input = path_input.view(path_input.size(0),1,1,3)
         g_h_i = self.path(path_input) # calculate the position of the integration path
+        global pathdt 
+        pathdt = torch.cat((pathdt,g_h_i[0,0]),0)
         g_h_i = g_h_i.view(g_h_i.size(0),2)
 
         dg_dt = g_h_i[:,0].view(g_h_i[:,0].size(0),1,1,1)
@@ -237,6 +242,8 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
     grad_net.train() # set network on training mode
     classifier_net.train() # set network on training mode
     for batch_idx, (data, target) in enumerate(train_loader): # for each batch
+        global pathdt
+        pathdt = torch.Tensor([[ 0.,0.]])
         data, target = data.to(device), target.to(device) # assign data to device
         global p_i # claim the initial image batch as a global variable
         p_i = data
@@ -286,6 +293,8 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
     o1 = []
     d1 = []
     for data, target in validation_loader: # for each data batch
+        global pathdt
+        pathdt = torch.Tensor([[ 0.,0.]])
         data, target = data.to(device), target.to(device) # assign data to the device
         global p_i # claim the initial image batch as a global variable
         p_i = data
@@ -304,9 +313,9 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
         pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
         correct += pred.eq(target.view_as(pred)).sum().item() # sum up the number of correct predictions
 
-    o1 = o1.detach().numpy()
-    outer1 = o1[o1[:,2]==1.]
-    inner1 = o1[o1[:,2]==0.]
+    #o1 = o1.detach().numpy()
+    #outer1 = o1[o1[:,2]==1.]
+    #inner1 = o1[o1[:,2]==0.]
     #plt.scatter(outer1[:,0],outer1[:,1],color='r')
     #plt.scatter(inner1[:,0],inner1[:,1])
     #plt.show()
@@ -320,7 +329,7 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
         torch.save(grad_net.state_dict(), "grad_net.pt") # save gradients and path model
         torch.save(classifier_net.state_dict(), "classifer_net.pt") # save classifier model
         print("The current models are saved") # confirm all models are saved
-    return 100. * correct / len(validation_loader.dataset)
+    return 100. * correct / len(validation_loader.dataset), o1
 
 def main():
     # Training settings
@@ -345,7 +354,7 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
-    parser.add_argument('--adaptive-solver', action='store_true', default=False,
+    parser.add_argument('--adaptive-solver', action='store_true', default=True,
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
@@ -414,15 +423,35 @@ def main():
     print('setup complete')
 
     accu = 0.0
+    #outer = torch.zeros((25,153,3))
+    #inner = torch.zeros((25,147,3))
     for epoch in range(1, args.epochs + 1):
         train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, epoch)
-        accu_new = validation(args, grad_net, classifier_net, device, test_loader)
+        accu_new, o1 = validation(args, grad_net, classifier_net, device, test_loader)
+        #outer[epoch-1,:,:] = o1[o1[:,2]==1.]
+        #inner[epoch-1,:,:] = o1[o1[:,2]==0.]
         if accu_new > accu:
             accu = accu_new
         print('The best accuracy is {:.4f}%\n'.format(accu))
         scheduler_grad.step()
-    test(args, grad_net, classifier_net, device, test_loader)
-
+    #test(args, grad_net, classifier_net, device, test_loader)
+    a=1
+    """for i in range(0,3):
+        outer1 = outer[:,i,:]
+        inner1 = inner[:,i,:]
+        outer1 = outer1.detach().numpy()
+        inner1 = inner1.detach().numpy()
+        outer_spline = make_interp_spline(outer1[:,0], outer1[:, 1])
+        X_ = np.linspace(outer1[:,0].min(), outer1[:,0].max(), 500)
+        Y_ = outer_spline(X_)
+        plt.plot(X_, Y_)
+        inner_spline = make_interp_spline(inner1[:,0], inner1[:, 1])
+        X_ = np.linspace(inner1[:,0].min(), inner1[:,0].max(), 500)
+        Y_ = inner_spline(X_)
+        plt.plot(X_, Y_)
+#        plt.plot(outer1[:,0],outer1[:,1],color='r')
+#        plt.plot(inner1[:,0],inner1[:,1],color='b')
+    plt.show()"""
 if __name__ == '__main__':
     main()
 

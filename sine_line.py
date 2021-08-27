@@ -86,29 +86,29 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         self.nfe=0 # initialize the number of function evaluations
 
         self.path = nn.Sequential( # define the network for the integration path
-            nn.Linear(3,20),
+            nn.Linear(3,32),
             #nn.Softmax(),
             nn.Sigmoid(),
-            nn.Linear(20,20),
+            nn.Linear(32,32),
             #nn.Softshrink(),
-            nn.Linear(20,2)
+            nn.Linear(32,2)
         )
 
 
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
-            nn.Linear(2,16),
+            nn.Linear(2,18),
             nn.ReLU(),
-            nn.Linear(16,16),
+            nn.Linear(18,18),
             nn.ReLU(),
-            nn.Linear(16,2)
+            nn.Linear(18,2)
         )
         
         self.grad_h = nn.Sequential( # define the network for the gradient on y direction
-            nn.Linear(2,16),
+            nn.Linear(2,18),
             nn.ReLU(),
-            nn.Linear(16,16),
+            nn.Linear(18,18),
             nn.ReLU(),
-            nn.Linear(16,2)
+            nn.Linear(18,2)
         )
 
     def forward(self, t, x):
@@ -340,7 +340,7 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
-    parser.add_argument('--adaptive-solver', action='store_true', default=True,
+    parser.add_argument('--adaptive-solver', action='store_true', default=False,
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
@@ -384,7 +384,7 @@ def main():
 
 
     #data_object = ConcentricSphere(dim=2,inner_range=[0.0,0.5],outer_range=[1.0,1.5],num_points_inner=500,num_points_outer=1000)
-    data_object = ShiftedSines(dim=2, shift=1.4, num_points_upper=1500, num_points_lower=1500,noise_scale=0.1)
+    data_object = ShiftedSines(dim=2, shift=.4, num_points_upper=1500, num_points_lower=1500,noise_scale=0.1)
     train_set, val_set = torch.utils.data.random_split(data_object, [2700, 300])
     
     train_loader = DataLoader(train_set,batch_size=args.batch_size,shuffle=True)

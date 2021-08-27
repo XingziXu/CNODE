@@ -86,11 +86,11 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         self.nfe=0 # initialize the number of function evaluations
 
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
-            nn.Linear(3,32),
+            nn.Linear(3,42),
             nn.ReLU(),
-            nn.Linear(32,32),
+            nn.Linear(42,42),
             nn.ReLU(),
-            nn.Linear(32,3)
+            nn.Linear(42,3)
         )
 
     def forward(self, t, x):
@@ -355,7 +355,7 @@ def main():
 
 
     #data_object = ConcentricSphere(dim=2,inner_range=[0.0,0.5],outer_range=[1.0,1.5],num_points_inner=500,num_points_outer=1000)
-    data_object = ShiftedSines(dim=2, shift=1.4, num_points_upper=1500, num_points_lower=1500,noise_scale=0.1)
+    data_object = ShiftedSines(dim=2, shift=.4, num_points_upper=1500, num_points_lower=1500,noise_scale=0.1)
 
     train_set, val_set = torch.utils.data.random_split(data_object, [2700, 300])
     
