@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from torchdiffeq._impl.fixed_adams import _dot_product
 from torchvision import datasets, transforms  
 from torch.optim.lr_scheduler import StepLR
 from torchdiffeq import odeint_adjoint as odeint_adjoint
@@ -201,9 +202,10 @@ def evaluate(args, grad_net, classifier_net, data, device):
 def visualize(args, grad_net, classifier_net, data, device):
     p = data # assign data, initialization
     p.requires_grad=True # record the computation graph
-    t = torch.Tensor([0.,1.]).to(device)
-    #t = torch.linspace(0.,1.,steps=10).to(device) # we look to integrate from t=0 to t=1
+    t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
     t.requires_grad=True # record the computation graph
+    global dpdt_vis
+    dpdt_vis = torch.zeros((100,1))
     if args.adaptive_solver: # check if we are using the adaptive solver
         p = torch.squeeze(odeint_adjoint(grad_net, p, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
         print("The number of steps taken in this testing itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
@@ -288,7 +290,7 @@ def test(args, grad_net, classifier_net, device, validation_loader):
         global pathdt
         pathdt = torch.Tensor([[ 0.,0.]])
         data, target = data.to(device), target.to(device) # assign data to the device
-        data = torch.linspace(-1,1,steps=256).view(256,1)
+        data = torch.linspace(-1,1,steps=100).view(100,1)
         global p_i # claim the initial image batch as a global variable
         p_i = data.view(data.size(0),1)
         output,p = visualize(args, grad_net, classifier_net, data, device)
