@@ -2,6 +2,7 @@ from __future__ import print_function
 import argparse
 import numpy
 import torch
+from torch._C import parse_ir
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -19,65 +20,6 @@ from math import pi
 from torch.distributions import Normal
 import numpy as np
 from scipy.interpolate import make_interp_spline
-
-class ShiftedSines(Dataset):
-    """Dataset of two shifted sine curves. Points from the curve shifted upward
-    are mapped to 1, while points from the curve shifted downward are mapped to
-    1.
-
-    Parameters
-    ----------
-    dim : int
-        Dimension of datapoints.
-
-    shift : float
-        Size of shift/gap between the two curves.
-
-    num_points_upper : int
-        Number of points in upper curve.
-
-    num_points_lower : int
-        Number of points in lower curve.
-
-    noise_scale : float
-        Defaults to 0.0 (i.e. no noise). Otherwise, corresponds to standard
-        deviation of white noise added to each point.
-    """
-    def __init__(self, dim, num_points_pos, num_points_neg):
-        self.dim = dim
-        self.num_points_upper = num_points_pos
-        self.num_points_lower = num_points_neg
-
-
-        self.data = []
-        self.targets = []
-
-        # Generate data for upper curve and lower curve
-        for i in range(self.num_points_upper + self.num_points_lower):
-            if i < self.num_points_upper:
-                label = 1
-                x_val = 1
-            else:
-                label = -1
-                x_val = -1
-
-            x = x_val
-
-            if self.dim == 1:
-                self.data.append(torch.Tensor([x]))
-            elif self.dim == 2:
-                self.data.append(torch.cat([x]))
-            else:
-                random_higher_dims = 2 * torch.rand(self.dim - 2) - 1
-                self.data.append(torch.cat([x, random_higher_dims]))
-
-            self.targets.append(torch.Tensor([label]))
-
-    def __getitem__(self, index):
-        return self.data[index], self.targets[index]
-
-    def __len__(self):
-        return len(self.data)
 
 class Grad_net(nn.Module): # the Grad_net defines the networks for the path and for the gradients
     def __init__(self, width_path: int, width_grad: int, width_conv2: int):
@@ -118,8 +60,6 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         path_input = torch.cat((t_input, p_i),dim=1) # concatenate the time and the image
         path_input = path_input.view(path_input.size(0),1,1,2)
         g_h_i = self.path(path_input) # calculate the position of the integration path
-        global pathdt 
-        pathdt = torch.cat((pathdt,g_h_i[0,0]),0)
         g_h_i = g_h_i.view(g_h_i.size(0),2)
 
         dg_dt = g_h_i[:,0].view(g_h_i[:,0].size(0),1,1,1)
@@ -155,176 +95,6 @@ def get_n_params(model): # define a function to measure the number of parameters
             nn = nn*s
         pp += nn
     return pp
-
-def update(args, grad_net, classifier_net, optimizer, data, target, device):
-    optimizer.zero_grad() # the start of updating the path's parameters
-    p = data # assign data, initialization
-    p.requires_grad=True # record the computation graph
-    t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
-    t.requires_grad=True # record the computation graph
-    if args.adaptive_solver: # check if we are using the adaptive solver
-        p = torch.squeeze(odeint_adjoint(grad_net, p, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
-        print("The number of steps taken in this training itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
-        grad_net.nfe=0 # reset the number of function of evaluations
-    else:
-        p = torch.squeeze(odeint(grad_net, p, t, method="euler")[1]) # solve the neural line integral with the euler's solver
-        grad_net.nfe=0 # reset the number of function of evaluations
-    output = classifier_net(p.view((p.size(0),1))) # classify the transformed images
-    soft_max = nn.Softmax(dim=1) # define a soft max calculator
-    output = soft_max(output) # get the prediction results by getting the most probable ones
-    #loss_func = nn.CrossEntropyLoss()
-    target = target + 1
-    target = target /2
-    target = target.to(torch.long)
-    target = target.view(target.size(0))
-    loss = F.cross_entropy(output, target) # calculate the function loss
-    loss.backward(retain_graph=True) # backpropagate through the loss
-    optimizer.step() # update the path network's parameters
-    return loss
-
-def evaluate(args, grad_net, classifier_net, data, device):
-    p = data # assign data, initialization
-    p.requires_grad=True # record the computation graph
-    t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
-    t.requires_grad=True # record the computation graph
-    if args.adaptive_solver: # check if we are using the adaptive solver
-        p = torch.squeeze(odeint_adjoint(grad_net, p, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
-        print("The number of steps taken in this testing itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
-        grad_net.nfe=0 # reset the number of function of evaluations
-    else:
-        p = torch.squeeze(odeint(grad_net, p, t, method="euler")[1]) # solve the neural line integral with the euler's solver
-        grad_net.nfe=0 # reset the number of function of evaluations
-    output = classifier_net(p.view((p.size(0),1))) # classify the transformed images
-    soft_max = nn.Softmax(dim=1) # define a soft max calculator
-    output = soft_max(output) # get the prediction results by getting the most probable ones
-    return output,p
-
-def visualize(args, grad_net, classifier_net, data, device):
-    p = data # assign data, initialization
-    p.requires_grad=True # record the computation graph
-    t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
-    t.requires_grad=True # record the computation graph
-    global dpdt_vis
-    dpdt_vis = torch.zeros((100,1))
-    if args.adaptive_solver: # check if we are using the adaptive solver
-        p = torch.squeeze(odeint_adjoint(grad_net, p, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
-        print("The number of steps taken in this testing itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
-        grad_net.nfe=0 # reset the number of function of evaluations
-    else:
-        p = torch.squeeze(odeint(grad_net, p, t, method="euler")[1]) # solve the neural line integral with the euler's solver
-        grad_net.nfe=0 # reset the number of function of evaluations
-    output = classifier_net(p.view((p.size(0),1))) # classify the transformed images
-    soft_max = nn.Softmax(dim=1) # define a soft max calculator
-    output = soft_max(output) # get the prediction results by getting the most probable ones
-    return output,p
-
-def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, epoch):
-    grad_net.train() # set network on training mode
-    classifier_net.train() # set network on training mode
-    for batch_idx, (data, target) in enumerate(train_loader): # for each batch
-        global pathdt
-        pathdt = torch.Tensor([[ 0.,0.]])
-        data, target = data.to(device), target.to(device) # assign data to device
-        global p_i # claim the initial image batch as a global variable
-        p_i = data
-        loss_grad = update(args, grad_net, classifier_net, optimizer_grad, data, target, device) # update gradient networks' weights
-        if batch_idx % args.log_interval == 0: # print training loss and training process
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss_grad.item()))
-
-def validation(args, grad_net, classifier_net, device, validation_loader):
-    grad_net.eval() # set the network on evaluation mode
-    classifier_net.eval() # set the network on evaluation mode
-    test_loss = 0 # initialize test loss
-    correct = 0 # initialize the number of correct predictions
-    o1 = []
-    d1 = []
-    for data, target in validation_loader: # for each data batch
-        global pathdt
-        pathdt = torch.Tensor([[ 0.,0.]])
-        data, target = data.to(device), target.to(device) # assign data to the device
-        global p_i # claim the initial image batch as a global variable
-        p_i = data
-        output,p = evaluate(args, grad_net, classifier_net, data, device)
-        #d1 = torch.cat((d1,data),1)
-        target = target + 1
-        target = target /2
-        target = target.to(torch.long)
-        
-        if o1==[]:
-            o1 = torch.cat((p.view((p.size(0),1)),target),1)
-        else:
-            o1 = torch.cat((o1,torch.cat((p.view((p.size(0),1)),target),1)),0)
-        target = target.view(target.size(0))
-        test_loss += F.cross_entropy(output, target, reduction='sum').item()  # sum up batch loss
-        pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
-        correct += pred.eq(target.view_as(pred)).sum().item() # sum up the number of correct predictions
-
-    o1 = o1.detach().numpy()
-    outer1 = o1[o1[:,1]==1.]
-    inner1 = o1[o1[:,1]==0.]
-    #plt.scatter(np.zeros((len(outer1),1)),outer1[:,0],color='r')
-    #plt.scatter(np.zeros((len(inner1),1)),inner1[:,0])
-    #plt.show()
-    test_loss /= len(validation_loader.dataset) # calculate test loss
-
-    print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format( # print test loss and accuracy
-        test_loss, correct, len(validation_loader.dataset),
-        100. * correct / len(validation_loader.dataset)))
-    
-    if args.save_model: # check if we are saving the model
-        torch.save(grad_net.state_dict(), "grad_net.pt") # save gradients and path model
-        torch.save(classifier_net.state_dict(), "classifer_net.pt") # save classifier model
-        print("The current models are saved") # confirm all models are saved
-    return 100. * correct / len(validation_loader.dataset), o1
-
-def test(args, grad_net, classifier_net, device, validation_loader):
-    grad_net.eval() # set the network on evaluation mode
-    classifier_net.eval() # set the network on evaluation mode
-    test_loss = 0 # initialize test loss
-    correct = 0 # initialize the number of correct predictions
-    o1 = []
-    d1 = []
-    for data, target in validation_loader: # for each data batch
-        global pathdt
-        pathdt = torch.Tensor([[ 0.,0.]])
-        data, target = data.to(device), target.to(device) # assign data to the device
-        data = torch.linspace(-1,1,steps=100).view(100,1)
-        global p_i # claim the initial image batch as a global variable
-        p_i = data.view(data.size(0),1)
-        output,p = visualize(args, grad_net, classifier_net, data, device)
-        #d1 = torch.cat((d1,data),1)
-        target = target + 1
-        target = target /2
-        target = target.to(torch.long)
-        
-        if o1==[]:
-            o1 = torch.cat((p.view((p.size(0),1)),target),1)
-        else:
-            o1 = torch.cat((o1,torch.cat((p.view((p.size(0),1)),target),1)),0)
-        target = target.view(target.size(0))
-        test_loss += F.cross_entropy(output, target, reduction='sum').item()  # sum up batch loss
-        pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
-        correct += pred.eq(target.view_as(pred)).sum().item() # sum up the number of correct predictions
-
-    o1 = o1.detach().numpy()
-    outer1 = o1[o1[:,1]==1.]
-    inner1 = o1[o1[:,1]==0.]
-    #plt.scatter(np.zeros((len(outer1),1)),outer1[:,0],color='r')
-    #plt.scatter(np.zeros((len(inner1),1)),inner1[:,0])
-    #plt.show()
-    test_loss /= len(validation_loader.dataset) # calculate test loss
-
-    print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format( # print test loss and accuracy
-        test_loss, correct, len(validation_loader.dataset),
-        100. * correct / len(validation_loader.dataset)))
-    
-    if args.save_model: # check if we are saving the model
-        torch.save(grad_net.state_dict(), "grad_net.pt") # save gradients and path model
-        torch.save(classifier_net.state_dict(), "classifer_net.pt") # save classifier model
-        print("The current models are saved") # confirm all models are saved
-    return 100. * correct / len(validation_loader.dataset), o1
 
 def main():
     # Training settings
@@ -371,6 +141,7 @@ def main():
                         help='width of the convolution')
     parser.add_argument('--width-pool', type=int, default=8, metavar='LR',
                         help='width of the adaptive average pooling')
+    
 
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available() # check if we have a GPU available
@@ -391,40 +162,40 @@ def main():
         test_kwargs.update(cuda_kwargs)
         validation_kwargs.update(cuda_kwargs)
 
-
-    #data_object = ConcentricSphere(dim=2,inner_range=[0.0,0.5],outer_range=[1.0,1.5],num_points_inner=500,num_points_outer=1000)
-    data_object = ShiftedSines(dim=1, num_points_pos=1500, num_points_neg=1500)
-
-    train_set, val_set = torch.utils.data.random_split(data_object, [2700, 300])
-    
-    train_loader = DataLoader(train_set,batch_size=args.batch_size,shuffle=True)
-    test_loader = DataLoader(val_set,batch_size=args.batch_size,shuffle=True)
-
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad, width_conv2=args.width_conv2).to(device) # define grad_net and assign to device
     classifier_net = Classifier(width_conv2=args.width_conv2, width_pool=args.width_pool).to(device) # define classifier network and assign to device
+    grad_net.load_state_dict(torch.load('C:/Users/xingz/NeuralPDE/grad_net.pt'))
+    grad_net.eval()
+    classifier_net.load_state_dict(torch.load('C:/Users/xingz/NeuralPDE/classifer_net.pt'))
+    classifier_net.eval()
+    timesteps=10
+    num_points = 30
+    hidden = torch.linspace(-2,2,steps=num_points).view((num_points,1))
+    t = torch.linspace(0,1,steps=timesteps)
+    g = torch.linspace(0,1,steps=timesteps)
+    dhdt = np.zeros((timesteps, num_points))
+    dgdt = np.ones((timesteps, num_points))
+    for i in range(len(t)):
+        for j in range(len(hidden)):
+            # Ensure h_j has shape (1, 1) as this is expected by odefunc
+            h_j = hidden[j]
+            global p_i
+            p_i = h_j.view((1,1))
+            t_input = t[i].expand(h_j.size(0),1)
+            path_input = torch.cat((t_input, p_i),dim=1) # concatenate the time and the image
+            path_input = path_input.view(path_input.size(0),1,1,2)
+            g_h_i = grad_net.path(path_input) # calculate the position of the integration path
+            g_h_i = g_h_i.view(g_h_i.size(0),2)
+            dg_dt = g_h_i[:,0].view(g_h_i[:,0].size(0),1,1,1)
+            dgdt[i, j] = dg_dt.squeeze()
+            g[i] = dg_dt.squeeze() * (t[i]-t[i-1])
+            x = h_j.view(h_j.size(0),1,1,1)
+            dhdt[i, j] = grad_net.grad_g(x)
 
-    optimizer_grad = optim.AdamW(list(grad_net.parameters())+list(classifier_net.parameters()), lr=args.lr_grad, weight_decay=5e-4) # define optimizer on the gradients
-    
-    print("The number of parameters used is {}".format(get_n_params(grad_net)+get_n_params(classifier_net))) # print the number of parameters in our model
+    t_grid, h_grid = np.meshgrid(t, hidden, indexing='ij')
+    plt.quiver(t_grid, h_grid, dgdt, dhdt, width=0.004, alpha=0.6)
+    plt.show()
 
-    scheduler_grad = StepLR(optimizer_grad, step_size=args.step_size, gamma=args.gamma) # define scheduler for the gradients' network
-
-    print('setup complete')
-
-    accu = 0.0
-    #outer = torch.zeros((25,153,3))
-    #inner = torch.zeros((25,147,3))
-    for epoch in range(1, args.epochs + 1):
-        train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, epoch)
-        accu_new, o1 = validation(args, grad_net, classifier_net, device, test_loader)
-        #outer[epoch-1,:,:] = o1[o1[:,2]==1.]
-        #inner[epoch-1,:,:] = o1[o1[:,2]==0.]
-        if accu_new > accu:
-            accu = accu_new
-        print('The best accuracy is {:.4f}%\n'.format(accu))
-        scheduler_grad.step()
-    test(args, grad_net, classifier_net, device, test_loader)
-    a=1
 if __name__ == '__main__':
     main()
 
