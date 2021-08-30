@@ -28,10 +28,10 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 
         self.path = nn.Sequential( # define the network for the integration path
             nn.Linear(2,20),
-            nn.Softplus(),
+            nn.Hardsigmoid(),
             #nn.LogSigmoid(),
             nn.Linear(20,20),
-            nn.Softplus(),
+            nn.Hardsigmoid(),
             nn.Linear(20,2)
         )
 
@@ -139,7 +139,7 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
-    parser.add_argument('--adaptive-solver', action='store_true', default=False,
+    parser.add_argument('--adaptive-solver', action='store_true', default=True,
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
@@ -191,12 +191,14 @@ def main():
     classifier_net.load_state_dict(torch.load('C:/Users/xingz/NeuralPDE/classifer_net.pt'))
     classifier_net.eval()
     timesteps=5
-    num_points = 10
+    num_points = 11
     hidden = torch.linspace(-2,2,steps=num_points).view((num_points,1))
     t = torch.linspace(0,1,steps=timesteps)
     g = torch.linspace(0,1,steps=timesteps)
     h = torch.linspace(0,1,steps=timesteps)
     dpdt = np.zeros((timesteps, num_points))
+    dpdg = np.zeros((timesteps, num_points))
+    dpdh = np.zeros((timesteps, num_points))
     dgdt = np.ones((timesteps, num_points))
     dhdt = np.ones((timesteps, num_points))
     for i in range(len(t)):
@@ -223,14 +225,21 @@ def main():
                 h[i] = odeint(path_h, h[0], integration_t, method="euler")[1]
 
             x = h_j.view(h_j.size(0),1,1,1)
-            dpdt[i, j] = grad_net.grad_g(x)
+            dpdg[i, j] = grad_net.grad_g(x)
+            dpdh[i, j] = grad_net.grad_h(x)
+            dpdt[i, j] = dpdg[i, j]*dgdt[i, j]+dpdh[i, j]*dhdt[i, j]
+
 
     g_grid, p_grid = np.meshgrid(g.detach().numpy(), hidden, indexing='ij')
-    plt.quiver(g_grid, p_grid, dgdt, dpdt, width=0.004, alpha=0.6)
+    plt.quiver(g_grid, p_grid, dgdt, dpdg, width=0.004, alpha=0.6)
     plt.show()
 
     h_grid, p_grid = np.meshgrid(h.detach().numpy(), hidden, indexing='ij')
-    plt.quiver(h_grid, p_grid, dhdt, dpdt, width=0.004, alpha=0.6)
+    plt.quiver(h_grid, p_grid, dhdt, dpdh, width=0.004, alpha=0.6)
+    plt.show()
+
+    t_grid, p_grid = np.meshgrid(t, hidden, indexing='ij')
+    plt.quiver(t_grid, p_grid, dhdt, dpdt, width=0.004, alpha=0.6)
     plt.show()
 
 if __name__ == '__main__':

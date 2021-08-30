@@ -85,10 +85,10 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 
         self.path = nn.Sequential( # define the network for the integration path
             nn.Linear(2,20),
-            nn.Softplus(),
+            nn.Hardsigmoid(),
             #nn.LogSigmoid(),
             nn.Linear(20,20),
-            nn.Softplus(),
+            nn.Hardsigmoid(),
             nn.Linear(20,2)
         )
 
