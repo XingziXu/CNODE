@@ -96,6 +96,26 @@ def get_n_params(model): # define a function to measure the number of parameters
         pp += nn
     return pp
 
+def path_g(t,y):
+    t_input = t.expand(p_i.size(0),1) # resize
+    #print(t)
+    #t_channel = ((t_input.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
+    path_input = torch.cat((t_input, p_i),dim=1) # concatenate the time and the image
+    path_input = path_input.view(path_input.size(0),1,1,2)
+    g_h_i = grad_net.path(path_input) # calculate the position of the integration path
+    g_h_i = g_h_i.view(g_h_i.size(0),2)
+    return g_h_i.squeeze()[0]
+
+def path_h(t,y):
+    t_input = t.expand(p_i.size(0),1) # resize
+    #print(t)
+    #t_channel = ((t_input.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
+    path_input = torch.cat((t_input, p_i),dim=1) # concatenate the time and the image
+    path_input = path_input.view(path_input.size(0),1,1,2)
+    g_h_i = grad_net.path(path_input) # calculate the position of the integration path
+    g_h_i = g_h_i.view(g_h_i.size(0),2)
+    return g_h_i.squeeze()[1]
+
 def main():
     # Training settings
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
@@ -162,19 +182,23 @@ def main():
         test_kwargs.update(cuda_kwargs)
         validation_kwargs.update(cuda_kwargs)
 
+    global grad_net
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad, width_conv2=args.width_conv2).to(device) # define grad_net and assign to device
     classifier_net = Classifier(width_conv2=args.width_conv2, width_pool=args.width_pool).to(device) # define classifier network and assign to device
+    
     grad_net.load_state_dict(torch.load('C:/Users/xingz/NeuralPDE/grad_net.pt'))
     grad_net.eval()
     classifier_net.load_state_dict(torch.load('C:/Users/xingz/NeuralPDE/classifer_net.pt'))
     classifier_net.eval()
-    timesteps=10
-    num_points = 30
+    timesteps=5
+    num_points = 10
     hidden = torch.linspace(-2,2,steps=num_points).view((num_points,1))
     t = torch.linspace(0,1,steps=timesteps)
     g = torch.linspace(0,1,steps=timesteps)
-    dhdt = np.zeros((timesteps, num_points))
+    h = torch.linspace(0,1,steps=timesteps)
+    dpdt = np.zeros((timesteps, num_points))
     dgdt = np.ones((timesteps, num_points))
+    dhdt = np.ones((timesteps, num_points))
     for i in range(len(t)):
         for j in range(len(hidden)):
             # Ensure h_j has shape (1, 1) as this is expected by odefunc
@@ -187,13 +211,26 @@ def main():
             g_h_i = grad_net.path(path_input) # calculate the position of the integration path
             g_h_i = g_h_i.view(g_h_i.size(0),2)
             dg_dt = g_h_i[:,0].view(g_h_i[:,0].size(0),1,1,1)
+            dh_dt = g_h_i[:,1].view(g_h_i[:,1].size(0),1,1,1)
             dgdt[i, j] = dg_dt.squeeze()
-            g[i] = dg_dt.squeeze() * (t[i]-t[i-1])
-            x = h_j.view(h_j.size(0),1,1,1)
-            dhdt[i, j] = grad_net.grad_g(x)
+            dhdt[i, j] = dh_dt.squeeze()
+            if t[i] ==0:
+                g[i] = grad_net.path(torch.cat((torch.Tensor([0.]).squeeze().expand(h_j.size(0),1), p_i),dim=1).view(path_input.size(0),1,1,2)).squeeze()[0]
+                h[i] = grad_net.path(torch.cat((torch.Tensor([0.]).squeeze().expand(h_j.size(0),1), p_i),dim=1).view(path_input.size(0),1,1,2)).squeeze()[1]
+            else:
+                integration_t = torch.Tensor([0.,1.])*t[i]
+                g[i] = odeint(path_g, g[0], integration_t, method="euler")[1]
+                h[i] = odeint(path_h, h[0], integration_t, method="euler")[1]
 
-    t_grid, h_grid = np.meshgrid(t, hidden, indexing='ij')
-    plt.quiver(t_grid, h_grid, dgdt, dhdt, width=0.004, alpha=0.6)
+            x = h_j.view(h_j.size(0),1,1,1)
+            dpdt[i, j] = grad_net.grad_g(x)
+
+    g_grid, p_grid = np.meshgrid(g.detach().numpy(), hidden, indexing='ij')
+    plt.quiver(g_grid, p_grid, dgdt, dpdt, width=0.004, alpha=0.6)
+    plt.show()
+
+    h_grid, p_grid = np.meshgrid(h.detach().numpy(), hidden, indexing='ij')
+    plt.quiver(h_grid, p_grid, dhdt, dpdt, width=0.004, alpha=0.6)
     plt.show()
 
 if __name__ == '__main__':
