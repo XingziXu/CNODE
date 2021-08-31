@@ -22,11 +22,11 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
             #nn.InstanceNorm2d(width_conv+width_aug+3),
             nn.GroupNorm(3+width_aug,3+width_aug),
             nn.Conv2d(3+width_aug,width_grad, 3, padding=1, bias=False),
-            nn.Softplus(),
-            #nn.ReLU(),
+            #nn.Softplus(),
+            nn.ReLU(),
             nn.Conv2d(width_grad,width_grad, 3, padding=1, bias=False),
-            nn.Softplus(),
-            #nn.ReLU(),
+            #nn.Softplus(),
+            nn.ReLU(),
             #nn.InstanceNorm2d(width_grad),
             nn.GroupNorm(width_grad,width_grad),
             nn.Conv2d(width_grad,3+width_aug,1)
@@ -216,7 +216,7 @@ def main():
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=4000, metavar='N',
+    parser.add_argument('--epochs', type=int, default=100, metavar='N',
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--gamma', type=float, default=0.9, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
