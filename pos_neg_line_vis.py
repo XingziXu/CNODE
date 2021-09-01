@@ -190,12 +190,13 @@ def main():
     grad_net.eval()
     classifier_net.load_state_dict(torch.load('C:/Users/xingz/NeuralPDE/classifer_net.pt'))
     classifier_net.eval()
-    timesteps=5
-    num_points = 11
-    hidden = torch.linspace(-2,2,steps=num_points).view((num_points,1))
+    timesteps=30
+    num_points = 3
+    hidden = torch.linspace(-20,20,steps=num_points).view((num_points,1))
     t = torch.linspace(0,1,steps=timesteps)
-    g = torch.linspace(0,1,steps=timesteps)
-    h = torch.linspace(0,1,steps=timesteps)
+    g = np.zeros((timesteps, num_points))
+    h = np.zeros((timesteps, num_points))
+    p = np.zeros((timesteps, num_points))
     dpdt = np.zeros((timesteps, num_points))
     dpdg = np.zeros((timesteps, num_points))
     dpdh = np.zeros((timesteps, num_points))
@@ -217,20 +218,35 @@ def main():
             dgdt[i, j] = dg_dt.squeeze()
             dhdt[i, j] = dh_dt.squeeze()
             if t[i] ==0:
-                g[i] = grad_net.path(torch.cat((torch.Tensor([0.]).squeeze().expand(h_j.size(0),1), p_i),dim=1).view(path_input.size(0),1,1,2)).squeeze()[0]
-                h[i] = grad_net.path(torch.cat((torch.Tensor([0.]).squeeze().expand(h_j.size(0),1), p_i),dim=1).view(path_input.size(0),1,1,2)).squeeze()[1]
+                g[0,j] = grad_net.path(torch.cat((torch.Tensor([0.]).squeeze().expand(h_j.size(0),1), p_i),dim=1).view(path_input.size(0),1,1,2)).squeeze()[0]
+                h[0,j] = grad_net.path(torch.cat((torch.Tensor([0.]).squeeze().expand(h_j.size(0),1), p_i),dim=1).view(path_input.size(0),1,1,2)).squeeze()[1]
+                p[i,j] = p_i
             else:
                 integration_t = torch.Tensor([0.,1.])*t[i]
-                g[i] = odeint(path_g, g[0], integration_t, method="euler")[1]
-                h[i] = odeint(path_h, h[0], integration_t, method="euler")[1]
+                g[i,j] = odeint(path_g, torch.Tensor([g[0,j]]), integration_t, method="euler")[1]
+                h[i,j] = odeint(path_h, torch.Tensor([h[0,j]]), integration_t, method="euler")[1]
+                p[i,j] = torch.squeeze(odeint_adjoint(grad_net, p_i, integration_t,method="dopri5",rtol=args.tol,atol=args.tol)[1])
 
             x = h_j.view(h_j.size(0),1,1,1)
             dpdg[i, j] = grad_net.grad_g(x)
             dpdh[i, j] = grad_net.grad_h(x)
             dpdt[i, j] = dpdg[i, j]*dgdt[i, j]+dpdh[i, j]*dhdt[i, j]
 
+    most_neg = np.abs(np.min(p))
+    scale = np.max(p)+np.abs(np.min(p))
+    #g_array = g.detach().numpy()
+    #h_array = h.detach().numpy()
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    for j in range(len(hidden)):
+        for i in range(len(t)):   
+            ax.scatter(g[i,j],h[i,j], color = (0., ((p[i, j]+most_neg)/scale), 0.),s=0.3)
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    plt.show()
 
-    g_grid, p_grid = np.meshgrid(g.detach().numpy(), hidden, indexing='ij')
+
+    """g_grid, p_grid = np.meshgrid(g.detach().numpy(), hidden, indexing='ij')
     plt.quiver(g_grid, p_grid, dgdt, dpdg, width=0.004, alpha=0.6)
     plt.show()
 
@@ -241,7 +257,6 @@ def main():
     t_grid, p_grid = np.meshgrid(t, hidden, indexing='ij')
     plt.quiver(t_grid, p_grid, dhdt, dpdt, width=0.004, alpha=0.6)
     plt.show()
-
+"""
 if __name__ == '__main__':
     main()
-
