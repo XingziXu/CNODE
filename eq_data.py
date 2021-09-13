@@ -44,18 +44,18 @@ class LinearAdvection1D:
 # constants  
 u_save = np.ones((100,100))
 x_save = np.ones((100,100))
-time = 1e-1*np.linspace(1,100,100)
+time = 0.1*np.linspace(1,100,100)
 for i in range(0,99):
 
 
-    N,x0,xN,deltaT,c,T=100,0.,10.,0.05,1.,time[i]
+    N,x0,xN,deltaT,c,T=100,0.,10.,0.05,1.,1
     # initialization of constants
     LA1D = LinearAdvection1D(c, x0, xN, N, deltaT,T) 
 
     # initial value
     x=np.linspace(LA1D.x0,LA1D.xN,LA1D.N)
-    u0=np.exp(-(x-2)*(x-2))
-
+    #u0=np.exp(-(x-2)*(x-2))
+    u0 = np.sin(x)
     #plot of initial value    
     #plt.plot(x,u0,label="Initial value")
     #plt.ylabel('u')
@@ -65,7 +65,7 @@ for i in range(0,99):
 
     # calculating solution if CFL<=1
     if (LA1D.checkCFL() is True):
-        print("CFL number is: ", LA1D.CFL())
+        #print("CFL number is: ", LA1D.CFL())
         LA1D.upwindMatrixAssembly()
         for t in range(0,int(LA1D.T/LA1D.deltaT)):
             u=LA1D.Solve(u0)
@@ -82,5 +82,14 @@ for i in range(0,99):
     #plt.savefig('LA1D.png',dpi=300)
     u_save[i,:]=u
     x_save[i,:]=x
-print(deltaT/((xN - x0)/N))
-print(LA1D.A)
+#print(deltaT/((xN - x0)/N))
+#print(LA1D.A)
+
+with open('u.npy', 'wb') as f:
+    np.save(f, u_save)
+
+with open('x.npy', 'wb') as f:
+    np.save(f, x_save)
+
+with open('t.npy', 'wb') as f:
+    np.save(f, time)
