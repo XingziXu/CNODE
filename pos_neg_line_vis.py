@@ -20,6 +20,7 @@ from math import pi
 from torch.distributions import Normal
 import numpy as np
 from scipy.interpolate import make_interp_spline
+from mpl_toolkits.mplot3d import Axes3D
 
 class Grad_net(nn.Module): # the Grad_net defines the networks for the path and for the gradients
     def __init__(self, width_path: int, width_grad: int, width_conv2: int):
@@ -191,8 +192,9 @@ def main():
     classifier_net.load_state_dict(torch.load('C:/Users/xingz/NeuralPDE/classifer_net.pt'))
     classifier_net.eval()
     timesteps=30
-    num_points = 3
-    hidden = torch.linspace(-20,20,steps=num_points).view((num_points,1))
+    num_points = 10
+    #hidden = torch.linspace(-1,1,steps=num_points).view((num_points,1))
+    hidden=torch.tensor([[-1.0000],[ 1.0000]])
     t = torch.linspace(0,1,steps=timesteps)
     g = np.zeros((timesteps, num_points))
     h = np.zeros((timesteps, num_points))
@@ -220,7 +222,7 @@ def main():
             if t[i] ==0:
                 g[0,j] = grad_net.path(torch.cat((torch.Tensor([0.]).squeeze().expand(h_j.size(0),1), p_i),dim=1).view(path_input.size(0),1,1,2)).squeeze()[0]
                 h[0,j] = grad_net.path(torch.cat((torch.Tensor([0.]).squeeze().expand(h_j.size(0),1), p_i),dim=1).view(path_input.size(0),1,1,2)).squeeze()[1]
-                p[i,j] = p_i
+                p[0,j] = p_i
             else:
                 integration_t = torch.Tensor([0.,1.])*t[i]
                 g[i,j] = odeint(path_g, torch.Tensor([g[0,j]]), integration_t, method="euler")[1]
@@ -237,13 +239,15 @@ def main():
     #g_array = g.detach().numpy()
     #h_array = h.detach().numpy()
     fig = plt.figure()
-    ax = fig.add_subplot(111)
+    ax = Axes3D(fig)
     for j in range(len(hidden)):
         for i in range(len(t)):   
-            ax.scatter(g[i,j],h[i,j], color = (0., ((p[i, j]+most_neg)/scale), 0.),s=0.3)
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
+            ax.scatter(p[i,j],g[i,j],h[i,j], color = (0., ((p[i, j]+most_neg)/scale), 0.))
+    ax.set_xlabel('v')
+    ax.set_ylabel('g')
+    ax.set_zlabel('h')
     plt.show()
+    a=1
 
 
     """g_grid, p_grid = np.meshgrid(g.detach().numpy(), hidden, indexing='ij')

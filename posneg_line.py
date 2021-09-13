@@ -198,15 +198,16 @@ def update(args, grad_net, classifier_net, optimizer, data, target, device):
     else:
         p = torch.squeeze(odeint(grad_net, p, t, method="euler")[1]) # solve the neural line integral with the euler's solver
         grad_net.nfe=0 # reset the number of function of evaluations
-    output = classifier_net(p.view((p.size(0),1))) # classify the transformed images
-    soft_max = nn.Softmax(dim=1) # define a soft max calculator
-    output = soft_max(output) # get the prediction results by getting the most probable ones
+    output = torch.sign(p.view((p.size(0),1))) # classify the transformed images
+    #soft_max = nn.Softmax(dim=1) # define a soft max calculator
+    #output = soft_max(output) # get the prediction results by getting the most probable ones
     #loss_func = nn.CrossEntropyLoss()
     target = target + 1
     target = target /2
-    target = target.to(torch.long)
-    target = target.view(target.size(0))
-    loss = F.cross_entropy(output, target) # calculate the function loss
+    #target = target.to(torch.long)
+    #target = target.view(target.size(0))
+    bce_loss = nn.BCELoss()
+    loss = bce_loss((output+1)*0.5, target) # calculate the function loss
     loss.backward(retain_graph=True) # backpropagate through the loss
     optimizer.step() # update the path network's parameters
     return loss
@@ -223,9 +224,9 @@ def evaluate(args, grad_net, classifier_net, data, device):
     else:
         p = torch.squeeze(odeint(grad_net, p, t, method="euler")[1]) # solve the neural line integral with the euler's solver
         grad_net.nfe=0 # reset the number of function of evaluations
-    output = classifier_net(p.view((p.size(0),1))) # classify the transformed images
-    soft_max = nn.Softmax(dim=1) # define a soft max calculator
-    output = soft_max(output) # get the prediction results by getting the most probable ones
+    output = torch.sign(p.view((p.size(0),1))) # classify the transformed images
+ # define a soft max calculator
+    output = (output+1)*0.5 # get the prediction results by getting the most probable ones
     return output,p
 
 def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, epoch):
@@ -292,14 +293,16 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
         #d1 = torch.cat((d1,data),1)
         target = target + 1
         target = target /2
-        target = target.to(torch.long)
         
         if o1==[]:
             o1 = torch.cat((p.view((p.size(0),1)),target),1)
         else:
             o1 = torch.cat((o1,torch.cat((p.view((p.size(0),1)),target),1)),0)
-        target = target.view(target.size(0))
-        test_loss += F.cross_entropy(output, target, reduction='sum').item()  # sum up batch loss
+
+        output = torch.sign(p.view((p.size(0),1))) # classify the transformed images
+        bce_loss = nn.BCELoss()
+        loss = bce_loss((output+1)*0.5, target) # calculate the function loss
+        test_loss += loss  # sum up batch loss
         pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
         correct += pred.eq(target.view_as(pred)).sum().item() # sum up the number of correct predictions
 
@@ -388,9 +391,9 @@ def main():
 
 
     #data_object = ConcentricSphere(dim=2,inner_range=[0.0,0.5],outer_range=[1.0,1.5],num_points_inner=500,num_points_outer=1000)
-    data_object = ShiftedSines(dim=1, num_points_pos=1500, num_points_neg=1500)
+    data_object = ShiftedSines(dim=1, num_points_pos=3000, num_points_neg=3000)
 
-    train_set, val_set = torch.utils.data.random_split(data_object, [2700, 300])
+    train_set, val_set = torch.utils.data.random_split(data_object, [5700, 300])
     
     train_loader = DataLoader(train_set,batch_size=args.batch_size,shuffle=True)
     test_loader = DataLoader(val_set,batch_size=args.batch_size,shuffle=True)
@@ -404,9 +407,9 @@ def main():
     #grad_net.path.apply(initialize_path)
     #classifier_net.apply(initialize_classifier)
 
-    optimizer_grad = optim.AdamW(list(grad_net.parameters())+list(classifier_net.parameters()), lr=args.lr_grad, weight_decay=5e-4) # define optimizer on the gradients
+    optimizer_grad = optim.AdamW(list(grad_net.parameters()), lr=args.lr_grad, weight_decay=5e-4) # define optimizer on the gradients
     
-    print("The number of parameters used is {}".format(get_n_params(grad_net)+get_n_params(classifier_net))) # print the number of parameters in our model
+    print("The number of parameters used is {}".format(get_n_params(grad_net))) # print the number of parameters in our model
 
     scheduler_grad = StepLR(optimizer_grad, step_size=args.step_size, gamma=args.gamma) # define scheduler for the gradients' network
 

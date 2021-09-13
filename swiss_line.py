@@ -268,8 +268,8 @@ def test(args, grad_net, classifier_net, device, test_loader):
         target = target.to(torch.long)
         target = target.view(target.size(0))
         output1 = output.detach().numpy()
-        #plt.scatter(output1[:,0],output1[:,1])
-        #plt.show()
+        plt.scatter(output1[:,0],output1[:,1])
+        plt.show()
         test_loss += F.cross_entropy(output, target, reduction='sum').item()  # sum up batch loss
         pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
         correct += pred.eq(target.view_as(pred)).sum().item() # sum up the number of correct predictions
@@ -313,9 +313,9 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
         pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
         correct += pred.eq(target.view_as(pred)).sum().item() # sum up the number of correct predictions
 
-    #o1 = o1.detach().numpy()
-    #outer1 = o1[o1[:,2]==1.]
-    #inner1 = o1[o1[:,2]==0.]
+    o1 = o1.detach().numpy()
+    outer1 = o1[o1[:,2]==1.]
+    inner1 = o1[o1[:,2]==0.]
     #plt.scatter(outer1[:,0],outer1[:,1],color='r')
     #plt.scatter(inner1[:,0],inner1[:,1])
     #plt.show()
@@ -340,7 +340,7 @@ def main():
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=25, metavar='N',
+    parser.add_argument('--epochs', type=int, default=50, metavar='N',
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--gamma', type=float, default=0.9, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
@@ -354,7 +354,7 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
-    parser.add_argument('--adaptive-solver', action='store_true', default=True,
+    parser.add_argument('--adaptive-solver', action='store_true', default=False,
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
@@ -398,9 +398,9 @@ def main():
 
 
     #data_object = ConcentricSphere(dim=2,inner_range=[0.0,0.5],outer_range=[1.0,1.5],num_points_inner=500,num_points_outer=1000)
-    data_object = ShiftedSines(dim=2, shift=1.4, num_points_upper=1500, num_points_lower=1500,noise_scale=0.1)
+    data_object = ShiftedSines(dim=2, shift=1.4, num_points_upper=3000, num_points_lower=3000,noise_scale=0.1)
 
-    train_set, val_set = torch.utils.data.random_split(data_object, [2700, 300])
+    train_set, val_set = torch.utils.data.random_split(data_object, [5000, 1000])
     
     train_loader = DataLoader(train_set,batch_size=args.batch_size,shuffle=True)
     test_loader = DataLoader(val_set,batch_size=args.batch_size,shuffle=True)

@@ -313,9 +313,9 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
     o1 = o1.detach().numpy()
     outer1 = o1[o1[:,2]==1.]
     inner1 = o1[o1[:,2]==0.]
-    #plt.scatter(outer1[:,0],outer1[:,1],color='r')
-    #plt.scatter(inner1[:,0],inner1[:,1])
-    #plt.show()
+    plt.scatter(outer1[:,0],outer1[:,1],color='r')
+    plt.scatter(inner1[:,0],inner1[:,1])
+    plt.show()
     test_loss /= len(validation_loader.dataset) # calculate test loss
 
     print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format( # print test loss and accuracy
@@ -394,9 +394,9 @@ def main():
         validation_kwargs.update(cuda_kwargs)
 
 
-    data_object = ConcentricSphere(dim=2,inner_range=[0.0,0.5],outer_range=[1.0,1.5],num_points_inner=500,num_points_outer=1000)
+    data_object = ConcentricSphere(dim=2,inner_range=[0.0,0.5],outer_range=[1.0,1.5],num_points_inner=1000,num_points_outer=2000)
 
-    train_set, val_set = torch.utils.data.random_split(data_object, [1350, 150])
+    train_set, val_set = torch.utils.data.random_split(data_object, [1500, 1500])
     
     train_loader = DataLoader(train_set,batch_size=args.batch_size,shuffle=True)
     test_loader = DataLoader(val_set,batch_size=args.batch_size,shuffle=True)
