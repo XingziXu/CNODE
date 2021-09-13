@@ -42,37 +42,45 @@ class LinearAdvection1D:
 ###################
 
 # constants  
-N,x0,xN,deltaT,c,T=100,0.,10.,0.05,1.,0.5
-# initialization of constants
-LA1D = LinearAdvection1D(c, x0, xN, N, deltaT,T) 
-
-# initial value
-x=np.linspace(LA1D.x0,LA1D.xN,LA1D.N)
-u0=np.exp(-(x-2)*(x-2))
-
-#plot of initial value    
-plt.plot(x,u0,label="Initial value")
-plt.ylabel('u')
-plt.xlabel('x')
-plt.legend()
+u_save = np.ones((100,100))
+x_save = np.ones((100,100))
+time = 1e-1*np.linspace(1,100,100)
+for i in range(0,99):
 
 
-# calculating solution if CFL<=1
-if (LA1D.checkCFL() is True):
-    print("CFL number is: ", LA1D.CFL())
-    LA1D.upwindMatrixAssembly()
-    for t in range(0,int(LA1D.T/LA1D.deltaT)):
-        u=LA1D.Solve(u0)
-        u0=u
-else:
-    print("CFL number is greater than 1. CFL: ", LA1D.CFL())
+    N,x0,xN,deltaT,c,T=100,0.,10.,0.05,1.,time[i]
+    # initialization of constants
+    LA1D = LinearAdvection1D(c, x0, xN, N, deltaT,T) 
 
-# ploting the last solution
-plt.plot(x,u,label="Solution at t="+str(LA1D.T))
-plt.legend()
-plt.grid(linestyle='dotted')
+    # initial value
+    x=np.linspace(LA1D.x0,LA1D.xN,LA1D.N)
+    u0=np.exp(-(x-2)*(x-2))
 
-plt.savefig('LA1D.png',dpi=300)
+    #plot of initial value    
+    #plt.plot(x,u0,label="Initial value")
+    #plt.ylabel('u')
+    #plt.xlabel('x')
+    #plt.legend()
 
+
+    # calculating solution if CFL<=1
+    if (LA1D.checkCFL() is True):
+        print("CFL number is: ", LA1D.CFL())
+        LA1D.upwindMatrixAssembly()
+        for t in range(0,int(LA1D.T/LA1D.deltaT)):
+            u=LA1D.Solve(u0)
+            u0=u
+            #print(t)
+    else:
+        print("CFL number is greater than 1. CFL: ", LA1D.CFL())
+
+    # ploting the last solution
+    #plt.plot(x,u,label="Solution at t="+str(LA1D.T))
+    #plt.legend()
+    #plt.grid(linestyle='dotted')
+
+    #plt.savefig('LA1D.png',dpi=300)
+    u_save[i,:]=u
+    x_save[i,:]=x
 print(deltaT/((xN - x0)/N))
 print(LA1D.A)
