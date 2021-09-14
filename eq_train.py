@@ -27,27 +27,27 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 
         self.path = nn.Sequential( # define the network for the integration path
             nn.Linear(1,20),
-            nn.Hardsigmoid(),
-            #nn.LogSigmoid(),
+            #nn.Hardsigmoid(),
+            nn.Softplus(),
             nn.Linear(20,20),
-            nn.Hardsigmoid(),
-            nn.Linear(20,2)
+            nn.Softplus(),
+            nn.Linear(20,1)
         )
 
 
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
-            nn.Linear(2,16),
-            nn.ReLU(),
+            nn.Linear(1,16),
+            nn.Softplus(),
             nn.Linear(16,16),
-            nn.ReLU(),
+            nn.Softplus(),
             nn.Linear(16,1)
         )
         
         self.grad_h = nn.Sequential( # define the network for the gradient on y direction
-            nn.Linear(2,16),
-            nn.ReLU(),
+            nn.Linear(1,16),
+            nn.Softplus(),
             nn.Linear(16,16),
-            nn.ReLU(),
+            nn.Softplus(),
             nn.Linear(16,1)
         )
 
@@ -59,10 +59,10 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         #path_input = torch.cat((t_input, p_i),dim=1) # concatenate the time and the image
         #path_input = path_input.view(path_input.size(0),1,1,2)
         g_h_i = self.path(t_input) # calculate the position of the integration path
-        g_h_i = g_h_i.view(g_h_i.size(0),2)
+        #g_h_i = g_h_i.view(g_h_i.size(0),2)
 
         dg_dt = g_h_i[:,0].view(g_h_i[:,0].size(0),1)
-        dh_dt = g_h_i[:,1].view(g_h_i[:,1].size(0),1)
+        #dh_dt = g_h_i[:,1].view(g_h_i[:,1].size(0),1)
         
         # dg_dt = g_h_i[:,0].view(g_h_i.size(0),1,1) # resize 
         #dg_dt = dg_dt.expand(dg_dt.size(0),1,x.size(2)*x.size(3)) # resize 
@@ -72,8 +72,8 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         #dh_dt = dh_dt.expand(dh_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         #dh_dt = dh_dt.view(dh_dt.size(0),1,x.size(2),x.size(3)) # resize 
         #x = x.view(x.size(0),1,1,1)
-        dp = torch.mul(self.grad_g(x),dg_dt) + torch.mul(self.grad_g(x),dh_dt)# + torch.mul(self.grad_g(x),di_dt) # calculate the change in p
-        dp = dp.view(dp.size(0),1)
+        dp = torch.mul(self.grad_g(x),dg_dt) + self.grad_g(x)# + torch.mul(self.grad_g(x),di_dt) # calculate the change in p
+        #dp = dp.view(dp.size(0),1)
         #print(t.item())
         return dp
 
@@ -129,16 +129,12 @@ def update(args, grad_net, optimizer, data, target, device):
     else:
         p = torch.squeeze(odeint(grad_net, p, t, method="euler")[1]) # solve the neural line integral with the euler's solver
         grad_net.nfe=0 # reset the number of function of evaluations
-    output = torch.sign(p.view((p.size(0),1))) # classify the transformed images
+    output = p.view(p.size(0),1) # classify the transformed images
     #soft_max = nn.Softmax(dim=1) # define a soft max calculator
     #output = soft_max(output) # get the prediction results by getting the most probable ones
     #loss_func = nn.CrossEntropyLoss()
-    target = target + 1
-    target = target /2
-    #target = target.to(torch.long)
-    #target = target.view(target.size(0))
-    bce_loss = nn.BCELoss()
-    loss = bce_loss((output+1)*0.5, target) # calculate the function loss
+    loss = nn.MSELoss()
+    loss = loss(output, target)
     loss.backward(retain_graph=True) # backpropagate through the loss
     optimizer.step() # update the path network's parameters
     return loss
@@ -155,9 +151,7 @@ def evaluate(args, grad_net, data, device):
     else:
         p = torch.squeeze(odeint(grad_net, p, t, method="euler")[1]) # solve the neural line integral with the euler's solver
         grad_net.nfe=0 # reset the number of function of evaluations
-    output = torch.sign(p.view((p.size(0),1))) # classify the transformed images
- # define a soft max calculator
-    output = (output+1)*0.5 # get the prediction results by getting the most probable ones
+    output = p.view(p.size(0),1) # classify the transformed images
     return output,p
 
 def train(args, grad_net, device, train_loader, optimizer_grad, epoch):
@@ -172,33 +166,37 @@ def train(args, grad_net, device, train_loader, optimizer_grad, epoch):
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss_grad.item()))
 
-def test(args, grad_net, device, test_loader):
+def test(args, grad_net, device, validation_loader):
     grad_net.eval() # set the network on evaluation mode
     test_loss = 0 # initialize test loss
     correct = 0 # initialize the number of correct predictions
-    for data, target in test_loader: # for each data batch
-        data, target = data.to(device), target.to(device) # assign data to the device
+    o1 = []
+    d1 = []
+    for data, target in validation_loader: # for each data batch
+        x = np.linspace(0,2*pi,1000)
+        data = torch.Tensor(np.cos(x)).view(1000,1)
+        #data, target = data.to(device), target.to(device) # assign data to the device
+        global p_i # claim the initial image batch as a global variable
+        p_i = data
         output,p = evaluate(args, grad_net, data, device)
-        target = target + 1
-        target = target /2
-        target = target.to(torch.long)
-        target = target.view(target.size(0))
-        output1 = output.detach().numpy()
-        #plt.scatter(output1[:,0],output1[:,1])
-        #plt.show()
-        test_loss += F.cross_entropy(output, target, reduction='sum').item()  # sum up batch loss
-        pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
-        correct += pred.eq(target.view_as(pred)).sum().item() # sum up the number of correct predictions
+        #d1 = torch.cat((d1,data),1)
+    
+    a = 2*pi
+    x = np.linspace(0,2*pi,1000)
+    x_t = x-a
+    plt.plot(x_t,output.detach().numpy(),'b')
+    plt.plot(x_t,np.cos(x_t),'r--')
+    plt.show()
+    test_loss /= len(validation_loader.dataset) # calculate test loss
 
-    test_loss /= len(test_loader.dataset) # calculate test loss
-
-    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format( # print test loss and accuracy
-        test_loss, correct, len(test_loader.dataset),
-        100. * correct / len(test_loader.dataset)))
+    print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format( # print test loss and accuracy
+        test_loss, correct, len(validation_loader.dataset),
+        100. * correct / len(validation_loader.dataset)))
     
     if args.save_model: # check if we are saving the model
         torch.save(grad_net.state_dict(), "grad_net.pt") # save gradients and path model
         print("The current models are saved") # confirm all models are saved
+    return 100. * correct / len(validation_loader.dataset), o1
 
 def validation(args, grad_net, device, validation_loader):
     grad_net.eval() # set the network on evaluation mode
@@ -207,8 +205,6 @@ def validation(args, grad_net, device, validation_loader):
     o1 = []
     d1 = []
     for data, target in validation_loader: # for each data batch
-        global pathdt
-        pathdt = torch.Tensor([[ 0.,0.]])
         data, target = data.to(device), target.to(device) # assign data to the device
         global p_i # claim the initial image batch as a global variable
         p_i = data
@@ -228,13 +224,6 @@ def validation(args, grad_net, device, validation_loader):
         test_loss += loss  # sum up batch loss
         pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
         correct += pred.eq(target.view_as(pred)).sum().item() # sum up the number of correct predictions
-
-    o1 = o1.detach().numpy()
-    outer1 = o1[o1[:,1]==1.]
-    inner1 = o1[o1[:,1]==0.]
-    #plt.scatter(np.zeros((len(outer1),1)),outer1[:,0],color='r')
-    #plt.scatter(np.zeros((len(inner1),1)),inner1[:,0])
-    #plt.show()
     test_loss /= len(validation_loader.dataset) # calculate test loss
 
     print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format( # print test loss and accuracy
@@ -255,7 +244,7 @@ def main():
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=15, metavar='N',
+    parser.add_argument('--epochs', type=int, default=70, metavar='N',
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--gamma', type=float, default=0.9, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
@@ -269,7 +258,7 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=True,
                         help='For Saving the current Model')
-    parser.add_argument('--adaptive-solver', action='store_true', default=True,
+    parser.add_argument('--adaptive-solver', action='store_true', default=False,
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
@@ -279,13 +268,13 @@ def main():
                         help='learning rate for the path (default: 1e-3)')
     parser.add_argument('--lr-classifier', type=float, default=1e-3, metavar='LR',
                         help='learning rate for the classifier(default: 1e-3)')
-    parser.add_argument('--tol', type=float, default=1e-3, metavar='LR',
+    parser.add_argument('--tol', type=float, default=1e-4, metavar='LR',
                         help='learning rate (default: 1e-3)')
     parser.add_argument('--training-frequency', type=int, default=1, metavar='LR',
                         help='how often do we optimize the path network')
     parser.add_argument('--width-grad', type=int, default=64, metavar='LR',
                         help='width of the gradient network')
-    parser.add_argument('--width-path', type=int, default=4, metavar='LR',
+    parser.add_argument('--width-path', type=int, default=8, metavar='LR',
                         help='width of the path network')
     parser.add_argument('--width-conv2', type=int, default=6, metavar='LR',
                         help='width of the convolution')
@@ -311,36 +300,19 @@ def main():
         test_kwargs.update(cuda_kwargs)
         validation_kwargs.update(cuda_kwargs)
 
-
-    with open('t.npy', 'rb') as f:
-        time = np.load(f)
-    with open('u.npy', 'rb') as f:
-        u = np.load(f)
-    with open('x.npy', 'rb') as f:
-        x = np.load(f)
-
-    i_s = np.linspace(0,98,99)
-    j_s = np.linspace(0,98,99)
-    mesh = np.array(np.meshgrid(i_s, j_s))
-    comb = mesh.T.reshape(-1, 2)
-    np.random.shuffle(comb)
-    idx_we_want = comb[0:5000,:]
-    tensor_t = torch.Tensor(time) # transform to torch tensor
-    tensor_u = torch.Tensor(u)
-    tensor_x = torch.Tensor(x)
-    sampled_time = tensor_t[idx_we_want[:,0]]
-    sampled_x = tensor_x[idx_we_want[:,0],idx_we_want[:,1]]
-    sampled_u = tensor_u[idx_we_want[:,0],idx_we_want[:,1]]
-    input_data = torch.cat((sampled_time.view(5000,1), sampled_x.view(5000,1)),dim=1)
-    output_data = sampled_u.view(5000,1)
+    a = 2*pi
+    x = np.linspace(0,2*pi,1000)
+    x_t = x-a
+    input_data = torch.Tensor(np.cos(x)).view(1000,1)
+    output_data = torch.Tensor(np.cos(x_t)).view(1000,1)
     data_object = TensorDataset(input_data,output_data) # create your datset
 
     #data_object = ConcentricSphere(dim=2,inner_range=[0.0,0.5],outer_range=[1.0,1.5],num_points_inner=500,num_points_outer=1000)
 
-    train_set, val_set = torch.utils.data.random_split(data_object, [4000, 1000])
+    train_set, val_set = torch.utils.data.random_split(data_object, [1000, 0])
     
     train_loader = DataLoader(train_set,batch_size=args.batch_size,shuffle=True)
-    test_loader = DataLoader(val_set,batch_size=args.batch_size,shuffle=True)
+    test_loader = DataLoader(train_set,batch_size=1000,shuffle=True)
 
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad, width_conv2=args.width_conv2).to(device) # define grad_net and assign to device
 
@@ -370,7 +342,7 @@ def main():
             accu = accu_new
         print('The best accuracy is {:.4f}%\n'.format(accu))
         scheduler_grad.step()
-    #test(args, grad_net, classifier_net, device, test_loader)
+    test(args, grad_net, device, test_loader)
     a=1
     """for i in range(0,3):
         outer1 = outer[:,i,:]
