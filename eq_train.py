@@ -28,9 +28,9 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         self.path = nn.Sequential( # define the network for the integration path
             nn.Linear(1,20),
             #nn.Hardsigmoid(),
-            nn.Softplus(),
+            nn.Sigmoid(),
             nn.Linear(20,20),
-            nn.Softplus(),
+            nn.Sigmoid(),
             nn.Linear(20,1)
         )
 
@@ -185,7 +185,7 @@ def test(args, grad_net, device, validation_loader):
     x = np.linspace(0,2*pi,1000)
     x_t = x-a
     plt.plot(x_t,output.detach().numpy(),'b')
-    plt.plot(x_t,np.cos(x_t),'r--')
+    plt.plot(x_t,np.cos(x_t),'r')
     plt.show()
     test_loss /= len(validation_loader.dataset) # calculate test loss
 
@@ -244,7 +244,7 @@ def main():
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=70, metavar='N',
+    parser.add_argument('--epochs', type=int, default=10, metavar='N',
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--gamma', type=float, default=0.9, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
@@ -258,7 +258,7 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=True,
                         help='For Saving the current Model')
-    parser.add_argument('--adaptive-solver', action='store_true', default=False,
+    parser.add_argument('--adaptive-solver', action='store_true', default=True,
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
@@ -272,7 +272,7 @@ def main():
                         help='learning rate (default: 1e-3)')
     parser.add_argument('--training-frequency', type=int, default=1, metavar='LR',
                         help='how often do we optimize the path network')
-    parser.add_argument('--width-grad', type=int, default=64, metavar='LR',
+    parser.add_argument('--width-grad', type=int, default=8, metavar='LR',
                         help='width of the gradient network')
     parser.add_argument('--width-path', type=int, default=8, metavar='LR',
                         help='width of the path network')
