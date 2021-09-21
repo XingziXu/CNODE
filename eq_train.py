@@ -28,9 +28,9 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         self.path = nn.Sequential( # define the network for the integration path
             nn.Linear(1,20),
             #nn.Hardsigmoid(),
-            nn.Sigmoid(),
+            #nn.ELU(),
             nn.Linear(20,20),
-            nn.Sigmoid(),
+            #nn.Sigmoid(),
             nn.Linear(20,1)
         )
 
@@ -244,7 +244,7 @@ def main():
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=10, metavar='N',
+    parser.add_argument('--epochs', type=int, default=100, metavar='N',
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--gamma', type=float, default=0.9, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
@@ -258,7 +258,7 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=True,
                         help='For Saving the current Model')
-    parser.add_argument('--adaptive-solver', action='store_true', default=True,
+    parser.add_argument('--adaptive-solver', action='store_true', default=False,
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
@@ -335,14 +335,14 @@ def main():
     #inner = torch.zeros((25,147,3))
     for epoch in range(1, args.epochs + 1):
         train(args, grad_net, device, train_loader, optimizer_grad, epoch)
-        accu_new, o1 = validation(args, grad_net, device, test_loader)
+        #accu_new, o1 = validation(args, grad_net, device, test_loader)
         #outer[epoch-1,:,:] = o1[o1[:,2]==1.]
         #inner[epoch-1,:,:] = o1[o1[:,2]==0.]
-        if accu_new > accu:
-            accu = accu_new
-        print('The best accuracy is {:.4f}%\n'.format(accu))
+        #if accu_new > accu:
+        #    accu = accu_new
+        #print('The best accuracy is {:.4f}%\n'.format(accu))
         scheduler_grad.step()
-    test(args, grad_net, device, test_loader)
+    #test(args, grad_net, device, test_loader)
     a=1
     """for i in range(0,3):
         outer1 = outer[:,i,:]
