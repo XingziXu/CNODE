@@ -1,7 +1,8 @@
 from __future__ import print_function
 import argparse
-import numpy
+from numpy import timedelta64
 import torch
+#from torch._C import T
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -14,73 +15,77 @@ from torch.autograd import Variable
 from random import random
 from torch.utils.data import Dataset, DataLoader
 import matplotlib.pyplot as plt
-from math import pi
-from torch.distributions import Normal
-import numpy as np
-from scipy.interpolate import make_interp_spline
 
-class ShiftedSines(Dataset):
-    """Dataset of two shifted sine curves. Points from the curve shifted upward
-    are mapped to 1, while points from the curve shifted downward are mapped to
-    1.
+def random_point_in_sphere(dim, min_radius, max_radius):
+    """Returns a point sampled uniformly at random from a sphere if min_radius
+    is 0. Else samples a point approximately uniformly on annulus.
 
     Parameters
     ----------
     dim : int
-        Dimension of datapoints.
+        Dimension of sphere
 
-    shift : float
-        Size of shift/gap between the two curves.
+    min_radius : float
+        Minimum distance of sampled point from origin.
 
-    num_points_upper : int
-        Number of points in upper curve.
-
-    num_points_lower : int
-        Number of points in lower curve.
-
-    noise_scale : float
-        Defaults to 0.0 (i.e. no noise). Otherwise, corresponds to standard
-        deviation of white noise added to each point.
+    max_radius : float
+        Maximum distance of sampled point from origin.
     """
-    def __init__(self, dim, shift, num_points_upper, num_points_lower,
-                 noise_scale):
-        self.dim = dim
-        self.shift = shift
-        self.num_points_upper = num_points_upper
-        self.num_points_lower = num_points_lower
-        self.noise_scale = noise_scale
+    # Sample distance of point from origin
+    unif = random()
+    distance = (max_radius - min_radius) * (unif ** (1. / dim)) + min_radius
+    # Sample direction of point away from origin
+    direction = torch.randn(dim)
+    unit_direction = direction / torch.norm(direction, 2)
+    return distance * unit_direction
 
-        noise = Normal(loc=0., scale=self.noise_scale)
+class ConcentricSphere(Dataset):
+    """Dataset of concentric d-dimensional spheres. Points in the inner sphere
+    are mapped to -1, while points in the outer sphere are mapped 1.
+
+    Parameters
+    ----------
+    dim : int
+        Dimension of spheres.
+
+    inner_range : (float, float)
+        Minimum and maximum radius of inner sphere. For example if inner_range
+        is (1., 2.) then all points in inner sphere will lie a distance of
+        between 1.0 and 2.0 from the origin.
+
+    outer_range : (float, float)
+        Minimum and maximum radius of outer sphere.
+
+    num_points_inner : int
+        Number of points in inner cluster
+
+    num_points_outer : int
+        Number of points in outer cluster
+    """
+    def __init__(self, dim, inner_range, outer_range, num_points_inner,
+                 num_points_outer):
+        self.dim = dim
+        self.inner_range = inner_range
+        self.outer_range = outer_range
+        self.num_points_inner = num_points_inner
+        self.num_points_outer = num_points_outer
 
         self.data = []
         self.targets = []
 
-        # Generate data for upper curve and lower curve
-        for i in range(self.num_points_upper + self.num_points_lower):
-            if i < self.num_points_upper:
-                label = 1
-                y_shift = shift / 2.
-                x_shift = shift / 2.
-                scale = 1
-            else:
-                label = -1
-                y_shift = - shift / 2.
-                x_shift = - shift / 2.
-                scale = 2
+        # Generate data for inner sphere
+        for _ in range(self.num_points_inner):
+            self.data.append(
+                random_point_in_sphere(dim, inner_range[0], inner_range[1])
+            )
+            self.targets.append(torch.Tensor([-1]))
 
-            phi =  -2 * pi * torch.rand(1)  # Random point between -1 and 1
-            x = phi * torch.cos(scale * phi) + noise.sample()
-            y = phi * torch.sin(scale * phi) + noise.sample()
-
-            if self.dim == 1:
-                self.data.append(torch.Tensor([y]))
-            elif self.dim == 2:
-                self.data.append(torch.cat([x, y]))
-            else:
-                random_higher_dims = 2 * torch.rand(self.dim - 2) - 1
-                self.data.append(torch.cat([x, y, random_higher_dims]))
-
-            self.targets.append(torch.Tensor([label]))
+        # Generate data for outer sphere
+        for _ in range(self.num_points_outer):
+            self.data.append(
+                random_point_in_sphere(dim, outer_range[0], outer_range[1])
+            )
+            self.targets.append(torch.Tensor([1]))
 
     def __getitem__(self, index):
         return self.data[index], self.targets[index]
@@ -95,10 +100,10 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 
         self.path = nn.Sequential( # define the network for the integration path
             nn.Linear(3,20),
-            nn.Softplus(),
-            #nn.LogSigmoid(),
+            #nn.Softmax(),
+            nn.LogSigmoid(),
             nn.Linear(20,20),
-            nn.Softplus(),
+            #nn.Softmax(),
             nn.Linear(20,2)
         )
 
@@ -121,14 +126,26 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 
     def forward(self, t, x):
         self.nfe+=1 # each time we evaluate the function, the number of evaluations adds one
+        
+        fake = 0
+        global time_current
+        time_current = time_current+fake
+
+        if t ==0.:
+            dt=0.
+        else:
+            dt = t-time_current
+        
+        time_current = t
+
         t_input = t.expand(x.size(0),1) # resize
-        #print(t)
         #t_channel = ((t_input.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
-        path_input = torch.cat((t_input, p_i),dim=1) # concatenate the time and the image
+        dp=0
+        global pgh
+        pgh = pgh+dp
+        path_input = torch.cat((t_input, pgh),dim=1) # concatenate the time and the image
         path_input = path_input.view(path_input.size(0),1,1,3)
         g_h_i = self.path(path_input) # calculate the position of the integration path
-        global pathdt 
-        pathdt = torch.cat((pathdt,g_h_i[0,0]),0)
         g_h_i = g_h_i.view(g_h_i.size(0),2)
 
         dg_dt = g_h_i[:,0].view(g_h_i[:,0].size(0),1,1,1)
@@ -145,6 +162,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         dp = torch.mul(self.grad_g(x),dg_dt) + torch.mul(self.grad_g(x),dh_dt)# + torch.mul(self.grad_g(x),di_dt) # calculate the change in p
         dp = dp.view(dp.size(0),2)
         #print(t.item())
+        pgh = pgh+dp*dt
         return dp
 
 class Classifier(nn.Module): # define the linear classifier
@@ -202,7 +220,7 @@ def update(args, grad_net, classifier_net, optimizer, data, target, device):
     t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
     t.requires_grad=True # record the computation graph
     if args.adaptive_solver: # check if we are using the adaptive solver
-        p = torch.squeeze(odeint_adjoint(grad_net, p, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
+        p = torch.squeeze(odeint_adjoint(grad_net, p, t,method="dopri8",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
         print("The number of steps taken in this training itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
         grad_net.nfe=0 # reset the number of function of evaluations
     else:
@@ -227,7 +245,7 @@ def evaluate(args, grad_net, classifier_net, data, device):
     t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
     t.requires_grad=True # record the computation graph
     if args.adaptive_solver: # check if we are using the adaptive solver
-        p = torch.squeeze(odeint_adjoint(grad_net, p, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
+        p = torch.squeeze(odeint_adjoint(grad_net, p, t,method="dopri8",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
         print("The number of steps taken in this testing itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
         grad_net.nfe=0 # reset the number of function of evaluations
     else:
@@ -242,11 +260,11 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
     grad_net.train() # set network on training mode
     classifier_net.train() # set network on training mode
     for batch_idx, (data, target) in enumerate(train_loader): # for each batch
-        global pathdt
-        pathdt = torch.Tensor([[ 0.,0.]])
         data, target = data.to(device), target.to(device) # assign data to device
-        global p_i # claim the initial image batch as a global variable
-        p_i = data
+        global pgh # claim the initial image batch as a global variable
+        pgh = data
+        global time_current
+        time_current = 0.
         loss_grad = update(args, grad_net, classifier_net, optimizer_grad, data, target, device) # update gradient networks' weights
         if batch_idx % args.log_interval == 0: # print training loss and training process
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
@@ -260,16 +278,18 @@ def test(args, grad_net, classifier_net, device, test_loader):
     correct = 0 # initialize the number of correct predictions
     for data, target in test_loader: # for each data batch
         data, target = data.to(device), target.to(device) # assign data to the device
-        global p_i # claim the initial image batch as a global variable
-        p_i = data
+        global pgh # claim the initial image batch as a global variable
+        pgh = data
+        global time_current
+        time_current = 0.
         output,p = evaluate(args, grad_net, classifier_net, data, device)
         target = target + 1
         target = target /2
         target = target.to(torch.long)
         target = target.view(target.size(0))
         output1 = output.detach().numpy()
-        plt.scatter(output1[:,0],output1[:,1])
-        plt.show()
+        #plt.scatter(output1[:,0],output1[:,1])
+        #plt.show()
         test_loss += F.cross_entropy(output, target, reduction='sum').item()  # sum up batch loss
         pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
         correct += pred.eq(target.view_as(pred)).sum().item() # sum up the number of correct predictions
@@ -293,11 +313,11 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
     o1 = []
     d1 = []
     for data, target in validation_loader: # for each data batch
-        global pathdt
-        pathdt = torch.Tensor([[ 0.,0.]])
         data, target = data.to(device), target.to(device) # assign data to the device
-        global p_i # claim the initial image batch as a global variable
-        p_i = data
+        global pgh # claim the initial image batch as a global variable
+        pgh = data
+        global time_current
+        time_current = 0.
         output,p = evaluate(args, grad_net, classifier_net, data, device)
         #d1 = torch.cat((d1,data),1)
         target = target + 1
@@ -313,12 +333,12 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
         pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
         correct += pred.eq(target.view_as(pred)).sum().item() # sum up the number of correct predictions
 
-    o1 = o1.detach().numpy()
+    o1 = o1.cpu().detach().numpy()
     outer1 = o1[o1[:,2]==1.]
     inner1 = o1[o1[:,2]==0.]
-    #plt.scatter(outer1[:,0],outer1[:,1],color='r')
-    #plt.scatter(inner1[:,0],inner1[:,1])
-    #plt.show()
+    plt.scatter(outer1[:,0],outer1[:,1],color='r')
+    plt.scatter(inner1[:,0],inner1[:,1])
+    plt.show()
     test_loss /= len(validation_loader.dataset) # calculate test loss
 
     print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format( # print test loss and accuracy
@@ -329,7 +349,7 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
         torch.save(grad_net.state_dict(), "grad_net.pt") # save gradients and path model
         torch.save(classifier_net.state_dict(), "classifer_net.pt") # save classifier model
         print("The current models are saved") # confirm all models are saved
-    return 100. * correct / len(validation_loader.dataset), o1
+    return 100. * correct / len(validation_loader.dataset)
 
 def main():
     # Training settings
@@ -342,7 +362,7 @@ def main():
                         help='input batch size for validation (default: 1000)')
     parser.add_argument('--epochs', type=int, default=50, metavar='N',
                         help='number of epochs to train (default: 14)')
-    parser.add_argument('--gamma', type=float, default=0.9, metavar='M',
+    parser.add_argument('--gamma', type=float, default=1.0, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
     parser.add_argument('--step-size', type=int, default=5, metavar='M',
                         help='how many epochs to we change the learning rate, default is 5')
@@ -358,11 +378,11 @@ def main():
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
-    parser.add_argument('--lr-grad', type=float, default=1e-3, metavar='LR',
+    parser.add_argument('--lr-grad', type=float, default=5e-4, metavar='LR',
                         help='learning rate for the gradients (default: 1e-3)')
-    parser.add_argument('--lr-path', type=float, default=1e-3, metavar='LR',
+    parser.add_argument('--lr-path', type=float, default=5e-4, metavar='LR',
                         help='learning rate for the path (default: 1e-3)')
-    parser.add_argument('--lr-classifier', type=float, default=1e-3, metavar='LR',
+    parser.add_argument('--lr-classifier', type=float, default=5e-4, metavar='LR',
                         help='learning rate for the classifier(default: 1e-3)')
     parser.add_argument('--tol', type=float, default=1e-3, metavar='LR',
                         help='learning rate (default: 1e-3)')
@@ -397,10 +417,9 @@ def main():
         validation_kwargs.update(cuda_kwargs)
 
 
-    #data_object = ConcentricSphere(dim=2,inner_range=[0.0,0.5],outer_range=[1.0,1.5],num_points_inner=500,num_points_outer=1000)
-    data_object = ShiftedSines(dim=2, shift=1.4, num_points_upper=3000, num_points_lower=3000,noise_scale=0.1)
+    data_object = ConcentricSphere(dim=2,inner_range=[0.0,0.5],outer_range=[1.0,1.5],num_points_inner=1000,num_points_outer=2000)
 
-    train_set, val_set = torch.utils.data.random_split(data_object, [5000, 1000])
+    train_set, val_set = torch.utils.data.random_split(data_object, [1500, 1500])
     
     train_loader = DataLoader(train_set,batch_size=args.batch_size,shuffle=True)
     test_loader = DataLoader(val_set,batch_size=args.batch_size,shuffle=True)
@@ -423,35 +442,127 @@ def main():
     print('setup complete')
 
     accu = 0.0
-    #outer = torch.zeros((25,153,3))
-    #inner = torch.zeros((25,147,3))
     for epoch in range(1, args.epochs + 1):
         train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, epoch)
-        accu_new, o1 = validation(args, grad_net, classifier_net, device, test_loader)
-        #outer[epoch-1,:,:] = o1[o1[:,2]==1.]
-        #inner[epoch-1,:,:] = o1[o1[:,2]==0.]
+        accu_new = validation(args, grad_net, classifier_net, device, test_loader)
         if accu_new > accu:
             accu = accu_new
         print('The best accuracy is {:.4f}%\n'.format(accu))
         scheduler_grad.step()
-    #test(args, grad_net, classifier_net, device, test_loader)
-    a=1
-    """for i in range(0,3):
-        outer1 = outer[:,i,:]
-        inner1 = inner[:,i,:]
-        outer1 = outer1.detach().numpy()
-        inner1 = inner1.detach().numpy()
-        outer_spline = make_interp_spline(outer1[:,0], outer1[:, 1])
-        X_ = np.linspace(outer1[:,0].min(), outer1[:,0].max(), 500)
-        Y_ = outer_spline(X_)
-        plt.plot(X_, Y_)
-        inner_spline = make_interp_spline(inner1[:,0], inner1[:, 1])
-        X_ = np.linspace(inner1[:,0].min(), inner1[:,0].max(), 500)
-        Y_ = inner_spline(X_)
-        plt.plot(X_, Y_)
-#        plt.plot(outer1[:,0],outer1[:,1],color='r')
-#        plt.plot(inner1[:,0],inner1[:,1],color='b')
-    plt.show()"""
+    test(args, grad_net, classifier_net, device, test_loader)
+
 if __name__ == '__main__':
     main()
 
+
+"""
+from __future__ import print_function
+import argparse
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from torchvision import datasets, transforms  
+from torch.optim.lr_scheduler import StepLR
+from torchdiffeq import odeint as odeint
+from torchdiffeq import odeint_adjoint as odeint_adjoint
+from scipy.integrate import odeint as odeint_scipy
+from torch.autograd import Variable
+import matplotlib.pyplot as plt
+import numpy as np
+
+class LineInt(nn.Module):
+    def __init__(self, device, data_dim=2, hidden_dim=16, augment_dim=0,
+                 time_dependent=False, non_linearity='relu'):
+        super(LineInt, self).__init__()
+        self.device = device
+        self.augment_dim = augment_dim
+        self.data_dim = data_dim
+        self.input_dim = data_dim + augment_dim
+        self.hidden_dim = hidden_dim
+        self.nfe = 0  # Number of function evaluations
+        self.time_dependent = time_dependent
+
+        if time_dependent:
+            self.fc1 = nn.Linear(self.input_dim + 1, hidden_dim)
+        else:
+            self.fc11 = nn.Linear(self.input_dim, hidden_dim)
+        self.fc12 = nn.Linear(hidden_dim, hidden_dim)
+        self.fc13 = nn.Linear(hidden_dim, self.input_dim)
+        self.fc21 = nn.Linear(self.input_dim, hidden_dim)
+        self.fc22 = nn.Linear(hidden_dim, hidden_dim)
+        self.fc23 = nn.Linear(hidden_dim, self.input_dim)
+        self.path = nn.Sequential( # define the network for the integration path
+        nn.Conv2d(2,4, 3, padding=1, bias=False),
+        nn.ReLU(),
+        nn.Conv2d(4,4, 3, padding=1, bias=False),
+        nn.ReLU(),
+        nn.Conv2d(4,2,1),
+        nn.Flatten(),
+        nn.Linear(2,2),
+        nn.ReLU()
+        )
+
+        if non_linearity == 'relu':
+            self.non_linearity = nn.ReLU(inplace=True)
+        elif non_linearity == 'softplus':
+            self.non_linearity = nn.Softplus()
+
+    def forward(self, t, x):
+
+        # Forward pass of model corresponds to one function evaluation, so
+        # increment counter
+        self.nfe += 1
+        if self.time_dependent:
+            # Shape (batch_size, 1)
+            t_vec = torch.ones(x.shape[0], 1).to(self.device) * t
+            # Shape (batch_size, data_dim + 1)
+            t_and_x = torch.cat([t_vec, x], 1)
+            # Shape (batch_size, hidden_dim)
+            out = self.fc1(t_and_x)
+        else:
+            out = self.fc1(x)
+        out = self.non_linearity(out)
+        out = self.fc2(out)
+        out = self.non_linearity(out)
+        out = self.fc3(out)
+        return out
+
+
+def main():
+    inner_range = 0.5
+    outer_range = [1.0,1.5]
+    num_pts_inner = 500
+    num_pts_outer = 1500
+
+    r_inner = torch.rand(num_pts_inner,1)*inner_range
+    theta_inner = torch.rand(num_pts_inner,1) * 2 * np.pi
+    inner_pts_x = r_inner*torch.cos(theta_inner)
+    inner_pts_y = r_inner*torch.sin(theta_inner)
+
+    r_outer = torch.rand(num_pts_outer,1)*outer_range[1]
+    r_outer[r_outer<outer_range[0]]=((r_outer[r_outer<outer_range[0]]+1)/2)+0.5
+    theta_outer = torch.rand(num_pts_outer,1) * 2 * np.pi
+    outer_pts_x = r_outer*torch.cos(theta_outer)
+    outer_pts_y = r_outer*torch.sin(theta_outer)
+
+#    plt.scatter(outer_pts_x,outer_pts_y)
+
+#    plt.scatter(inner_pts_x,inner_pts_y)
+
+#    plt.show()
+    
+    gnd_truth = torch.cat((torch.zeros(num_pts_outer,1),torch.ones(num_pts_inner,1)),0)
+
+    dataset = torch.cat((torch.cat((torch.cat((inner_pts_x,inner_pts_y),1),torch.cat((outer_pts_x,outer_pts_y),1)),0),gnd_truth),1)
+
+    dataset=dataset[torch.randperm(dataset.size()[0])]
+
+    gnd_truth = dataset[:,2]
+    dataset = dataset[:,:2]
+
+    
+
+if __name__ == '__main__':
+    main()
+"""

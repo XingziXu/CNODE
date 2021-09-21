@@ -122,13 +122,14 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
     def forward(self, t, x):
         self.nfe+=1 # each time we evaluate the function, the number of evaluations adds one
         t_input = t.expand(x.size(0),1) # resize
+        dp=0
         #print(t)
         #t_channel = ((t_input.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
-        path_input = torch.cat((t_input, p_i),dim=1) # concatenate the time and the image
+        global pgh
+        pgh = pgh+dp
+        path_input = torch.cat((t_input, pgh),dim=1) # concatenate the time and the image
         path_input = path_input.view(path_input.size(0),1,1,3)
         g_h_i = self.path(path_input) # calculate the position of the integration path
-        global pathdt 
-        pathdt = torch.cat((pathdt,g_h_i[0,0]),0)
         g_h_i = g_h_i.view(g_h_i.size(0),2)
 
         dg_dt = g_h_i[:,0].view(g_h_i[:,0].size(0),1,1,1)
@@ -145,6 +146,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         dp = torch.mul(self.grad_g(x),dg_dt) + torch.mul(self.grad_g(x),dh_dt)# + torch.mul(self.grad_g(x),di_dt) # calculate the change in p
         dp = dp.view(dp.size(0),2)
         #print(t.item())
+        pgh = pgh+dp
         return dp
 
 class Classifier(nn.Module): # define the linear classifier
@@ -242,11 +244,9 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
     grad_net.train() # set network on training mode
     classifier_net.train() # set network on training mode
     for batch_idx, (data, target) in enumerate(train_loader): # for each batch
-        global pathdt
-        pathdt = torch.Tensor([[ 0.,0.]])
         data, target = data.to(device), target.to(device) # assign data to device
-        global p_i # claim the initial image batch as a global variable
-        p_i = data
+        global pgh # claim the initial image batch as a global variable
+        pgh = data
         loss_grad = update(args, grad_net, classifier_net, optimizer_grad, data, target, device) # update gradient networks' weights
         if batch_idx % args.log_interval == 0: # print training loss and training process
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
@@ -260,8 +260,8 @@ def test(args, grad_net, classifier_net, device, test_loader):
     correct = 0 # initialize the number of correct predictions
     for data, target in test_loader: # for each data batch
         data, target = data.to(device), target.to(device) # assign data to the device
-        global p_i # claim the initial image batch as a global variable
-        p_i = data
+        global pgh # claim the initial image batch as a global variable
+        pgh = data
         output,p = evaluate(args, grad_net, classifier_net, data, device)
         target = target + 1
         target = target /2
@@ -293,11 +293,9 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
     o1 = []
     d1 = []
     for data, target in validation_loader: # for each data batch
-        global pathdt
-        pathdt = torch.Tensor([[ 0.,0.]])
         data, target = data.to(device), target.to(device) # assign data to the device
-        global p_i # claim the initial image batch as a global variable
-        p_i = data
+        global pgh # claim the initial image batch as a global variable
+        pgh = data
         output,p = evaluate(args, grad_net, classifier_net, data, device)
         #d1 = torch.cat((d1,data),1)
         target = target + 1
@@ -316,9 +314,9 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
     o1 = o1.detach().numpy()
     outer1 = o1[o1[:,2]==1.]
     inner1 = o1[o1[:,2]==0.]
-    #plt.scatter(outer1[:,0],outer1[:,1],color='r')
-    #plt.scatter(inner1[:,0],inner1[:,1])
-    #plt.show()
+    plt.scatter(outer1[:,0],outer1[:,1],color='r')
+    plt.scatter(inner1[:,0],inner1[:,1])
+    plt.show()
     test_loss /= len(validation_loader.dataset) # calculate test loss
 
     print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format( # print test loss and accuracy
@@ -364,7 +362,7 @@ def main():
                         help='learning rate for the path (default: 1e-3)')
     parser.add_argument('--lr-classifier', type=float, default=1e-3, metavar='LR',
                         help='learning rate for the classifier(default: 1e-3)')
-    parser.add_argument('--tol', type=float, default=1e-3, metavar='LR',
+    parser.add_argument('--tol', type=float, default=1e-2, metavar='LR',
                         help='learning rate (default: 1e-3)')
     parser.add_argument('--training-frequency', type=int, default=1, metavar='LR',
                         help='how often do we optimize the path network')

@@ -53,7 +53,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 
     def forward(self, t, x):
         self.nfe+=1 # each time we evaluate the function, the number of evaluations adds one
-        t_input = t.expand(x.size(0),1) # resize
+        t_input = t.view(1,1).float() # resize
         #print(t)
         #t_channel = ((t_input.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
         #path_input = torch.cat((t_input, p_i),dim=1) # concatenate the time and the image
@@ -72,7 +72,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         #dh_dt = dh_dt.expand(dh_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         #dh_dt = dh_dt.view(dh_dt.size(0),1,x.size(2),x.size(3)) # resize 
         #x = x.view(x.size(0),1,1,1)
-        dp = torch.mul(self.grad_g(x),dg_dt) + self.grad_g(x)# + torch.mul(self.grad_g(x),di_dt) # calculate the change in p
+        dp = torch.mul(self.grad_g(x.view(1,1).float()),dg_dt) + self.grad_h(x.view(1,1).float())# + torch.mul(self.grad_g(x),di_dt) # calculate the change in p
         #dp = dp.view(dp.size(0),1)
         #print(t.item())
         return dp
@@ -118,40 +118,49 @@ def get_n_params(model): # define a function to measure the number of parameters
 
 def update(args, grad_net, optimizer, data, target, device):
     optimizer.zero_grad() # the start of updating the path's parameters
-    p = data # assign data, initialization
-    p.requires_grad=True # record the computation graph
-    t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
-    t.requires_grad=True # record the computation graph
-    if args.adaptive_solver: # check if we are using the adaptive solver
-        p = torch.squeeze(odeint_adjoint(grad_net, p, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
-        print("The number of steps taken in this training itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
-        grad_net.nfe=0 # reset the number of function of evaluations
-    else:
-        p = torch.squeeze(odeint(grad_net, p, t, method="euler")[1]) # solve the neural line integral with the euler's solver
-        grad_net.nfe=0 # reset the number of function of evaluations
-    output = p.view(p.size(0),1) # classify the transformed images
+    data.requires_grad = True
+    output = torch.empty(1,1)
+    #output.requires_grad = True
+    for row in data:
+        x0 = row[0]
+        times = row[1]
+        p = x0 # assign data, initialization
+        #p.requires_grad=True # record the computation graph
+        t = torch.cat((torch.Tensor([0.]),times.view(1)),0).to(device) # we look to integrate from t=0 to t=1
+        if args.adaptive_solver: # check if we are using the adaptive solver
+            p = torch.squeeze(odeint_adjoint(grad_net, p, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
+            print("The number of steps taken in this training itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
+            grad_net.nfe=0 # reset the number of function of evaluations
+        else:
+            p = torch.squeeze(odeint(grad_net, p, t, method="euler")[1]) # solve the neural line integral with the euler's solver
+            grad_net.nfe=0 # reset the number of function of evaluations
+        output = torch.cat((output,p.view(1,1)),dim=0) # classify the transformed images
     #soft_max = nn.Softmax(dim=1) # define a soft max calculator
     #output = soft_max(output) # get the prediction results by getting the most probable ones
     #loss_func = nn.CrossEntropyLoss()
     loss = nn.MSELoss()
-    loss = loss(output, target)
+    loss = loss(output[1:], target.squeeze())
     loss.backward(retain_graph=True) # backpropagate through the loss
     optimizer.step() # update the path network's parameters
     return loss
 
 def evaluate(args, grad_net, data, device):
-    p = data # assign data, initialization
-    p.requires_grad=True # record the computation graph
-    t = torch.Tensor([0.,1.]).to(device) # we look to integrate from t=0 to t=1
-    t.requires_grad=True # record the computation graph
-    if args.adaptive_solver: # check if we are using the adaptive solver
-        p = torch.squeeze(odeint_adjoint(grad_net, p, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
-        print("The number of steps taken in this testing itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
-        grad_net.nfe=0 # reset the number of function of evaluations
-    else:
-        p = torch.squeeze(odeint(grad_net, p, t, method="euler")[1]) # solve the neural line integral with the euler's solver
-        grad_net.nfe=0 # reset the number of function of evaluations
-    output = p.view(p.size(0),1) # classify the transformed images
+    data.requires_grad = True
+    output = torch.empty(1,1)
+    for row in data:
+        x0 = row[0]
+        times = row[1]
+        p = x0 # assign data, initialization
+        #p.requires_grad=True # record the computation graph
+        t = torch.cat((torch.Tensor([0.]),times.view(1)),0).to(device) # we look to integrate from t=0 to t=1
+        if args.adaptive_solver: # check if we are using the adaptive solver
+            p = torch.squeeze(odeint_adjoint(grad_net, p, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
+            print("The number of steps taken in this training itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
+            grad_net.nfe=0 # reset the number of function of evaluations
+        else:
+            p = torch.squeeze(odeint(grad_net, p, t, method="euler")[1]) # solve the neural line integral with the euler's solver
+            grad_net.nfe=0 # reset the number of function of evaluations
+        output = torch.cat((output,p.view(1,1)),dim=0) # classify the transformed images
     return output,p
 
 def train(args, grad_net, device, train_loader, optimizer_grad, epoch):
@@ -213,17 +222,16 @@ def validation(args, grad_net, device, validation_loader):
         target = target + 1
         target = target /2
         
-        if o1==[]:
-            o1 = torch.cat((p.view((p.size(0),1)),target),1)
-        else:
-            o1 = torch.cat((o1,torch.cat((p.view((p.size(0),1)),target),1)),0)
+        #if o1==[]:
+        #    o1 = torch.cat((p.view((p.size(0),1)),target),1)
+        #else:
+        #    o1 = torch.cat((o1,torch.cat((p.view((p.size(0),1)),target),1)),0)
 
-        output = torch.sign(p.view((p.size(0),1))) # classify the transformed images
-        bce_loss = nn.BCELoss()
-        loss = bce_loss((output+1)*0.5, target) # calculate the function loss
+        loss = nn.MSELoss()
+        loss = loss(output[1:], target.squeeze())
         test_loss += loss  # sum up batch loss
-        pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
-        correct += pred.eq(target.view_as(pred)).sum().item() # sum up the number of correct predictions
+        #pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+        #correct += pred.eq(target.view_as(pred)).sum().item() # sum up the number of correct predictions
     test_loss /= len(validation_loader.dataset) # calculate test loss
 
     print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format( # print test loss and accuracy
@@ -244,7 +252,7 @@ def main():
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=10, metavar='N',
+    parser.add_argument('--epochs', type=int, default=100, metavar='N',
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--gamma', type=float, default=0.9, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
@@ -258,7 +266,7 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=True,
                         help='For Saving the current Model')
-    parser.add_argument('--adaptive-solver', action='store_true', default=True,
+    parser.add_argument('--adaptive-solver', action='store_true', default=False,
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
@@ -301,10 +309,11 @@ def main():
         validation_kwargs.update(cuda_kwargs)
 
     a = 2*pi
-    x = np.linspace(0,2*pi,1000)
-    x_t = x-a
-    input_data = torch.Tensor(np.cos(x)).view(1000,1)
-    output_data = torch.Tensor(np.cos(x_t)).view(1000,1)
+    x = torch.linspace(0,pi,1000)
+    t = torch.linspace(0.1,1,1000)
+    x_t = x-a*t
+    input_data = torch.cat((torch.cos(x).view(1000,1),t.view(1000,1)),1)
+    output_data = torch.Tensor(torch.cos(x_t)).view(1000,1)
     data_object = TensorDataset(input_data,output_data) # create your datset
 
     #data_object = ConcentricSphere(dim=2,inner_range=[0.0,0.5],outer_range=[1.0,1.5],num_points_inner=500,num_points_outer=1000)
@@ -335,14 +344,14 @@ def main():
     #inner = torch.zeros((25,147,3))
     for epoch in range(1, args.epochs + 1):
         train(args, grad_net, device, train_loader, optimizer_grad, epoch)
-        accu_new, o1 = validation(args, grad_net, device, test_loader)
+        #accu_new, o1 = validation(args, grad_net, device, test_loader)
         #outer[epoch-1,:,:] = o1[o1[:,2]==1.]
         #inner[epoch-1,:,:] = o1[o1[:,2]==0.]
-        if accu_new > accu:
-            accu = accu_new
-        print('The best accuracy is {:.4f}%\n'.format(accu))
+        #if accu_new > accu:
+        #    accu = accu_new
+        #print('The best accuracy is {:.4f}%\n'.format(accu))
         scheduler_grad.step()
-    test(args, grad_net, device, test_loader)
+    #test(args, grad_net, device, test_loader)
     a=1
     """for i in range(0,3):
         outer1 = outer[:,i,:]
