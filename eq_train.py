@@ -28,9 +28,9 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         self.path = nn.Sequential( # define the network for the integration path
             nn.Linear(1,20),
             #nn.Hardsigmoid(),
-            nn.Sigmoid(),
+            #nn.ELU(),
             nn.Linear(20,20),
-            nn.Sigmoid(),
+            #nn.Sigmoid(),
             nn.Linear(20,1)
         )
 
@@ -352,7 +352,7 @@ def main():
         #print('The best accuracy is {:.4f}%\n'.format(accu))
         scheduler_grad.step()
     #test(args, grad_net, device, test_loader)
-    a=1
+    a=2
     """for i in range(0,3):
         outer1 = outer[:,i,:]
         inner1 = inner[:,i,:]
