@@ -30,25 +30,25 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
             #nn.Hardsigmoid(),
             #nn.ELU(),
             nn.Linear(20,20),
-            #nn.Sigmoid(),
+            #nn.ELU(),
             nn.Linear(20,1)
         )
 
 
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
-            nn.Linear(1,16),
-            nn.Softplus(),
-            nn.Linear(16,16),
-            nn.Softplus(),
-            nn.Linear(16,1)
+            nn.Linear(1,32),
+            #nn.Softplus(),
+            nn.Linear(32,32),
+            #nn.Softplus(),
+            nn.Linear(32,1)
         )
         
         self.grad_h = nn.Sequential( # define the network for the gradient on y direction
-            nn.Linear(1,16),
-            nn.Softplus(),
-            nn.Linear(16,16),
-            nn.Softplus(),
-            nn.Linear(16,1)
+            nn.Linear(1,32),
+            #nn.Softplus(),
+            nn.Linear(32,32),
+            #nn.Softplus(),
+            nn.Linear(32,1)
         )
 
     def forward(self, t, x):
