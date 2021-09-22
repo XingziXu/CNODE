@@ -276,7 +276,7 @@ def main():
                         help='learning rate for the path (default: 1e-3)')
     parser.add_argument('--lr-classifier', type=float, default=1e-3, metavar='LR',
                         help='learning rate for the classifier(default: 1e-3)')
-    parser.add_argument('--tol', type=float, default=1e-4, metavar='LR',
+    parser.add_argument('--tol', type=float, default=1e-5, metavar='LR',
                         help='learning rate (default: 1e-3)')
     parser.add_argument('--training-frequency', type=int, default=1, metavar='LR',
                         help='how often do we optimize the path network')
@@ -310,7 +310,7 @@ def main():
 
     a = 2*pi
     x = torch.linspace(0,pi,1000)
-    t = torch.linspace(0.1,1,1000)
+    t = torch.linspace(0.1,0.5,1000)
     x_t = x-a*t
     input_data = torch.cat((torch.cos(x).view(1000,1),t.view(1000,1)),1)
     output_data = torch.Tensor(torch.cos(x_t)).view(1000,1)
@@ -331,7 +331,7 @@ def main():
     #grad_net.path.apply(initialize_path)
     #classifier_net.apply(initialize_classifier)
 
-    optimizer_grad = optim.AdamW(list(grad_net.parameters()), lr=args.lr_grad, weight_decay=5e-4) # define optimizer on the gradients
+    optimizer_grad = optim.AdamW(list(grad_net.parameters()), lr=args.lr_grad, weight_decay = 5e-4) # define optimizer on the gradients
     
     print("The number of parameters used is {}".format(get_n_params(grad_net))) # print the number of parameters in our model
 
