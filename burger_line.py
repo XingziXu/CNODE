@@ -26,12 +26,12 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         self.nfe=0 # initialize the number of function evaluations
 
         self.path = nn.Sequential( # define the network for the integration path
-            nn.Linear(3,8),
+            nn.Linear(1,8),
             #nn.Hardsigmoid(),
             #nn.Sigmoid(),
             nn.Linear(8,8),
             #nn.Sigmoid(),
-            nn.Linear(8,2)
+            nn.Linear(8,1)
         )
 
 
@@ -60,11 +60,12 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         #path_input = torch.cat((t_input, p_i),dim=1) # concatenate the time and the image
         #path_input = path_input.view(path_input.size(0),1,1,2)
         path_input = torch.cat((x.view(1,1),t.view(1,1),position.view(1,1)),1)
-        g_h_i = self.path(path_input) # calculate the position of the integration path
+        #g_h_i = self.path(path_input) # calculate the position of the integration path
         #g_h_i = g_h_i.view(g_h_i.size(0),2)
 
-        dg_dt = g_h_i[:,0].view(g_h_i[:,0].size(0),1)
-        dh_dt = g_h_i[:,1].view(g_h_i[:,1].size(0),1)
+        dg_dt = x.view(1,1)
+        #dg_dt = g_h_i[:,0].view(g_h_i[:,0].size(0),1)
+        #dh_dt = g_h_i[:,1].view(g_h_i[:,1].size(0),1)
         
         # dg_dt = g_h_i[:,0].view(g_h_i.size(0),1,1) # resize 
         #dg_dt = dg_dt.expand(dg_dt.size(0),1,x.size(2)*x.size(3)) # resize 
@@ -74,7 +75,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         #dh_dt = dh_dt.expand(dh_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         #dh_dt = dh_dt.view(dh_dt.size(0),1,x.size(2),x.size(3)) # resize 
         #x = x.view(x.size(0),1,1,1)
-        dp = torch.mul(self.grad_g(torch.cat((x.view(1,1),t_input),1).float()),dg_dt) + torch.mul(self.grad_h(torch.cat((x.view(1,1),t_input),1).float()),dh_dt)# + torch.mul(self.grad_g(x),di_dt) # calculate the change in p
+        dp = torch.mul(self.grad_g(torch.cat((x.view(1,1),t_input),1).float()),dg_dt) + self.grad_h(torch.cat((x.view(1,1),t_input),1).float())# + torch.mul(self.grad_g(x),di_dt) # calculate the change in p
         #dp = dp.view(dp.size(0),1)
         #print(t.item())
         return dp
