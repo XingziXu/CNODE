@@ -26,12 +26,12 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         self.nfe=0 # initialize the number of function evaluations
 
         self.path = nn.Sequential( # define the network for the integration path
-            nn.Linear(2,20),
+            nn.Linear(3,16),
             #nn.Hardsigmoid(),
             nn.Sigmoid(),
-            nn.Linear(20,20),
+            nn.Linear(16,16),
             nn.Sigmoid(),
-            nn.Linear(20,2)
+            nn.Linear(16,2)
         )
 
 
@@ -54,11 +54,12 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
     def forward(self, t, x):
         self.nfe+=1 # each time we evaluate the function, the number of evaluations adds one
         t_input = t.view(1,1).float() # resize
+        position = 1/p_init
         #print(t)
         #t_channel = ((t_input.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
         #path_input = torch.cat((t_input, p_i),dim=1) # concatenate the time and the image
         #path_input = path_input.view(path_input.size(0),1,1,2)
-        path_input = torch.cat((x.view(1,1),t.view(1,1)),1)
+        path_input = torch.cat((x.view(1,1),t.view(1,1),position.view(1,1)),1)
         g_h_i = self.path(path_input) # calculate the position of the integration path
         #g_h_i = g_h_i.view(g_h_i.size(0),2)
 
@@ -126,6 +127,8 @@ def update(args, grad_net, optimizer, data, target, device):
         x0 = row[0]
         times = row[1]
         p = x0 # assign data, initialization
+        global p_init
+        p_init = x0
         #p.requires_grad=True # record the computation graph
         t = torch.cat((torch.Tensor([0.]),times.view(1)),0).to(device) # we look to integrate from t=0 to t=1
         if args.adaptive_solver: # check if we are using the adaptive solver
@@ -152,6 +155,8 @@ def evaluate(args, grad_net, data, device):
         x0 = row[0]
         times = row[1]
         p = x0 # assign data, initialization
+        global p_init
+        p_init = x0
         #p.requires_grad=True # record the computation graph
         t = torch.cat((torch.Tensor([0.]),times.view(1)),0).to(device) # we look to integrate from t=0 to t=1
         if args.adaptive_solver: # check if we are using the adaptive solver
