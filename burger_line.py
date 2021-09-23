@@ -28,26 +28,26 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         self.path = nn.Sequential( # define the network for the integration path
             nn.Linear(2,20),
             #nn.Hardsigmoid(),
-            #nn.ELU(),
+            nn.Sigmoid(),
             nn.Linear(20,20),
-            #nn.ELU(),
+            nn.Sigmoid(),
             nn.Linear(20,2)
         )
 
 
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
             nn.Linear(2,32),
-            #nn.Softplus(),
+            nn.Softplus(),
             nn.Linear(32,32),
-            #nn.Softplus(),
+            nn.Softplus(),
             nn.Linear(32,1)
         )
         
         self.grad_h = nn.Sequential( # define the network for the gradient on y direction
             nn.Linear(2,32),
-            #nn.Softplus(),
+            nn.Softplus(),
             nn.Linear(32,32),
-            #nn.Softplus(),
+            nn.Softplus(),
             nn.Linear(32,1)
         )
 
@@ -253,11 +253,11 @@ def main():
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=100, metavar='N',
+    parser.add_argument('--epochs', type=int, default=1000, metavar='N',
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--gamma', type=float, default=0.9, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
-    parser.add_argument('--step-size', type=int, default=5, metavar='M',
+    parser.add_argument('--step-size', type=int, default=10, metavar='M',
                         help='how many epochs to we change the learning rate, default is 5')
     parser.add_argument('--no-cuda', action='store_true', default=True,
                         help='disables CUDA training')
@@ -271,11 +271,11 @@ def main():
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
-    parser.add_argument('--lr-grad', type=float, default=1e-3, metavar='LR',
+    parser.add_argument('--lr-grad', type=float, default=2e-3, metavar='LR',
                         help='learning rate for the gradients (default: 1e-3)')
-    parser.add_argument('--lr-path', type=float, default=1e-3, metavar='LR',
+    parser.add_argument('--lr-path', type=float, default=2e-3, metavar='LR',
                         help='learning rate for the path (default: 1e-3)')
-    parser.add_argument('--lr-classifier', type=float, default=1e-3, metavar='LR',
+    parser.add_argument('--lr-classifier', type=float, default=2e-3, metavar='LR',
                         help='learning rate for the classifier(default: 1e-3)')
     parser.add_argument('--tol', type=float, default=1e-5, metavar='LR',
                         help='learning rate (default: 1e-3)')
@@ -310,18 +310,19 @@ def main():
         validation_kwargs.update(cuda_kwargs)
 
     # define initial condition u(x,0)=1/x
-    x = torch.linspace(1.,1.1,1000)
-    t = torch.linspace(0.1,0.2,1000)
-    input_data = torch.cat((torch.reciprocal(x).view(1000,1),t.view(1000,1)),1)
-    output_data = torch.Tensor(torch.div((x+torch.sqrt(torch.square(x)-4*t)),(2*t), rounding_mode='trunc')).view(1000,1)
+    data_size = 100
+    x = torch.linspace(1.,1.5,data_size)
+    t = torch.linspace(0.1,0.4,data_size)
+    input_data = torch.cat((torch.reciprocal(x).view(data_size,1),t.view(data_size,1)),1)
+    output_data = torch.Tensor(torch.div((x+torch.sqrt(torch.square(x)-4*t)),(2*t), rounding_mode='trunc')).view(data_size,1)
     data_object = TensorDataset(input_data,output_data) # create your datset
 
     #data_object = ConcentricSphere(dim=2,inner_range=[0.0,0.5],outer_range=[1.0,1.5],num_points_inner=500,num_points_outer=1000)
 
-    train_set, val_set = torch.utils.data.random_split(data_object, [1000, 0])
+    train_set, val_set = torch.utils.data.random_split(data_object, [data_size, 0])
     
     train_loader = DataLoader(train_set,batch_size=args.batch_size,shuffle=True)
-    test_loader = DataLoader(train_set,batch_size=1000,shuffle=True)
+    test_loader = DataLoader(train_set,batch_size=data_size,shuffle=True)
 
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad, width_conv2=args.width_conv2).to(device) # define grad_net and assign to device
 
