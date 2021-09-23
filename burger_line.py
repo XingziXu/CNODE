@@ -26,12 +26,12 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         self.nfe=0 # initialize the number of function evaluations
 
         self.path = nn.Sequential( # define the network for the integration path
-            nn.Linear(3,16),
+            nn.Linear(3,8),
             #nn.Hardsigmoid(),
-            nn.Sigmoid(),
-            nn.Linear(16,16),
-            nn.Sigmoid(),
-            nn.Linear(16,2)
+            #nn.Sigmoid(),
+            nn.Linear(8,8),
+            #nn.Sigmoid(),
+            nn.Linear(8,2)
         )
 
 
@@ -317,7 +317,7 @@ def main():
     # define initial condition u(x,0)=1/x
     data_size = 100
     x = torch.linspace(1.,1.5,data_size)
-    t = torch.linspace(0.1,0.4,data_size)
+    t = torch.linspace(0.1,0.5,data_size)
     input_data = torch.cat((torch.reciprocal(x).view(data_size,1),t.view(data_size,1)),1)
     output_data = torch.Tensor(torch.div((x+torch.sqrt(torch.square(x)-4*t)),(2*t), rounding_mode='trunc')).view(data_size,1)
     data_object = TensorDataset(input_data,output_data) # create your datset
