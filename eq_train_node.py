@@ -272,7 +272,7 @@ def main():
 
     a = 2*pi
     x = torch.linspace(0,pi,1000)
-    t = torch.linspace(0.1,0.8,1000)
+    t = torch.linspace(0.1,0.65,1000)
     x_t = x-a*t
     input_data = torch.cat((torch.cos(x).view(1000,1),t.view(1000,1)),1)
     output_data = torch.Tensor(torch.cos(x_t)).view(1000,1)

@@ -22,7 +22,7 @@ import random
 dgdt_val = torch.randn(1, requires_grad=True)
 
 def model(t,x):
-    #print(dgdt_val)
+    print(dgdt_val)
     return dgdt_val
 
 def update(args, model, optimizer, data, target, device):
@@ -196,20 +196,20 @@ def main():
         validation_kwargs.update(cuda_kwargs)
 
     a = 2*pi
-    x = torch.linspace(0,pi,3000)
-    t = torch.linspace(0.1,1.5,3000)
+    x = torch.linspace(0,pi,1000)
+    t = torch.linspace(0.1,0.65,1000)
     x_t = x-a*t
-    input_data = torch.cat((x.view(3000,1),t.view(3000,1)),1)
-    output_data = torch.Tensor(torch.cos(x_t)).view(3000,1)
+    input_data = torch.cat((x.view(1000,1),t.view(1000,1)),1)
+    output_data = torch.Tensor(torch.cos(x_t)).view(1000,1)
     data_object = TensorDataset(input_data,output_data) # create your datset
 
-    train_set, val_set = torch.utils.data.random_split(data_object, [3000, 0])
+    train_set, val_set = torch.utils.data.random_split(data_object, [1000, 0])
     
     train_loader = DataLoader(train_set,batch_size=args.batch_size,shuffle=True)
     test_loader = DataLoader(train_set,batch_size=1000,shuffle=True)
 
 
-    optimizer = optim.Adam([dgdt_val], lr=0.2)
+    optimizer = optim.Adam([dgdt_val], lr=0.5, weight_decay=5e-4)
 
     scheduler_grad = StepLR(optimizer, step_size=args.step_size, gamma=args.gamma) # define scheduler for the gradients' network
 
