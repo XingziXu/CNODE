@@ -19,10 +19,11 @@ from torch.distributions import Normal
 import numpy as np
 from scipy.interpolate import make_interp_spline
 import random
-dgdt_val = torch.randn(1, requires_grad=True)
+dgdt_val = torch.Tensor([3.14])
+dgdt_val.requires_grad=True
 
 def model(t,x):
-    print(dgdt_val)
+    #print(dgdt_val)
     return dgdt_val
 
 def update(args, model, optimizer, data, target, device):
@@ -34,11 +35,12 @@ def update(args, model, optimizer, data, target, device):
         dg = torch.Tensor([0]).squeeze()
         dg.requires_grad=True
         t = torch.cat((torch.Tensor([0.]),times.view(1)),0).to(device) # we look to integrate from t=0 to t=1
-        if args.adaptive_solver: # check if we are using the adaptive solver
-            dg = torch.squeeze(odeint_adjoint(model, dg, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
+        #if args.adaptive_solver: # check if we are using the adaptive solver
+        #    dg = torch.squeeze(odeint_adjoint(model, dg, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
             #print("The number of steps taken in this training itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
-        else:
-            dg = torch.squeeze(odeint(model, dg, t, method="euler")[1]) # solve the neural line integral with the euler's solver
+        #else:
+        #    dg = torch.squeeze(odeint(model, dg, t, method="euler")[1]) # solve the neural line integral with the euler's solver
+        dg = times*model(1,2)
         output[i] = torch.cos(row[0]-dg) # classify the transformed images
     loss = nn.MSELoss()
     loss = loss(output, target.squeeze())
@@ -46,23 +48,25 @@ def update(args, model, optimizer, data, target, device):
     optimizer.step() # update the path network's parameters
     return loss
 
-def evaluate(args, grad_net, data, device):
+def evaluate(args, model, data, target, device):
     data.requires_grad = True
-    output = torch.empty(1,1)
-    for row in data:
-        x0 = row[0]
+    output = torch.empty(data.size(0),1)
+    for i,row in enumerate(data):
         times = row[1]
-        p = x0 # assign data, initialization
+        dg = torch.Tensor([0]).squeeze()
+        dg.requires_grad=True
         t = torch.cat((torch.Tensor([0.]),times.view(1)),0).to(device) # we look to integrate from t=0 to t=1
-        if args.adaptive_solver: # check if we are using the adaptive solver
-            p = torch.squeeze(odeint_adjoint(grad_net, p, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
-            print("The number of steps taken in this training itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
-            grad_net.nfe=0 # reset the number of function of evaluations
-        else:
-            p = torch.squeeze(odeint(grad_net, p, t, method="euler")[1]) # solve the neural line integral with the euler's solver
-            grad_net.nfe=0 # reset the number of function of evaluations
-        output = torch.cat((output,p.view(1,1)),dim=0) # classify the transformed images
-    return output,p
+        #if args.adaptive_solver: # check if we are using the adaptive solver
+        #    dg = torch.squeeze(odeint_adjoint(model, dg, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
+            #print("The number of steps taken in this training itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
+        #else:
+        #    dg = torch.squeeze(odeint(model, dg, t, method="euler")[1]) # solve the neural line integral with the euler's solver
+        dg = times*model(1,2)
+        output[i] = torch.cos(row[0]-dg) # classify the transformed images
+    loss = nn.MSELoss()
+    loss = loss(output, target.squeeze())
+    loss.backward(retain_graph=True) # backpropagate through the loss
+    return loss
 
 def train(args, model, device, train_loader, optimizer, epoch):
     for batch_idx, (data, target) in enumerate(train_loader): # for each batch
@@ -73,62 +77,12 @@ def train(args, model, device, train_loader, optimizer, epoch):
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss_grad.item()))
 
-def test(args, grad_net, device, validation_loader):
-    grad_net.eval() # set the network on evaluation mode
-    test_loss = 0 # initialize test loss
-    correct = 0 # initialize the number of correct predictions
-    o1 = []
-    d1 = []
-    for data, target in validation_loader: # for each data batch
-        x = np.linspace(0,2*pi,1000)
-        data = torch.Tensor(np.cos(x)).view(1000,1)
-        global p_i # claim the initial image batch as a global variable
-        p_i = data
-        output,p = evaluate(args, grad_net, data, device)
-    
-    a = 2*pi
-    x = np.linspace(0,2*pi,1000)
-    x_t = x-a
-    plt.plot(x_t,output.detach().numpy(),'b')
-    plt.plot(x_t,np.cos(x_t),'r')
-    plt.show()
-    test_loss /= len(validation_loader.dataset) # calculate test loss
-
-    print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format( # print test loss and accuracy
-        test_loss, correct, len(validation_loader.dataset),
-        100. * correct / len(validation_loader.dataset)))
-    
-    if args.save_model: # check if we are saving the model
-        torch.save(grad_net.state_dict(), "grad_net.pt") # save gradients and path model
-        print("The current models are saved") # confirm all models are saved
-    return 100. * correct / len(validation_loader.dataset), o1
-
-def validation(args, grad_net, device, validation_loader):
-    grad_net.eval() # set the network on evaluation mode
-    test_loss = 0 # initialize test loss
-    correct = 0 # initialize the number of correct predictions
-    o1 = []
-    d1 = []
-    for data, target in validation_loader: # for each data batch
-        data, target = data.to(device), target.to(device) # assign data to the device
-        global p_i # claim the initial image batch as a global variable
-        p_i = data
-        output,p = evaluate(args, grad_net, data, device)
-        target = target + 1
-        target = target /2
-        loss = nn.MSELoss()
-        loss = loss(output[1:], target.squeeze())
-        test_loss += loss  # sum up batch loss
-    test_loss /= len(validation_loader.dataset) # calculate test loss
-
-    print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format( # print test loss and accuracy
-        test_loss, correct, len(validation_loader.dataset),
-        100. * correct / len(validation_loader.dataset)))
-    
-    if args.save_model: # check if we are saving the model
-        torch.save(grad_net.state_dict(), "grad_net.pt") # save gradients and path model
-        print("The current models are saved") # confirm all models are saved
-    return 100. * correct / len(validation_loader.dataset), o1
+def test(args, model, device, test_loader):
+    for batch_idx, (data, target) in enumerate(test_loader): # for each batch
+        data, target = data.to(device), target.to(device) # assign data to device
+        loss_grad = evaluate(args, model, data, target, device) # update gradient networks' weights
+        if batch_idx % args.log_interval == 0: # print training loss and training process
+            print('Test Loss: {:.6f}'.format(loss_grad))
 
 def main():
     # Training settings
@@ -195,21 +149,28 @@ def main():
         test_kwargs.update(cuda_kwargs)
         validation_kwargs.update(cuda_kwargs)
 
-    a = 2*pi
+    a = 3*pi
     x = torch.linspace(0,pi,1000)
-    t = torch.linspace(0.1,0.65,1000)
-    x_t = x-a*t
-    input_data = torch.cat((x.view(1000,1),t.view(1000,1)),1)
-    output_data = torch.Tensor(torch.cos(x_t)).view(1000,1)
-    data_object = TensorDataset(input_data,output_data) # create your datset
+    t_train = torch.linspace(0.1,0.65,1000)
+    x_t_train = x-a*t_train
+    input_data = torch.cat((x.view(1000,1),t_train.view(1000,1)),1)
+    output_data = torch.Tensor(torch.cos(x_t_train)).view(1000,1)
+    data_object_train = TensorDataset(input_data,output_data) # create your datset
+    train_set = data_object_train
 
-    train_set, val_set = torch.utils.data.random_split(data_object, [1000, 0])
+    t_test = torch.linspace(0.1,2.0,1000)
+    x_t_test = x-a*t_test
+    input_data_test = torch.cat((x.view(1000,1),t_test.view(1000,1)),1)
+    output_data_test = torch.Tensor(torch.cos(x_t_test)).view(1000,1)
+    data_object_test = TensorDataset(input_data_test,output_data_test) # create your datset
+    test_set = data_object_test
+    #train_set, val_set = torch.utils.data.random_split(data_object, [1000, 0])
     
     train_loader = DataLoader(train_set,batch_size=args.batch_size,shuffle=True)
-    test_loader = DataLoader(train_set,batch_size=1000,shuffle=True)
+    test_loader = DataLoader(test_set,batch_size=1000,shuffle=True)
 
 
-    optimizer = optim.Adam([dgdt_val], lr=0.5, weight_decay=5e-4)
+    optimizer = optim.Adam([dgdt_val], lr=0.5)
 
     scheduler_grad = StepLR(optimizer, step_size=args.step_size, gamma=args.gamma) # define scheduler for the gradients' network
 
@@ -218,6 +179,8 @@ def main():
     accu = 0.0
     for epoch in range(1, args.epochs + 1):
         train(args, model, device, train_loader, optimizer, epoch)
+        test(args, model, device, test_loader)
         scheduler_grad.step()
+
 if __name__ == '__main__':
     main()
