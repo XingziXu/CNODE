@@ -252,10 +252,6 @@ def main():
                         help='do we force the integration path to be monotonically increasing')
     parser.add_argument('--lr-grad', type=float, default=5e-3, metavar='LR',
                         help='learning rate for the gradients (default: 1e-3)')
-    parser.add_argument('--lr-path', type=float, default=5e-3, metavar='LR',
-                        help='learning rate for the path (default: 1e-3)')
-    parser.add_argument('--lr-classifier', type=float, default=5e-3, metavar='LR',
-                        help='learning rate for the classifier(default: 1e-3)')
     parser.add_argument('--tol', type=float, default=1e-5, metavar='LR',
                         help='learning rate (default: 1e-3)')
     parser.add_argument('--training-frequency', type=int, default=1, metavar='LR',
