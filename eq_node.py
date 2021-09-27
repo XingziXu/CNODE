@@ -19,6 +19,7 @@ from torch.distributions import Normal
 import numpy as np
 from scipy.interpolate import make_interp_spline
 import random
+from mpl_toolkits import mplot3d
 dgdt_val = torch.rand(1,requires_grad=True)#torch.Tensor([3])
 #dgdt_val.requires_grad = True
 
@@ -95,8 +96,10 @@ def evaluate(args, model, func_net, data, target, device):
     #    dg = times*model(1,2)
     #    output[i] = torch.cos(row[0]-dg) # classify the transformed images
     loss = torch.norm(output-target.squeeze())#loss(output, target.squeeze())
-    plt.scatter(times.detach().numpy(),output.detach().numpy())
-    plt.scatter(times.detach().numpy(),target.detach().numpy())
+    fig = plt.figure(figsize = (10, 7))
+    ax = plt.axes(projection ="3d")
+    ax.scatter3D(data[indices,1].detach().numpy(), times.detach().numpy(),output.detach().numpy())
+    ax.scatter3D(data[indices,1].detach().numpy(), times.detach().numpy(),target.detach().numpy())
     plt.show()
     return loss
 
@@ -181,30 +184,31 @@ def main():
         test_kwargs.update(cuda_kwargs)
         validation_kwargs.update(cuda_kwargs)
 
+    num_pts = 2000
     a = 2*pi
-    x = torch.linspace(0,pi,1000)
-    t_train = torch.linspace(0.1,1.0,1000)
+    x = torch.rand(num_pts)*pi
+    t_train = torch.rand(num_pts)
     x_t_train = x-a*t_train
-    input_data = torch.cat((x.view(1000,1),t_train.view(1000,1)),1)
-    output_data = torch.Tensor(torch.tanh(x_t_train)).view(1000,1)
+    input_data = torch.cat((x.view(num_pts,1),t_train.view(num_pts,1)),1)
+    output_data = torch.Tensor(torch.tanh(x_t_train)).view(num_pts,1)
     data_object_train = TensorDataset(input_data,output_data) # create your datset
     train_set = data_object_train
 
-    t_test = torch.linspace(0.1,2.0,1000)
+    t_test = torch.rand(num_pts)*3.0
     x_t_test = x-a*t_test
-    input_data_test = torch.cat((x.view(1000,1),t_test.view(1000,1)),1)
-    output_data_test = torch.Tensor(torch.tanh(x_t_test)).view(1000,1)
+    input_data_test = torch.cat((x.view(num_pts,1),t_test.view(num_pts,1)),1)
+    output_data_test = torch.Tensor(torch.tanh(x_t_test)).view(num_pts,1)
     data_object_test = TensorDataset(input_data_test,output_data_test) # create your datset
     test_set = data_object_test
     #train_set, val_set = torch.utils.data.random_split(data_object, [1000, 0])
     
     train_loader = DataLoader(train_set,batch_size=args.batch_size,shuffle=True)
-    test_loader = DataLoader(test_set,batch_size=1000,shuffle=True)
+    test_loader = DataLoader(test_set,batch_size=num_pts,shuffle=True)
 
     func_net = Func_net()
 
-    optimizer = optim.Adam([dgdt_val], lr=1.0)
-    optimizer_ini = optim.Adam(list(func_net.parameters()), lr = 5e-3, weight_decay=5e-3)
+    optimizer = optim.Adam([dgdt_val], lr=0.02)
+    optimizer_ini = optim.Adam(list(func_net.parameters()), lr = 6e-3, weight_decay=5e-3)
 
     scheduler_grad = StepLR(optimizer, step_size=args.step_size, gamma=args.gamma) # define scheduler for the gradients' network
 
