@@ -37,17 +37,17 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
             nn.Linear(2,32),
-            #nn.Softplus(),
+            nn.Tanh(),
             nn.Linear(32,32),
-            #nn.Softplus(),
+            nn.Tanh(),
             nn.Linear(32,1)
         )
         
         self.grad_h = nn.Sequential( # define the network for the gradient on y direction
             nn.Linear(2,32),
-            #nn.Softplus(),
+            nn.Tanh(),
             nn.Linear(32,32),
-            #nn.Softplus(),
+            nn.Tanh(),
             nn.Linear(32,1)
         )
 
