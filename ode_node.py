@@ -24,19 +24,20 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
     def __init__(self, width_path: int, width_grad: int, width_conv2: int):
         super().__init__()
         self.nfe=0 # initialize the number of function evaluations
-
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
-            nn.Linear(2,32),
+            nn.Linear(1,32),
             #nn.Softplus(),
             nn.Linear(32,32),
             #nn.Softplus(),
             nn.Linear(32,1)
         )
 
+
     def forward(self, t, x):
         self.nfe+=1 # each time we evaluate the function, the number of evaluations adds one
-        t_input = t.expand(x.size(0),1) # resize
-        dp = self.grad_g(torch.cat((x,t_input),1).float())# + torch.mul(self.grad_g(x),di_dt) # calculate the change in p
+        x = x.view(x.size(0),1,1)
+        dp = self.grad_g(x)# + torch.mul(self.grad_g(x),di_dt) # calculate the change in p
+        dp = dp.view(dp.size(0),1)
         return dp
 
 def initialize_grad(m):
@@ -81,25 +82,25 @@ def get_n_params(model): # define a function to measure the number of parameters
 def update(args, grad_net, optimizer, data, target, device):
     optimizer.zero_grad() # the start of updating the path's parameters
     data.requires_grad = True
-    sorted, indices = torch.sort(data[:,1], 0)
-    p = data[indices,0].view(data.size(0),1) # assign data, initialization
-    target = target[indices].view(data.size(0),1)
     output = torch.empty(1,1)
     #output.requires_grad = True
+    sorted, indices = torch.sort(data[:,1], 0)
+    p = data[indices,0].view(data.size(0),1) # assign data, initialization
+    #p.requires_grad=True # record the computation graph
     t = torch.cat((torch.Tensor([0.]),data[indices,1]),0).to(device) # we look to integrate from t=0 to t=1
     if args.adaptive_solver: # check if we are using the adaptive solver
         p = torch.squeeze(odeint_adjoint(grad_net, p, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
         print("The number of steps taken in this training itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
         grad_net.nfe=0 # reset the number of function of evaluations
     else:
-        p = torch.squeeze(odeint(grad_net, p, t, method="euler")[1]) # solve the neural line integral with the euler's solver
+        p = torch.squeeze(odeint(grad_net, p, t, method="euler")) # solve the neural line integral with the euler's solver
         grad_net.nfe=0 # reset the number of function of evaluations
-    #output = torch.cat((output,p.view(1,1)),dim=0) # classify the transformed images
+    output = torch.cat((output,p.view(1,1)),dim=0) # classify the transformed images
     #soft_max = nn.Softmax(dim=1) # define a soft max calculator
     #output = soft_max(output) # get the prediction results by getting the most probable ones
     #loss_func = nn.CrossEntropyLoss()
-    loss = torch.norm(p-target.squeeze())
-    #loss = loss(p.view(p.size(0),1), target)
+    loss = nn.MSELoss()
+    loss = loss(output[1:], target.squeeze())
     loss.backward(retain_graph=True) # backpropagate through the loss
     optimizer.step() # update the path network's parameters
     return loss
@@ -230,11 +231,11 @@ def main():
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
-    parser.add_argument('--lr-grad', type=float, default=1e-3, metavar='LR',
+    parser.add_argument('--lr-grad', type=float, default=1e-2, metavar='LR',
                         help='learning rate for the gradients (default: 1e-3)')
-    parser.add_argument('--lr-path', type=float, default=1e-3, metavar='LR',
+    parser.add_argument('--lr-path', type=float, default=1e-2, metavar='LR',
                         help='learning rate for the path (default: 1e-3)')
-    parser.add_argument('--lr-classifier', type=float, default=1e-3, metavar='LR',
+    parser.add_argument('--lr-classifier', type=float, default=1e-2, metavar='LR',
                         help='learning rate for the classifier(default: 1e-3)')
     parser.add_argument('--tol', type=float, default=1e-5, metavar='LR',
                         help='learning rate (default: 1e-3)')
@@ -268,25 +269,21 @@ def main():
         test_kwargs.update(cuda_kwargs)
         validation_kwargs.update(cuda_kwargs)
 
-    a = 2*pi
-    x = torch.linspace(0,pi,1000)
-    t_train = torch.linspace(0.1,1.0,1000)
-    x_t_train = x-a*t_train
-    input_data = torch.cat((x.view(1000,1),t_train.view(1000,1)),1)
-    output_data = torch.Tensor(torch.tanh(x_t_train)).view(1000,1)
-    data_object_train = TensorDataset(input_data,output_data) # create your datset
-    train_set = data_object_train
+    a = 2
+    u_0 = torch.linspace(1,10,1000)
+    t = torch.linspace(0.1,1.0,1000)
+    #t = torch.ones(1,1000)
+    u_t = torch.exp(-a*t)*u_0
+    input_data = torch.cat((u_0.view(1000,1),t.view(1000,1)),1)
+    output_data = u_t.view(1000,1)
+    data_object = TensorDataset(input_data,output_data) # create your datset
 
-    t_test = torch.linspace(0.1,1.0,1000)
-    x_t_test = x-a*t_test
-    input_data_test = torch.cat((x.view(1000,1),t_test.view(1000,1)),1)
-    output_data_test = torch.Tensor(torch.tanh(x_t_test)).view(1000,1)
-    data_object_test = TensorDataset(input_data_test,output_data_test) # create your datset
-    test_set = data_object_test
-    #train_set, val_set = torch.utils.data.random_split(data_object, [1000, 0])
+    #data_object = ConcentricSphere(dim=2,inner_range=[0.0,0.5],outer_range=[1.0,1.5],num_points_inner=500,num_points_outer=1000)
+
+    train_set, val_set = torch.utils.data.random_split(data_object, [1000, 0])
     
     train_loader = DataLoader(train_set,batch_size=args.batch_size,shuffle=True)
-    test_loader = DataLoader(test_set,batch_size=1000,shuffle=True)
+    test_loader = DataLoader(train_set,batch_size=1000,shuffle=True)
 
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad, width_conv2=args.width_conv2).to(device) # define grad_net and assign to device
 

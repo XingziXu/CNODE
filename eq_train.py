@@ -53,28 +53,10 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 
     def forward(self, t, x):
         self.nfe+=1 # each time we evaluate the function, the number of evaluations adds one
-        t_input = t.view(1,1).float() # resize
-        #print(t)
-        #t_channel = ((t_input.view(x.size(0),1,1)).expand(x.size(0),1,x.size(2)*x.size(3))).view(x.size(0),1,x.size(2),x.size(3)) # resize
-        #path_input = torch.cat((t_input, p_i),dim=1) # concatenate the time and the image
-        #path_input = path_input.view(path_input.size(0),1,1,2)
+        t_input = t.expand(x.size(0),1) # resize
         g_h_i = self.path(t_input) # calculate the position of the integration path
-        #g_h_i = g_h_i.view(g_h_i.size(0),2)
-
         dg_dt = g_h_i[:,0].view(g_h_i[:,0].size(0),1)
-        #dh_dt = g_h_i[:,1].view(g_h_i[:,1].size(0),1)
-        
-        # dg_dt = g_h_i[:,0].view(g_h_i.size(0),1,1) # resize 
-        #dg_dt = dg_dt.expand(dg_dt.size(0),1,x.size(2)*x.size(3)) # resize 
-        #dg_dt = dg_dt.view(dg_dt.size(0),1,x.size(2),x.size(3)) # resize 
-
-        #dh_dt = g_h_i[:,1].view(g_h_i.size(0),1,1) # resize 
-        #dh_dt = dh_dt.expand(dh_dt.size(0),1,x.size(2)*x.size(3)) # resize 
-        #dh_dt = dh_dt.view(dh_dt.size(0),1,x.size(2),x.size(3)) # resize 
-        #x = x.view(x.size(0),1,1,1)
-        dp = torch.mul(self.grad_g(torch.cat((x.view(1,1),t_input),1).float()),dg_dt) + self.grad_h(torch.cat((x.view(1,1),t_input),1).float())# + torch.mul(self.grad_g(x),di_dt) # calculate the change in p
-        #dp = dp.view(dp.size(0),1)
-        #print(t.item())
+        dp = torch.mul(self.grad_g(torch.cat((x,t_input),1).float()),dg_dt) + self.grad_h(torch.cat((x,t_input),1).float())# + torch.mul(self.grad_g(x),di_dt) # calculate the change in p
         return dp
 
 def initialize_grad(m):
@@ -119,27 +101,25 @@ def get_n_params(model): # define a function to measure the number of parameters
 def update(args, grad_net, optimizer, data, target, device):
     optimizer.zero_grad() # the start of updating the path's parameters
     data.requires_grad = True
+    sorted, indices = torch.sort(data[:,1], 0)
+    p = data[indices,0].view(data.size(0),1) # assign data, initialization
+    target = target[indices].view(data.size(0),1)
     output = torch.empty(1,1)
     #output.requires_grad = True
-    for row in data:
-        x0 = row[0]
-        times = row[1]
-        p = x0 # assign data, initialization
-        #p.requires_grad=True # record the computation graph
-        t = torch.cat((torch.Tensor([0.]),times.view(1)),0).to(device) # we look to integrate from t=0 to t=1
-        if args.adaptive_solver: # check if we are using the adaptive solver
-            p = torch.squeeze(odeint_adjoint(grad_net, p, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
-            print("The number of steps taken in this training itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
-            grad_net.nfe=0 # reset the number of function of evaluations
-        else:
-            p = torch.squeeze(odeint(grad_net, p, t, method="euler")[1]) # solve the neural line integral with the euler's solver
-            grad_net.nfe=0 # reset the number of function of evaluations
-        output = torch.cat((output,p.view(1,1)),dim=0) # classify the transformed images
+    t = torch.cat((torch.Tensor([0.]),data[indices,1]),0).to(device) # we look to integrate from t=0 to t=1
+    if args.adaptive_solver: # check if we are using the adaptive solver
+        p = torch.squeeze(odeint_adjoint(grad_net, p, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
+        print("The number of steps taken in this training itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
+        grad_net.nfe=0 # reset the number of function of evaluations
+    else:
+        p = torch.squeeze(odeint(grad_net, p, t, method="euler")[1]) # solve the neural line integral with the euler's solver
+        grad_net.nfe=0 # reset the number of function of evaluations
+    #output = torch.cat((output,p.view(1,1)),dim=0) # classify the transformed images
     #soft_max = nn.Softmax(dim=1) # define a soft max calculator
     #output = soft_max(output) # get the prediction results by getting the most probable ones
     #loss_func = nn.CrossEntropyLoss()
-    loss = nn.MSELoss()
-    loss = loss(output[1:], target.squeeze())
+    loss = torch.norm(p-target.squeeze())
+    #loss = loss(p.view(p.size(0),1), target)
     loss.backward(retain_graph=True) # backpropagate through the loss
     optimizer.step() # update the path network's parameters
     return loss
@@ -270,11 +250,11 @@ def main():
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
-    parser.add_argument('--lr-grad', type=float, default=1e-3, metavar='LR',
+    parser.add_argument('--lr-grad', type=float, default=5e-3, metavar='LR',
                         help='learning rate for the gradients (default: 1e-3)')
-    parser.add_argument('--lr-path', type=float, default=1e-3, metavar='LR',
+    parser.add_argument('--lr-path', type=float, default=5e-3, metavar='LR',
                         help='learning rate for the path (default: 1e-3)')
-    parser.add_argument('--lr-classifier', type=float, default=1e-3, metavar='LR',
+    parser.add_argument('--lr-classifier', type=float, default=5e-3, metavar='LR',
                         help='learning rate for the classifier(default: 1e-3)')
     parser.add_argument('--tol', type=float, default=1e-5, metavar='LR',
                         help='learning rate (default: 1e-3)')
@@ -310,18 +290,23 @@ def main():
 
     a = 2*pi
     x = torch.linspace(0,pi,1000)
-    t = torch.linspace(0.1,0.5,1000)
-    x_t = x-a*t
-    input_data = torch.cat((torch.cos(x).view(1000,1),t.view(1000,1)),1)
-    output_data = torch.Tensor(torch.cos(x_t)).view(1000,1)
-    data_object = TensorDataset(input_data,output_data) # create your datset
+    t_train = torch.linspace(0.1,1.0,1000)
+    x_t_train = x-a*t_train
+    input_data = torch.cat((x.view(1000,1),t_train.view(1000,1)),1)
+    output_data = torch.Tensor(torch.tanh(x_t_train)).view(1000,1)
+    data_object_train = TensorDataset(input_data,output_data) # create your datset
+    train_set = data_object_train
 
-    #data_object = ConcentricSphere(dim=2,inner_range=[0.0,0.5],outer_range=[1.0,1.5],num_points_inner=500,num_points_outer=1000)
-
-    train_set, val_set = torch.utils.data.random_split(data_object, [1000, 0])
+    t_test = torch.linspace(0.1,1.0,1000)
+    x_t_test = x-a*t_test
+    input_data_test = torch.cat((x.view(1000,1),t_test.view(1000,1)),1)
+    output_data_test = torch.Tensor(torch.tanh(x_t_test)).view(1000,1)
+    data_object_test = TensorDataset(input_data_test,output_data_test) # create your datset
+    test_set = data_object_test
+    #train_set, val_set = torch.utils.data.random_split(data_object, [1000, 0])
     
     train_loader = DataLoader(train_set,batch_size=args.batch_size,shuffle=True)
-    test_loader = DataLoader(train_set,batch_size=1000,shuffle=True)
+    test_loader = DataLoader(test_set,batch_size=1000,shuffle=True)
 
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad, width_conv2=args.width_conv2).to(device) # define grad_net and assign to device
 

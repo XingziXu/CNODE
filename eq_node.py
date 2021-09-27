@@ -19,68 +19,100 @@ from torch.distributions import Normal
 import numpy as np
 from scipy.interpolate import make_interp_spline
 import random
-dgdt_val = torch.Tensor([3.14])
-dgdt_val.requires_grad=True
+dgdt_val = torch.rand(1,requires_grad=True)#torch.Tensor([3])
+#dgdt_val.requires_grad = True
 
 def model(t,x):
-    #print(dgdt_val)
+    print(dgdt_val)
     return dgdt_val
 
-def update(args, model, optimizer, data, target, device):
+class Func_net(nn.Module): # the Grad_net defines the networks for the path and for the gradients
+    def __init__(self):
+        super().__init__()
+        self.grad = nn.Sequential( # define the network for the gradient on x direction
+            nn.Linear(1,4),
+            nn.Tanh(),
+            #nn.Linear(16,16),
+            #nn.Tanh(),
+            nn.Linear(4,1)
+        )
+    def forward(self,x):
+        return self.grad(x)
+
+def update(args, model, func_net, optimizer, optimizer_ini, data, target, device):
     optimizer.zero_grad() # the start of updating the path's parameters
+    optimizer_ini.zero_grad()
     data.requires_grad = True
+    sorted, indices = torch.sort(data[:,1], 0)
     output = torch.empty(data.size(0),1)
-    for i,row in enumerate(data):
-        times = row[1]
-        dg = torch.Tensor([0]).squeeze()
-        dg.requires_grad=True
-        t = torch.cat((torch.Tensor([0.]),times.view(1)),0).to(device) # we look to integrate from t=0 to t=1
-        #if args.adaptive_solver: # check if we are using the adaptive solver
-        #    dg = torch.squeeze(odeint_adjoint(model, dg, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
-            #print("The number of steps taken in this training itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
-        #else:
-        #    dg = torch.squeeze(odeint(model, dg, t, method="euler")[1]) # solve the neural line integral with the euler's solver
-        dg = times*model(1,2)
-        output[i] = torch.cos(row[0]-dg) # classify the transformed images
-    loss = nn.MSELoss()
-    loss = loss(output, target.squeeze())
+    times = data[indices,1]
+    dg = torch.zeros(data.size(0),1)
+    dg.requires_grad=True
+    t = torch.cat((torch.Tensor([0.]),times),0).to(device)
+    dg = times*model(1,2)
+    target = target[indices]
+    output = func_net((data[indices,0]-dg).view(dg.size(0),1)).squeeze()
+    #for i,row in enumerate(data):
+    #    times = row[1]
+    #    dg = torch.Tensor([0]).squeeze()
+    #    dg.requires_grad=True
+    #    t = torch.cat((torch.Tensor([0.]),times.view(1)),0).to(device) # we look to integrate from t=0 to t=1
+    #    #if args.adaptive_solver: # check if we are using the adaptive solver
+    #    #    dg = torch.squeeze(odeint_adjoint(model, dg, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
+    #        #print("The number of steps taken in this training itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
+    #    #else:
+    #    #    dg = torch.squeeze(odeint(model, dg, t, method="euler")[1]) # solve the neural line integral with the euler's solver
+    #    dg = times*model(1,2)
+    #    output[i] = torch.cos(row[0]-dg) # classify the transformed images
+    loss = torch.norm(output-target.squeeze())#loss(output, target.squeeze())
     loss.backward(retain_graph=True) # backpropagate through the loss
     optimizer.step() # update the path network's parameters
+    optimizer_ini.step()
     return loss
+    
 
-def evaluate(args, model, data, target, device):
+def evaluate(args, model, func_net, data, target, device):
     data.requires_grad = True
+    sorted, indices = torch.sort(data[:,1], 0)
     output = torch.empty(data.size(0),1)
-    for i,row in enumerate(data):
-        times = row[1]
-        dg = torch.Tensor([0]).squeeze()
-        dg.requires_grad=True
-        t = torch.cat((torch.Tensor([0.]),times.view(1)),0).to(device) # we look to integrate from t=0 to t=1
-        #if args.adaptive_solver: # check if we are using the adaptive solver
-        #    dg = torch.squeeze(odeint_adjoint(model, dg, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
-            #print("The number of steps taken in this training itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
-        #else:
-        #    dg = torch.squeeze(odeint(model, dg, t, method="euler")[1]) # solve the neural line integral with the euler's solver
-        dg = times*model(1,2)
-        output[i] = torch.cos(row[0]-dg) # classify the transformed images
-    loss = nn.MSELoss()
-    loss = loss(output, target.squeeze())
-    loss.backward(retain_graph=True) # backpropagate through the loss
+    times = data[indices,1]
+    dg = torch.zeros(data.size(0),1)
+    dg.requires_grad=True
+    t = torch.cat((torch.Tensor([0.]),times),0).to(device)
+    dg = times*model(1,2)
+    target = target[indices]
+    output = func_net((data[indices,0]-dg).view(dg.size(0),1)).squeeze()
+    #for i,row in enumerate(data):
+    #    times = row[1]
+    #    dg = torch.Tensor([0]).squeeze()
+    #    dg.requires_grad=True
+    #    t = torch.cat((torch.Tensor([0.]),times.view(1)),0).to(device) # we look to integrate from t=0 to t=1
+    #    #if args.adaptive_solver: # check if we are using the adaptive solver
+    #    #    dg = torch.squeeze(odeint_adjoint(model, dg, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
+    #        #print("The number of steps taken in this training itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
+    #    #else:
+    #    #    dg = torch.squeeze(odeint(model, dg, t, method="euler")[1]) # solve the neural line integral with the euler's solver
+    #    dg = times*model(1,2)
+    #    output[i] = torch.cos(row[0]-dg) # classify the transformed images
+    loss = torch.norm(output-target.squeeze())#loss(output, target.squeeze())
+    plt.scatter(times.detach().numpy(),output.detach().numpy())
+    plt.scatter(times.detach().numpy(),target.detach().numpy())
+    plt.show()
     return loss
 
-def train(args, model, device, train_loader, optimizer, epoch):
+def train(args, model, func_net, device, train_loader, optimizer, optimizer_ini, epoch):
     for batch_idx, (data, target) in enumerate(train_loader): # for each batch
         data, target = data.to(device), target.to(device) # assign data to device
-        loss_grad = update(args, model, optimizer, data, target, device) # update gradient networks' weights
+        loss_grad = update(args, model, func_net, optimizer, optimizer_ini, data, target, device) # update gradient networks' weights
         if batch_idx % args.log_interval == 0: # print training loss and training process
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss_grad.item()))
 
-def test(args, model, device, test_loader):
+def test(args, model, func_net, device, test_loader):
     for batch_idx, (data, target) in enumerate(test_loader): # for each batch
         data, target = data.to(device), target.to(device) # assign data to device
-        loss_grad = evaluate(args, model, data, target, device) # update gradient networks' weights
+        loss_grad = evaluate(args, model, func_net, data, target, device) # update gradient networks' weights
         if batch_idx % args.log_interval == 0: # print training loss and training process
             print('Test Loss: {:.6f}'.format(loss_grad))
 
@@ -93,7 +125,7 @@ def main():
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=100, metavar='N',
+    parser.add_argument('--epochs', type=int, default=200, metavar='N',
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--gamma', type=float, default=0.9, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
@@ -111,11 +143,11 @@ def main():
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
-    parser.add_argument('--lr-grad', type=float, default=1e-3, metavar='LR',
+    parser.add_argument('--lr-grad', type=float, default=1, metavar='LR',
                         help='learning rate for the gradients (default: 1e-3)')
-    parser.add_argument('--lr-path', type=float, default=1e-3, metavar='LR',
+    parser.add_argument('--lr-path', type=float, default=1, metavar='LR',
                         help='learning rate for the path (default: 1e-3)')
-    parser.add_argument('--lr-classifier', type=float, default=1e-3, metavar='LR',
+    parser.add_argument('--lr-classifier', type=float, default=1, metavar='LR',
                         help='learning rate for the classifier(default: 1e-3)')
     parser.add_argument('--tol', type=float, default=1e-5, metavar='LR',
                         help='learning rate (default: 1e-3)')
@@ -149,19 +181,19 @@ def main():
         test_kwargs.update(cuda_kwargs)
         validation_kwargs.update(cuda_kwargs)
 
-    a = 3*pi
+    a = 2*pi
     x = torch.linspace(0,pi,1000)
-    t_train = torch.linspace(0.1,0.65,1000)
+    t_train = torch.linspace(0.1,1.0,1000)
     x_t_train = x-a*t_train
     input_data = torch.cat((x.view(1000,1),t_train.view(1000,1)),1)
-    output_data = torch.Tensor(torch.cos(x_t_train)).view(1000,1)
+    output_data = torch.Tensor(torch.tanh(x_t_train)).view(1000,1)
     data_object_train = TensorDataset(input_data,output_data) # create your datset
     train_set = data_object_train
 
     t_test = torch.linspace(0.1,2.0,1000)
     x_t_test = x-a*t_test
     input_data_test = torch.cat((x.view(1000,1),t_test.view(1000,1)),1)
-    output_data_test = torch.Tensor(torch.cos(x_t_test)).view(1000,1)
+    output_data_test = torch.Tensor(torch.tanh(x_t_test)).view(1000,1)
     data_object_test = TensorDataset(input_data_test,output_data_test) # create your datset
     test_set = data_object_test
     #train_set, val_set = torch.utils.data.random_split(data_object, [1000, 0])
@@ -169,8 +201,10 @@ def main():
     train_loader = DataLoader(train_set,batch_size=args.batch_size,shuffle=True)
     test_loader = DataLoader(test_set,batch_size=1000,shuffle=True)
 
+    func_net = Func_net()
 
-    optimizer = optim.Adam([dgdt_val], lr=0.5)
+    optimizer = optim.Adam([dgdt_val], lr=1.0)
+    optimizer_ini = optim.Adam(list(func_net.parameters()), lr = 5e-3, weight_decay=5e-3)
 
     scheduler_grad = StepLR(optimizer, step_size=args.step_size, gamma=args.gamma) # define scheduler for the gradients' network
 
@@ -178,9 +212,9 @@ def main():
 
     accu = 0.0
     for epoch in range(1, args.epochs + 1):
-        train(args, model, device, train_loader, optimizer, epoch)
-        test(args, model, device, test_loader)
+        train(args, model, func_net, device, train_loader, optimizer, optimizer_ini, epoch)
+        
         scheduler_grad.step()
-
+    test(args, model, func_net, device, test_loader)
 if __name__ == '__main__':
     main()
