@@ -28,15 +28,15 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         self.path = nn.Sequential( # define the network for the integration path
             nn.Linear(1,20),
             #nn.Hardsigmoid(),
-            #nn.ELU(),
+            nn.ELU(),
             nn.Linear(20,20),
-            #nn.ELU(),
+            nn.ELU(),
             nn.Linear(20,1)
         )
 
 
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
-            nn.Linear(2,32),
+            nn.Linear(1,32),
             nn.Tanh(),
             nn.Linear(32,32),
             nn.Tanh(),
@@ -44,7 +44,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         )
         
         self.grad_h = nn.Sequential( # define the network for the gradient on y direction
-            nn.Linear(2,32),
+            nn.Linear(1,32),
             nn.Tanh(),
             nn.Linear(32,32),
             nn.Tanh(),
@@ -56,7 +56,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         t_input = t.expand(x.size(0),1) # resize
         g_h_i = self.path(t_input) # calculate the position of the integration path
         dg_dt = g_h_i[:,0].view(g_h_i[:,0].size(0),1)
-        dp = torch.mul(self.grad_g(torch.cat((x,t_input),1).float()),dg_dt) + self.grad_h(torch.cat((x,t_input),1).float())# + torch.mul(self.grad_g(x),di_dt) # calculate the change in p
+        dp = torch.mul(self.grad_g(x.float()),dg_dt) + self.grad_h(x.float())# + torch.mul(self.grad_g(x),di_dt) # calculate the change in p
         return dp
 
 def initialize_grad(m):
@@ -250,7 +250,7 @@ def main():
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
-    parser.add_argument('--lr-grad', type=float, default=5e-3, metavar='LR',
+    parser.add_argument('--lr-grad', type=float, default=1e-2, metavar='LR',
                         help='learning rate for the gradients (default: 1e-3)')
     parser.add_argument('--tol', type=float, default=1e-5, metavar='LR',
                         help='learning rate (default: 1e-3)')
@@ -284,25 +284,26 @@ def main():
         test_kwargs.update(cuda_kwargs)
         validation_kwargs.update(cuda_kwargs)
 
+    num_pts = 2000
     a = 2*pi
-    x = torch.linspace(0,pi,1000)
-    t_train = torch.linspace(0.1,1.0,1000)
+    x = torch.rand(num_pts)*pi
+    t_train = torch.rand(num_pts)
     x_t_train = x-a*t_train
-    input_data = torch.cat((x.view(1000,1),t_train.view(1000,1)),1)
-    output_data = torch.Tensor(torch.tanh(x_t_train)).view(1000,1)
+    input_data = torch.cat((x.view(num_pts,1),t_train.view(num_pts,1)),1)
+    output_data = torch.Tensor(torch.tanh(x_t_train)).view(num_pts,1)
     data_object_train = TensorDataset(input_data,output_data) # create your datset
     train_set = data_object_train
 
-    t_test = torch.linspace(0.1,1.0,1000)
+    t_test = torch.rand(num_pts)*3.0
     x_t_test = x-a*t_test
-    input_data_test = torch.cat((x.view(1000,1),t_test.view(1000,1)),1)
-    output_data_test = torch.Tensor(torch.tanh(x_t_test)).view(1000,1)
+    input_data_test = torch.cat((x.view(num_pts,1),t_test.view(num_pts,1)),1)
+    output_data_test = torch.Tensor(torch.tanh(x_t_test)).view(num_pts,1)
     data_object_test = TensorDataset(input_data_test,output_data_test) # create your datset
     test_set = data_object_test
     #train_set, val_set = torch.utils.data.random_split(data_object, [1000, 0])
     
     train_loader = DataLoader(train_set,batch_size=args.batch_size,shuffle=True)
-    test_loader = DataLoader(test_set,batch_size=1000,shuffle=True)
+    test_loader = DataLoader(test_set,batch_size=num_pts,shuffle=True)
 
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad, width_conv2=args.width_conv2).to(device) # define grad_net and assign to device
 

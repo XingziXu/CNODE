@@ -24,7 +24,7 @@ dgdt_val = torch.rand(1,requires_grad=True)#torch.Tensor([3])
 #dgdt_val.requires_grad = True
 
 def model(t,x):
-    print(dgdt_val)
+    #print(dgdt_val)
     return dgdt_val
 
 class Func_net(nn.Module): # the Grad_net defines the networks for the path and for the gradients
@@ -73,33 +73,40 @@ def update(args, model, func_net, optimizer, optimizer_ini, data, target, device
     
 
 def evaluate(args, model, func_net, data, target, device):
-    data.requires_grad = True
-    sorted, indices = torch.sort(data[:,1], 0)
-    output = torch.empty(data.size(0),1)
-    times = data[indices,1]
-    dg = torch.zeros(data.size(0),1)
+    #sorted, indices = torch.sort(data[:,1], 0)
+    num_pts = 200
+    t_test = torch.linspace(-3*pi,3*pi,num_pts)
+    x_test = torch.linspace(-3*pi,3*pi,num_pts)
+    grid_x, grid_t = torch.meshgrid(x_test, t_test)
+    x_test = grid_x.reshape(grid_x.size(0)*grid_x.size(0),1)
+    t_test = grid_t.reshape(grid_t.size(0)*grid_t.size(0),1)
+    x_t_test = x_test-2*pi*t_test
+    gnd_truth = torch.tanh(x_t_test)
+    output = torch.empty(num_pts,num_pts)
+    for x_idx in range(0,num_pts):
+        for t_idx in range(0,num_pts):
+            #print(func_net(x-t*model(1,2)).squeeze())
+            output[x_idx,t_idx] = func_net(grid_x[x_idx,t_idx]-grid_t[x_idx,t_idx]*model(1,2)).squeeze()
+    dg = torch.zeros(t_test.size(0)**2,1)
     dg.requires_grad=True
-    t = torch.cat((torch.Tensor([0.]),times),0).to(device)
-    dg = times*model(1,2)
-    target = target[indices]
-    output = func_net((data[indices,0]-dg).view(dg.size(0),1)).squeeze()
-    #for i,row in enumerate(data):
-    #    times = row[1]
-    #    dg = torch.Tensor([0]).squeeze()
-    #    dg.requires_grad=True
-    #    t = torch.cat((torch.Tensor([0.]),times.view(1)),0).to(device) # we look to integrate from t=0 to t=1
-    #    #if args.adaptive_solver: # check if we are using the adaptive solver
-    #    #    dg = torch.squeeze(odeint_adjoint(model, dg, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
-    #        #print("The number of steps taken in this training itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
-    #    #else:
-    #    #    dg = torch.squeeze(odeint(model, dg, t, method="euler")[1]) # solve the neural line integral with the euler's solver
-    #    dg = times*model(1,2)
-    #    output[i] = torch.cos(row[0]-dg) # classify the transformed images
-    loss = torch.norm(output-target.squeeze())#loss(output, target.squeeze())
-    fig = plt.figure(figsize = (10, 7))
-    ax = plt.axes(projection ="3d")
-    ax.scatter3D(data[indices,1].detach().numpy(), times.detach().numpy(),output.detach().numpy())
-    ax.scatter3D(data[indices,1].detach().numpy(), times.detach().numpy(),target.detach().numpy())
+    dg = t_test*model(1,2)
+    #output = func_net(x_test-dg).squeeze()
+    loss = torch.norm(output.reshape(num_pts**2)-gnd_truth.squeeze())#loss(output, target.squeeze())
+    #output_contour = output.reshape(grid_x.size(0),grid_t.size(0))
+    t_test_contour = torch.linspace(-3*pi,3*pi,num_pts)
+    x_test_contour = torch.linspace(-3*pi,3*pi,num_pts)
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection="3d")
+    ax.contour3D(t_test_contour.detach().numpy(), x_test_contour.detach().numpy(),output.detach().numpy(), 50)
+    #ax.plot_surface(x_test.detach().numpy(), t_test.detach().numpy(),output.detach().numpy(), cmap="autumn_r", lw=0.5, rstride=1, cstride=1, alpha=0.5)
+    #ax.contour(x_test.detach().numpy(), t_test.detach().numpy(),output.detach().numpy(), 10, lw=3, cmap="autumn_r", linestyles="solid", offset=-1)
+    #ax.contour(x_test.detach().numpy(), t_test.detach().numpy(),output.detach().numpy(), 10, lw=3, colors="k", linestyles="solid")
+    #ax = plt.axes(projection='3d')
+    #ax.contour3D(x_test.detach().numpy(), t_test.detach().numpy(),output.detach().numpy(), 50)
+    #fig = plt.figure(figsize = (10, 7))
+    #ax = plt.axes(projection ="3d")
+    #ax.scatter3D(x_test.detach().numpy(), t_test.detach().numpy(),output.detach().numpy())
+    #ax.scatter3D(x_test.detach().numpy(), t_test.detach().numpy(),gnd_truth.detach().numpy())
     plt.show()
     return loss
 
@@ -128,7 +135,7 @@ def main():
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=200, metavar='N',
+    parser.add_argument('--epochs', type=int, default=50, metavar='N',
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--gamma', type=float, default=0.9, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
@@ -184,26 +191,33 @@ def main():
         test_kwargs.update(cuda_kwargs)
         validation_kwargs.update(cuda_kwargs)
 
-    num_pts = 2000
+    num_pts_train = 3000
     a = 2*pi
-    x = torch.rand(num_pts)*pi
-    t_train = torch.rand(num_pts)
-    x_t_train = x-a*t_train
-    input_data = torch.cat((x.view(num_pts,1),t_train.view(num_pts,1)),1)
-    output_data = torch.Tensor(torch.tanh(x_t_train)).view(num_pts,1)
+    x_train = torch.rand(num_pts_train)*5*pi
+    t_train = torch.rand(num_pts_train)*5
+    x_t_train = x_train-a*t_train
+    input_data = torch.cat((x_train.view(num_pts_train,1),t_train.view(num_pts_train,1)),1)
+    output_data = torch.Tensor(torch.tanh(x_t_train)).view(num_pts_train,1)
     data_object_train = TensorDataset(input_data,output_data) # create your datset
     train_set = data_object_train
 
-    t_test = torch.rand(num_pts)*3.0
-    x_t_test = x-a*t_test
-    input_data_test = torch.cat((x.view(num_pts,1),t_test.view(num_pts,1)),1)
-    output_data_test = torch.Tensor(torch.tanh(x_t_test)).view(num_pts,1)
+
+
+    num_pts_test = 10
+    t_test = torch.linspace(-5*pi,5*pi,num_pts_test)
+    x_test = torch.linspace(-5*pi,5*pi,num_pts_test)
+    grid_x, grid_t = torch.meshgrid(x_test, t_test)
+    x_test = grid_x.reshape(grid_x.size(0)*grid_x.size(0),1)
+    t_test = grid_t.reshape(grid_t.size(0)*grid_t.size(0),1)
+    x_t_test = x_test-a*t_test
+    input_data_test = torch.cat((x_test,t_test),1)
+    output_data_test = torch.Tensor(torch.tanh(x_t_test))
     data_object_test = TensorDataset(input_data_test,output_data_test) # create your datset
     test_set = data_object_test
     #train_set, val_set = torch.utils.data.random_split(data_object, [1000, 0])
     
     train_loader = DataLoader(train_set,batch_size=args.batch_size,shuffle=True)
-    test_loader = DataLoader(test_set,batch_size=num_pts,shuffle=True)
+    test_loader = DataLoader(test_set,batch_size=num_pts_test**2,shuffle=True)
 
     func_net = Func_net()
 
