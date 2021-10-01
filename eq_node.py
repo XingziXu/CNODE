@@ -77,27 +77,27 @@ def evaluate(args, model, func_net, data, target, device):
     num_pts = 200
     t_test = torch.linspace(-3*pi,3*pi,num_pts)
     x_test = torch.linspace(-3*pi,3*pi,num_pts)
-    grid_x, grid_t = torch.meshgrid(x_test, t_test)
-    x_test = grid_x.reshape(grid_x.size(0)*grid_x.size(0),1)
-    t_test = grid_t.reshape(grid_t.size(0)*grid_t.size(0),1)
-    x_t_test = x_test-2*pi*t_test
-    gnd_truth = torch.tanh(x_t_test)
+    #grid_x, grid_t = torch.meshgrid(x_test, t_test)
+    #x_test = grid_x.reshape(grid_x.size(0)*grid_x.size(0),1)
+    #t_test = grid_t.reshape(grid_t.size(0)*grid_t.size(0),1)
+    #x_t_test = x_test-2*pi*t_test
+    #gnd_truth = torch.tanh(x_t_test)
     output = torch.empty(num_pts,num_pts)
-    for x_idx in range(0,num_pts):
-        for t_idx in range(0,num_pts):
+    for t_idx in range(0,num_pts):
+        for x_idx in range(0,num_pts):
             #print(func_net(x-t*model(1,2)).squeeze())
-            output[x_idx,t_idx] = func_net(grid_x[x_idx,t_idx]-grid_t[x_idx,t_idx]*model(1,2)).squeeze()
+            output[t_idx,x_idx] = func_net(x_test[x_idx]-t_test[t_idx]*model(1,2)).squeeze()
     dg = torch.zeros(t_test.size(0)**2,1)
     dg.requires_grad=True
     dg = t_test*model(1,2)
     #output = func_net(x_test-dg).squeeze()
-    loss = torch.norm(output.reshape(num_pts**2)-gnd_truth.squeeze())#loss(output, target.squeeze())
+    #loss = torch.norm(output.reshape(num_pts**2)-gnd_truth.squeeze())#loss(output, target.squeeze())
     #output_contour = output.reshape(grid_x.size(0),grid_t.size(0))
-    t_test_contour = torch.linspace(-3*pi,3*pi,num_pts)
-    x_test_contour = torch.linspace(-3*pi,3*pi,num_pts)
+    #t_test_contour = torch.linspace(-3*pi,3*pi,num_pts)
+    #x_test_contour = torch.linspace(-3*pi,3*pi,num_pts)
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
-    ax.contour3D(t_test_contour.detach().numpy(), x_test_contour.detach().numpy(),output.detach().numpy(), 50)
+    ax.contour3D(t_test.detach().numpy(), x_test.detach().numpy(),output.detach().numpy(), 50)
     #ax.plot_surface(x_test.detach().numpy(), t_test.detach().numpy(),output.detach().numpy(), cmap="autumn_r", lw=0.5, rstride=1, cstride=1, alpha=0.5)
     #ax.contour(x_test.detach().numpy(), t_test.detach().numpy(),output.detach().numpy(), 10, lw=3, cmap="autumn_r", linestyles="solid", offset=-1)
     #ax.contour(x_test.detach().numpy(), t_test.detach().numpy(),output.detach().numpy(), 10, lw=3, colors="k", linestyles="solid")
