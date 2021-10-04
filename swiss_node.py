@@ -15,6 +15,7 @@ from torch.utils.data import Dataset, DataLoader
 import matplotlib.pyplot as plt
 from math import pi
 from torch.distributions import Normal
+import numpy as np
 
 class ShiftedSines(Dataset):
     """Dataset of two shifted sine curves. Points from the curve shifted upward
@@ -210,6 +211,7 @@ def train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, 
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss_grad.item()))
+    return loss_grad.item()
 
 def test(args, grad_net, classifier_net, device, test_loader):
     grad_net.eval() # set the network on evaluation mode
@@ -285,7 +287,7 @@ def validation(args, grad_net, classifier_net, device, validation_loader):
         torch.save(grad_net.state_dict(), "grad_net.pt") # save gradients and path model
         torch.save(classifier_net.state_dict(), "classifer_net.pt") # save classifier model
         print("The current models are saved") # confirm all models are saved
-    return 100. * correct / len(validation_loader.dataset)
+    return test_loss, 100. * correct / len(validation_loader.dataset)
 
 def main():
     # Training settings
@@ -310,7 +312,7 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
-    parser.add_argument('--adaptive-solver', action='store_true', default=False,
+    parser.add_argument('--adaptive-solver', action='store_true', default=True,
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
@@ -336,7 +338,7 @@ def main():
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available() # check if we have a GPU available
 
-    torch.manual_seed(args.seed)
+    #torch.manual_seed(args.seed)
 
     device = torch.device("cuda" if use_cuda else "cpu") # check if we are using the GPU
 
@@ -378,15 +380,30 @@ def main():
 
     print('setup complete')
 
-    accu = 0.0
+    loss_train = []
+    loss_test = []
+    accu = []
+    #outer = torch.zeros((25,153,3))
+    #inner = torch.zeros((25,147,3))
     for epoch in range(1, args.epochs + 1):
-        train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, epoch)
-        accu_new = validation(args, grad_net, classifier_net, device, test_loader)
-        if accu_new > accu:
-            accu = accu_new
-        print('The best accuracy is {:.4f}%\n'.format(accu))
+        train_loss = train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, epoch)
+        test_loss,accu_new = validation(args, grad_net, classifier_net, device, test_loader)
+        #outer[epoch-1,:,:] = o1[o1[:,2]==1.]
+        #inner[epoch-1,:,:] = o1[o1[:,2]==0.]
+        loss_train.append(train_loss)
+        loss_test.append(test_loss)
+        accu.append(accu_new)
+        #if accu_new > accu:
+        #    accu = accu_new
+        #print('The best accuracy is {:.4f}%\n'.format(accu))
         scheduler_grad.step()
-    test(args, grad_net, classifier_net, device, test_loader)
+    #test(args, grad_net, classifier_net, device, test_loader)
+    with open('train_loss_swiss_node1.npy', 'wb') as f:
+        np.save(f, np.asarray(loss_train))
+    with open('test_loss_swiss_node1.npy', 'wb') as f:
+        np.save(f, np.asarray(loss_test))
+    with open('accuracy_swiss_node1.npy', 'wb') as f:
+        np.save(f, np.asarray(accu))
 
 if __name__ == '__main__':
     main()
