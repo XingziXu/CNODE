@@ -322,11 +322,11 @@ def main():
         #print('The best accuracy is {:.4f}%\n'.format(accu))
         scheduler_grad.step()
     #test(args, grad_net, classifier_net, device, test_loader)
-    with open('train_loss_svhn_aug4.npy', 'wb') as f:
+    with open('train_loss_svhn_aug5.npy', 'wb') as f:
         np.save(f, np.asarray(loss_train))
-    with open('test_loss_svhn_aug4.npy', 'wb') as f:
+    with open('test_loss_svhn_aug5.npy', 'wb') as f:
         np.save(f, np.asarray(loss_test))
-    with open('accuracy_svhn_aug4.npy', 'wb') as f:
+    with open('accuracy_svhn_aug5.npy', 'wb') as f:
         np.save(f, np.asarray(accu))
 
 if __name__ == '__main__':
