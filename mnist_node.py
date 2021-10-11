@@ -212,7 +212,7 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
-    parser.add_argument('--adaptive-solver', action='store_true', default=False,
+    parser.add_argument('--adaptive-solver', action='store_true', default=True,
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
@@ -236,7 +236,7 @@ def main():
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available() # check if we have a GPU available
 
-    torch.manual_seed(args.seed)
+    #torch.manual_seed(args.seed)
 
     device = torch.device("cuda" if use_cuda else "cpu") # check if we are using the GPU
 
@@ -299,11 +299,11 @@ def main():
         #print('The best accuracy is {:.4f}%\n'.format(accu))
         scheduler_grad.step()
     #test(args, grad_net, classifier_net, device, test_loader)
-    with open('train_loss_mnist_node5.npy', 'wb') as f:
+    with open('train_loss_mnist_node3.npy', 'wb') as f:
         np.save(f, np.asarray(loss_train))
-    with open('test_loss_mnist_node5.npy', 'wb') as f:
+    with open('test_loss_mnist_node3.npy', 'wb') as f:
         np.save(f, np.asarray(loss_test))
-    with open('accuracy_mnist_node5.npy', 'wb') as f:
+    with open('accuracy_mnist_node3.npy', 'wb') as f:
         np.save(f, np.asarray(accu))
 
 if __name__ == '__main__':
