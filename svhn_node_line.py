@@ -276,7 +276,7 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
-    parser.add_argument('--adaptive-solver', action='store_true', default=False,
+    parser.add_argument('--adaptive-solver', action='store_true', default=True,
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
@@ -367,11 +367,11 @@ def main():
         #print('The best accuracy is {:.4f}%\n'.format(accu))
         scheduler_grad.step()
     #test(args, grad_net, classifier_net, device, test_loader)
-    with open('train_loss_svhn_line5.npy', 'wb') as f:
+    with open('train_loss_svhn_line_adj1.npy', 'wb') as f:
         np.save(f, np.asarray(loss_train))
-    with open('test_loss_svhn_line5.npy', 'wb') as f:
+    with open('test_loss_svhn_line_adj1.npy', 'wb') as f:
         np.save(f, np.asarray(loss_test))
-    with open('accuracy_svhn_line5.npy', 'wb') as f:
+    with open('accuracy_svhn_line_adj1.npy', 'wb') as f:
         np.save(f, np.asarray(accu))
 
 if __name__ == '__main__':
