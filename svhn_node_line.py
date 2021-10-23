@@ -367,11 +367,19 @@ def main():
         #print('The best accuracy is {:.4f}%\n'.format(accu))
         scheduler_grad.step()
     #test(args, grad_net, classifier_net, device, test_loader)
+<<<<<<< HEAD
     with open('train_loss_svhn_line_adj6.npy', 'wb') as f:
         np.save(f, np.asarray(loss_train))
     with open('test_loss_svhn_line_adj6.npy', 'wb') as f:
         np.save(f, np.asarray(loss_test))
     with open('accuracy_svhn_line_adj6.npy', 'wb') as f:
+=======
+    with open('train_loss_svhn_line_adj3.npy', 'wb') as f:
+        np.save(f, np.asarray(loss_train))
+    with open('test_loss_svhn_line_adj3.npy', 'wb') as f:
+        np.save(f, np.asarray(loss_test))
+    with open('accuracy_svhn_line_adj3.npy', 'wb') as f:
+>>>>>>> 9651bcfb2c7f4b8e62b83efb0b5963f732191364
         np.save(f, np.asarray(accu))
 
 if __name__ == '__main__':
