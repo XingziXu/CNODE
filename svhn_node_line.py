@@ -262,7 +262,7 @@ def main():
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=50, metavar='N',
+    parser.add_argument('--epochs', type=int, default=100, metavar='N',
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--gamma', type=float, default=0.9, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
@@ -367,11 +367,11 @@ def main():
         #print('The best accuracy is {:.4f}%\n'.format(accu))
         scheduler_grad.step()
     #test(args, grad_net, classifier_net, device, test_loader)
-    with open('train_loss_svhn_line_adj1.npy', 'wb') as f:
+    with open('train_loss_svhn_line_adj3.npy', 'wb') as f:
         np.save(f, np.asarray(loss_train))
-    with open('test_loss_svhn_line_adj1.npy', 'wb') as f:
+    with open('test_loss_svhn_line_adj3.npy', 'wb') as f:
         np.save(f, np.asarray(loss_test))
-    with open('accuracy_svhn_line_adj1.npy', 'wb') as f:
+    with open('accuracy_svhn_line_adj3.npy', 'wb') as f:
         np.save(f, np.asarray(accu))
 
 if __name__ == '__main__':
