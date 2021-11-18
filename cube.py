@@ -22,6 +22,7 @@ import random
 import matplotlib.pylab as pl
 from mpl_toolkits import mplot3d
 import seaborn as sns
+plt.rcParams.update({'font.size': 40})
 
 num_runs = 20
 v0 = np.linspace(0,1,num_runs)
@@ -54,10 +55,10 @@ for i,v0_i in enumerate(v0):
     g = np.linspace(0,1,num_pts)
     v = np.linspace(v0_i,1-v0_i,num_pts)
     h = v0_i * np.linspace(0,1,num_pts)
-    ax.plot3D(v,g,h, color=colors[i],alpha=0.4)
-    ax.set_xlabel('V')
-    ax.set_ylabel('G')
-    ax.set_zlabel('H')
+    ax.plot3D(v,g,h, color=colors[i],alpha=1.0)
+    ax.set_xlabel('$u_{0}$')
+    ax.set_ylabel('x')
+    ax.set_zlabel('t')
     #ax.set_title('Arrangement of Integration Path')
 g = torch.linspace(0,10,num_pts)
 m = torch.nn.LogSigmoid()
@@ -66,9 +67,9 @@ v1 = v1-min(v1)
 v2 = 1-v1
 #ax.plot3D(v1,g/10,h_0, color = sns.color_palette("rocket")[2],alpha=1)
 #ax.plot3D(v2,g/10,h_0, color = sns.color_palette("rocket")[2],alpha=1)
-ax.plot3D(0.1*np.ones(num_pts),np.linspace(0,1,num_pts),h_0, color = sns.color_palette("rocket")[2],alpha=1)
-ax.plot3D(0.3*np.ones(num_pts),np.linspace(0,1,num_pts),h_0, color = sns.color_palette("rocket")[2],alpha=1)
-ax.plot3D(0.5*np.ones(num_pts),np.linspace(0,1,num_pts),h_0, color = sns.color_palette("rocket")[2],alpha=1)
-ax.plot3D(0.7*np.ones(num_pts),np.linspace(0,1,num_pts),h_0, color = sns.color_palette("rocket")[2],alpha=1)
-ax.plot3D(0.9*np.ones(num_pts),np.linspace(0,1,num_pts),h_0, color = sns.color_palette("rocket")[2],alpha=1)
+ax.plot3D(0.1*np.ones(num_pts),np.linspace(0,1,num_pts),h_0, '--', color = sns.color_palette("rocket")[2],alpha=1)
+ax.plot3D(0.3*np.ones(num_pts),np.linspace(0,1,num_pts),h_0, '--', color = sns.color_palette("rocket")[2],alpha=1)
+ax.plot3D(0.5*np.ones(num_pts),np.linspace(0,1,num_pts),h_0, '--', color = sns.color_palette("rocket")[2],alpha=1)
+ax.plot3D(0.7*np.ones(num_pts),np.linspace(0,1,num_pts),h_0, '--', color = sns.color_palette("rocket")[2],alpha=1)
+ax.plot3D(0.9*np.ones(num_pts),np.linspace(0,1,num_pts),h_0, '--', color = sns.color_palette("rocket")[2],alpha=1)
 plt.show()

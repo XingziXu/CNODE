@@ -12,6 +12,7 @@ from scipy.integrate import odeint as odeint_scipy
 from torch.autograd import Variable
 import numpy as np
 import matplotlib.pyplot as plt
+plt.rcParams.update({'font.size': 15})
 
 mnist_node = 10.24
 mnist_line = 10.13
@@ -310,11 +311,11 @@ ax6.set_ylabel('Training Loss')
 ax6.fill_between(epochs, min_train1.reshape(length), max_train1.reshape(length), color='plum')
 ax6.legend()
 
-accu1 = np.append(mnist_line,np.load('accuracy_mnist_line1.npy'))
-accu2 = np.append(mnist_line,np.load('accuracy_mnist_line2.npy'))
-accu3 = np.append(mnist_line,np.load('accuracy_mnist_line3.npy'))
-accu4 = np.append(mnist_line,np.load('accuracy_mnist_line4.npy'))
-accu5 = np.append(mnist_line,np.load('accuracy_mnist_line5.npy'))
+accu1 = np.append(mnist_line,np.load('accuracy_mnist_line_adj1.npy'))
+accu2 = np.append(mnist_line,np.load('accuracy_mnist_line_adj2.npy'))
+accu3 = np.append(mnist_line,np.load('accuracy_mnist_line_adj3.npy'))
+accu4 = np.append(mnist_line,np.load('accuracy_mnist_line_adj4.npy'))
+accu5 = np.append(mnist_line,np.load('accuracy_mnist_line_adj5.npy'))
 
 min_accu = np.zeros((length,1))
 max_accu = np.zeros((length,1))
@@ -325,11 +326,11 @@ for i in range(0,length):
     max_accu[i] = max([accu1[i],accu2[i],accu3[i],accu4[i],accu5[i]])
     ave_accu[i] = average([accu1[i],accu2[i],accu3[i],accu4[i],accu5[i]])
 
-test1 = np.append(mnist_line1,np.load('test_loss_mnist_line1.npy'))
-test2 = np.append(mnist_line1,np.load('test_loss_mnist_line2.npy'))
-test3 = np.append(mnist_line1,np.load('test_loss_mnist_line3.npy'))
-test4 = np.append(mnist_line1,np.load('test_loss_mnist_line4.npy'))
-test5 = np.append(mnist_line1,np.load('test_loss_mnist_line5.npy'))
+test1 = np.append(mnist_line1,np.load('test_loss_mnist_line_adj1.npy'))
+test2 = np.append(mnist_line1,np.load('test_loss_mnist_line_adj2.npy'))
+test3 = np.append(mnist_line1,np.load('test_loss_mnist_line_adj3.npy'))
+test4 = np.append(mnist_line1,np.load('test_loss_mnist_line_adj4.npy'))
+test5 = np.append(mnist_line1,np.load('test_loss_mnist_line_adj5.npy'))
 
 min_test = np.zeros((length,1))
 max_test = np.zeros((length,1))
@@ -340,11 +341,11 @@ for i in range(0,length):
     max_test[i] = max([test1[i],test2[i],test3[i],test4[i],test5[i]])
     ave_test[i] = average([test1[i],test2[i],test3[i],test4[i],test5[i]])
 
-train1 = np.append(mnist_line1,np.load('train_loss_mnist_line1.npy'))
-train2 = np.append(mnist_line1,np.load('train_loss_mnist_line2.npy'))
-train3 = np.append(mnist_line1,np.load('train_loss_mnist_line3.npy'))
-train4 = np.append(mnist_line1,np.load('train_loss_mnist_line4.npy'))
-train5 = np.append(mnist_line1,np.load('train_loss_mnist_line5.npy'))
+train1 = np.append(mnist_line1,np.load('train_loss_mnist_line_adj1.npy'))
+train2 = np.append(mnist_line1,np.load('train_loss_mnist_line_adj2.npy'))
+train3 = np.append(mnist_line1,np.load('train_loss_mnist_line_adj3.npy'))
+train4 = np.append(mnist_line1,np.load('train_loss_mnist_line_adj4.npy'))
+train5 = np.append(mnist_line1,np.load('train_loss_mnist_line_adj5.npy'))
 
 min_train = np.zeros((length,1))
 max_train = np.zeros((length,1))
@@ -356,11 +357,11 @@ for i in range(0,length):
     ave_train[i] = average([train1[i],train2[i],train3[i],train4[i],train5[i]])
 
 
-accu1 = np.append(mnist_node,np.load('accuracy_mnist_node1.npy'))
-accu2 = np.append(mnist_node,np.load('accuracy_mnist_node2.npy'))
-accu3 = np.append(mnist_node,np.load('accuracy_mnist_node3.npy'))
-accu4 = np.append(mnist_node,np.load('accuracy_mnist_node4.npy'))
-accu5 = np.append(mnist_node,np.load('accuracy_mnist_node5.npy'))
+accu1 = np.append(mnist_node,np.load('accuracy_mnist_node_adj1.npy'))
+accu2 = np.append(mnist_node,np.load('accuracy_mnist_node_adj2.npy'))
+accu3 = np.append(mnist_node,np.load('accuracy_mnist_node_adj3.npy'))
+accu4 = np.append(mnist_node,np.load('accuracy_mnist_node_adj4.npy'))
+accu5 = np.append(mnist_node,np.load('accuracy_mnist_node_adj5.npy'))
 
 min_accu1 = np.zeros((length,1))
 max_accu1 = np.zeros((length,1))
@@ -371,11 +372,11 @@ for i in range(0,length):
     max_accu1[i] = max([accu1[i],accu2[i],accu3[i],accu4[i],accu5[i]])
     ave_accu1[i] = average([accu1[i],accu2[i],accu3[i],accu4[i],accu5[i]])
 
-test1 = np.append(mnist_node1,np.load('test_loss_mnist_node1.npy'))
-test2 = np.append(mnist_node1,np.load('test_loss_mnist_node2.npy'))
-test3 = np.append(mnist_node1,np.load('test_loss_mnist_node3.npy'))
-test4 = np.append(mnist_node1,np.load('test_loss_mnist_node4.npy'))
-test5 = np.append(mnist_node1,np.load('test_loss_mnist_node5.npy'))
+test1 = np.append(mnist_node1,np.load('test_loss_mnist_node_adj1.npy'))
+test2 = np.append(mnist_node1,np.load('test_loss_mnist_node_adj2.npy'))
+test3 = np.append(mnist_node1,np.load('test_loss_mnist_node_adj3.npy'))
+test4 = np.append(mnist_node1,np.load('test_loss_mnist_node_adj4.npy'))
+test5 = np.append(mnist_node1,np.load('test_loss_mnist_node_adj5.npy'))
 
 min_test1 = np.zeros((length,1))
 max_test1 = np.zeros((length,1))
@@ -386,11 +387,11 @@ for i in range(0,length):
     max_test1[i] = max([test1[i],test2[i],test3[i],test4[i],test5[i]])
     ave_test1[i] = average([test1[i],test2[i],test3[i],test4[i],test5[i]])
 
-train1 = np.append(mnist_node1,np.load('train_loss_mnist_node1.npy'))
-train2 = np.append(mnist_node1,np.load('train_loss_mnist_node2.npy'))
-train3 = np.append(mnist_node1,np.load('train_loss_mnist_node3.npy'))
-train4 = np.append(mnist_node1,np.load('train_loss_mnist_node4.npy'))
-train5 = np.append(mnist_node1,np.load('train_loss_mnist_node5.npy'))
+train1 = np.append(mnist_node1,np.load('train_loss_mnist_node_adj1.npy'))
+train2 = np.append(mnist_node1,np.load('train_loss_mnist_node_adj2.npy'))
+train3 = np.append(mnist_node1,np.load('train_loss_mnist_node_adj3.npy'))
+train4 = np.append(mnist_node1,np.load('train_loss_mnist_node_adj4.npy'))
+train5 = np.append(mnist_node1,np.load('train_loss_mnist_node_adj5.npy'))
 
 min_train1 = np.zeros((length,1))
 max_train1 = np.zeros((length,1))

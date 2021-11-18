@@ -12,6 +12,7 @@ from scipy.integrate import odeint as odeint_scipy
 from torch.autograd import Variable
 import numpy as np
 import matplotlib.pyplot as plt
+plt.rcParams.update({'font.size': 30})
 
 mnist_node = 10.24
 mnist_line = 10.13
@@ -319,7 +320,7 @@ ax6.legend()
 accu1 = np.append(mnist_line,np.load('accuracy_mnist_line1.npy'))
 accu2 = np.append(mnist_line,np.load('accuracy_mnist_line2.npy'))
 accu3 = np.append(mnist_line,np.load('accuracy_mnist_line3.npy'))
-accu4 = np.append(mnist_line,np.load('accuracy_mnist_line4.npy'))
+accu4 = np.append(mnist_line,np.load('accuracy_mnist_line5.npy'))
 accu5 = np.append(mnist_line,np.load('accuracy_mnist_line5.npy'))
 
 min_accu = np.zeros((length,1))
@@ -334,7 +335,7 @@ for i in range(0,length):
 test1 = np.append(mnist_line1,np.load('test_loss_mnist_line1.npy'))
 test2 = np.append(mnist_line1,np.load('test_loss_mnist_line2.npy'))
 test3 = np.append(mnist_line1,np.load('test_loss_mnist_line3.npy'))
-test4 = np.append(mnist_line1,np.load('test_loss_mnist_line4.npy'))
+test4 = np.append(mnist_line1,np.load('test_loss_mnist_line5.npy'))
 test5 = np.append(mnist_line1,np.load('test_loss_mnist_line5.npy'))
 
 min_test = np.zeros((length,1))
@@ -349,7 +350,7 @@ for i in range(0,length):
 train1 = np.append(mnist_line1,np.load('train_loss_mnist_line1.npy'))
 train2 = np.append(mnist_line1,np.load('train_loss_mnist_line2.npy'))
 train3 = np.append(mnist_line1,np.load('train_loss_mnist_line3.npy'))
-train4 = np.append(mnist_line1,np.load('train_loss_mnist_line4.npy'))
+train4 = np.append(mnist_line1,np.load('train_loss_mnist_line5.npy'))
 train5 = np.append(mnist_line1,np.load('train_loss_mnist_line5.npy'))
 
 min_train = np.zeros((length,1))
