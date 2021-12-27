@@ -26,7 +26,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         nn.Hardtanh(),
         nn.Conv2d(width_path,3,1),
         nn.Flatten(),
-        nn.Linear(2352,1),
+        nn.Linear(2352,2),
         nn.ReLU6()
         )
 
@@ -41,15 +41,15 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
             nn.Conv2d(width_grad,1,1,1,0)
         )
         
-        #self.grad_h = nn.Sequential( # define the network for the gradient on y direction
-        #    nn.InstanceNorm2d(1),
-        #    nn.Conv2d(1,width_grad,1,1,0),
-        #    nn.ReLU(),
-        #    nn.Conv2d(width_grad,width_grad,3,1,1),
-        #    nn.ReLU(),
-        #    nn.InstanceNorm2d(width_grad),
-        #    nn.Conv2d(width_grad,1,1,1,0)
-        #)
+        self.grad_h = nn.Sequential( # define the network for the gradient on y direction
+            nn.InstanceNorm2d(1),
+            nn.Conv2d(1,width_grad,1,1,0),
+            nn.ReLU(),
+            nn.Conv2d(width_grad,width_grad,3,1,1),
+            nn.ReLU(),
+            nn.InstanceNorm2d(width_grad),
+            nn.Conv2d(width_grad,1,1,1,0)
+        )
 
     def forward(self, t, x):
         self.nfe+=1 # each time we evaluate the function, the number of evaluations adds one
@@ -63,15 +63,15 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         dg_dt = dg_dt.expand(dg_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         dg_dt = dg_dt.view(dg_dt.size(0),1,x.size(2),x.size(3)) # resize 
 
-        #dh_dt = g_h_i[:,1].view(g_h_i.size(0),1,1) # resize 
-        #dh_dt = dh_dt.expand(dh_dt.size(0),1,x.size(2)*x.size(3)) # resize 
-        #dh_dt = dh_dt.view(dh_dt.size(0),1,x.size(2),x.size(3)) # resize 
+        dh_dt = g_h_i[:,1].view(g_h_i.size(0),1,1) # resize 
+        dh_dt = dh_dt.expand(dh_dt.size(0),1,x.size(2)*x.size(3)) # resize 
+        dh_dt = dh_dt.view(dh_dt.size(0),1,x.size(2),x.size(3)) # resize 
 
         #di_dt = g_h_i[:,2].view(g_h_i.size(0),1,1) # resize 
         #di_dt = di_dt.expand(di_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         #di_dt = di_dt.view(di_dt.size(0),1,x.size(2),x.size(3)) # resize 
         
-        dp = torch.mul(self.grad_g(x),dg_dt)# + torch.mul(self.grad_h(x),dh_dt)# + torch.mul(self.grad_i(x),di_dt) # calculate the change in p
+        dp = torch.mul(self.grad_g(x),dg_dt) + torch.mul(self.grad_h(x),dh_dt)# + torch.mul(self.grad_i(x),di_dt) # calculate the change in p
         #print(t.item())
         return dp
 
@@ -341,11 +341,11 @@ def main():
         #print('The best accuracy is {:.4f}%\n'.format(accu))
         scheduler_grad.step()
     #test(args, grad_net, classifier_net, device, test_loader)
-    with open('train_loss_mnist_line1d3.npy', 'wb') as f:
+    with open('train_loss_mnist_line2d0.npy', 'wb') as f:
         np.save(f, np.asarray(loss_train))
-    with open('test_loss_mnist_line1d3.npy', 'wb') as f:
+    with open('test_loss_mnist_line2d0.npy', 'wb') as f:
         np.save(f, np.asarray(loss_test))
-    with open('accuracy_mnist_line1d3.npy', 'wb') as f:
+    with open('accuracy_mnist_line2d0.npy', 'wb') as f:
         np.save(f, np.asarray(accu))
 
 if __name__ == '__main__':
