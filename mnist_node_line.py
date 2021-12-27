@@ -26,7 +26,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         nn.Hardtanh(),
         nn.Conv2d(width_path,3,1),
         nn.Flatten(),
-        nn.Linear(2352,3),
+        nn.Linear(2352,4),
         nn.ReLU6()
         )
 
@@ -59,6 +59,15 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
             nn.InstanceNorm2d(width_grad),
             nn.Conv2d(width_grad,1,1,1,0)
         )
+        self.grad_k = nn.Sequential( # define the network for the gradient on y direction
+            nn.InstanceNorm2d(1),
+            nn.Conv2d(1,width_grad,1,1,0),
+            nn.ReLU(),
+            nn.Conv2d(width_grad,width_grad,3,1,1),
+            nn.ReLU(),
+            nn.InstanceNorm2d(width_grad),
+            nn.Conv2d(width_grad,1,1,1,0)
+        )
 
     def forward(self, t, x):
         self.nfe+=1 # each time we evaluate the function, the number of evaluations adds one
@@ -80,7 +89,11 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         di_dt = di_dt.expand(di_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         di_dt = di_dt.view(di_dt.size(0),1,x.size(2),x.size(3)) # resize 
         
-        dp = torch.mul(self.grad_g(x),dg_dt) + torch.mul(self.grad_h(x),dh_dt) + torch.mul(self.grad_i(x),di_dt) # calculate the change in p
+        dk_dt = g_h_i[:,3].view(g_h_i.size(0),1,1) # resize 
+        dk_dt = dk_dt.expand(dk_dt.size(0),1,x.size(2)*x.size(3)) # resize 
+        dk_dt = dk_dt.view(dk_dt.size(0),1,x.size(2),x.size(3)) # resize 
+
+        dp = torch.mul(self.grad_g(x),dg_dt) + torch.mul(self.grad_h(x),dh_dt) + torch.mul(self.grad_i(x),di_dt) + torch.mul(self.grad_k(x),dk_dt) # calculate the change in p
         #print(t.item())
         return dp
 
