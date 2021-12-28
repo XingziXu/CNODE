@@ -376,19 +376,11 @@ def main():
         #print('The best accuracy is {:.4f}%\n'.format(accu))
         scheduler_grad.step()
     #test(args, grad_net, classifier_net, device, test_loader)
-<<<<<<< HEAD
-    with open('train_loss_mnist_line5d2.npy', 'wb') as f:
+    with open('train_loss_mnist_line2d2.npy', 'wb') as f:
         np.save(f, np.asarray(loss_train))
-    with open('test_loss_mnist_line5d2.npy', 'wb') as f:
+    with open('test_loss_mnist_line2d2.npy', 'wb') as f:
         np.save(f, np.asarray(loss_test))
-    with open('accuracy_mnist_line5d2.npy', 'wb') as f:
-=======
-    with open('train_loss_mnist_line4d2.npy', 'wb') as f:
-        np.save(f, np.asarray(loss_train))
-    with open('test_loss_mnist_line4d2.npy', 'wb') as f:
-        np.save(f, np.asarray(loss_test))
-    with open('accuracy_mnist_line4d2.npy', 'wb') as f:
->>>>>>> 3deb498d648c85b1676e36e5ad60b94ccb0b53c9
+    with open('accuracy_mnist_line2d2.npy', 'wb') as f:
         np.save(f, np.asarray(accu))
 
 if __name__ == '__main__':
