@@ -26,7 +26,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         nn.Hardtanh(),
         nn.Conv2d(width_path,3,1),
         nn.Flatten(),
-        nn.Linear(2352,4),
+        nn.Linear(2352,5),
         nn.ReLU6()
         )
 
@@ -68,6 +68,15 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
             nn.InstanceNorm2d(width_grad),
             nn.Conv2d(width_grad,1,1,1,0)
         )
+        self.grad_l = nn.Sequential( # define the network for the gradient on y direction
+            nn.InstanceNorm2d(1),
+            nn.Conv2d(1,width_grad,1,1,0),
+            nn.ReLU(),
+            nn.Conv2d(width_grad,width_grad,3,1,1),
+            nn.ReLU(),
+            nn.InstanceNorm2d(width_grad),
+            nn.Conv2d(width_grad,1,1,1,0)
+        )
 
     def forward(self, t, x):
         self.nfe+=1 # each time we evaluate the function, the number of evaluations adds one
@@ -93,7 +102,11 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         dk_dt = dk_dt.expand(dk_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         dk_dt = dk_dt.view(dk_dt.size(0),1,x.size(2),x.size(3)) # resize 
 
-        dp = torch.mul(self.grad_g(x),dg_dt) + torch.mul(self.grad_h(x),dh_dt) + torch.mul(self.grad_i(x),di_dt) + torch.mul(self.grad_k(x),dk_dt) # calculate the change in p
+        dl_dt = g_h_i[:,4].view(g_h_i.size(0),1,1) # resize 
+        dl_dt = dl_dt.expand(dl_dt.size(0),1,x.size(2)*x.size(3)) # resize 
+        dl_dt = dl_dt.view(dl_dt.size(0),1,x.size(2),x.size(3)) # resize
+
+        dp = torch.mul(self.grad_g(x),dg_dt) + torch.mul(self.grad_h(x),dh_dt) + torch.mul(self.grad_i(x),di_dt) + torch.mul(self.grad_k(x),dk_dt) + torch.mul(self.grad_l(x),dl_dt) # calculate the change in p
         #print(t.item())
         return dp
 
@@ -363,11 +376,35 @@ def main():
         #print('The best accuracy is {:.4f}%\n'.format(accu))
         scheduler_grad.step()
     #test(args, grad_net, classifier_net, device, test_loader)
+<<<<<<< HEAD
     with open('train_loss_mnist_line4d2.npy', 'wb') as f:
         np.save(f, np.asarray(loss_train))
     with open('test_loss_mnist_line4d2.npy', 'wb') as f:
         np.save(f, np.asarray(loss_test))
     with open('accuracy_mnist_line4d2.npy', 'wb') as f:
+=======
+<<<<<<< HEAD
+    with open('train_loss_mnist_line3d2.npy', 'wb') as f:
+        np.save(f, np.asarray(loss_train))
+    with open('test_loss_mnist_line3d2.npy', 'wb') as f:
+        np.save(f, np.asarray(loss_test))
+    with open('accuracy_mnist_line3d2.npy', 'wb') as f:
+=======
+<<<<<<< HEAD
+    with open('train_loss_mnist_line2d3.npy', 'wb') as f:
+        np.save(f, np.asarray(loss_train))
+    with open('test_loss_mnist_line2d3.npy', 'wb') as f:
+        np.save(f, np.asarray(loss_test))
+    with open('accuracy_mnist_line2d3.npy', 'wb') as f:
+=======
+    with open('train_loss_mnist_line5d0.npy', 'wb') as f:
+        np.save(f, np.asarray(loss_train))
+    with open('test_loss_mnist_line5d0.npy', 'wb') as f:
+        np.save(f, np.asarray(loss_test))
+    with open('accuracy_mnist_line5d0.npy', 'wb') as f:
+>>>>>>> 8714d3e792cf24b661eca5e347add207d2eaaaf0
+>>>>>>> 2b927a01db5e0c77b0957e80cace7d43d36f0a7e
+>>>>>>> 7426a7d83bae5438be50df25bf4f63603803f139
         np.save(f, np.asarray(accu))
 
 if __name__ == '__main__':
