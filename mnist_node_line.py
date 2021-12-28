@@ -26,7 +26,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         nn.Hardtanh(),
         nn.Conv2d(width_path,3,1),
         nn.Flatten(),
-        nn.Linear(2352,4),
+        nn.Linear(2352,2),
         nn.ReLU6()
         )
 
@@ -50,24 +50,24 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
             nn.InstanceNorm2d(width_grad),
             nn.Conv2d(width_grad,1,1,1,0)
         )
-        self.grad_i = nn.Sequential( # define the network for the gradient on y direction
-            nn.InstanceNorm2d(1),
-            nn.Conv2d(1,width_grad,1,1,0),
-            nn.ReLU(),
-            nn.Conv2d(width_grad,width_grad,3,1,1),
-            nn.ReLU(),
-            nn.InstanceNorm2d(width_grad),
-            nn.Conv2d(width_grad,1,1,1,0)
-        )
-        self.grad_k = nn.Sequential( # define the network for the gradient on y direction
-            nn.InstanceNorm2d(1),
-            nn.Conv2d(1,width_grad,1,1,0),
-            nn.ReLU(),
-            nn.Conv2d(width_grad,width_grad,3,1,1),
-            nn.ReLU(),
-            nn.InstanceNorm2d(width_grad),
-            nn.Conv2d(width_grad,1,1,1,0)
-        )
+        #self.grad_i = nn.Sequential( # define the network for the gradient on y direction
+        #    nn.InstanceNorm2d(1),
+        #    nn.Conv2d(1,width_grad,1,1,0),
+        #    nn.ReLU(),
+        #    nn.Conv2d(width_grad,width_grad,3,1,1),
+        #    nn.ReLU(),
+        #    nn.InstanceNorm2d(width_grad),
+        #    nn.Conv2d(width_grad,1,1,1,0)
+        #)
+        #self.grad_k = nn.Sequential( # define the network for the gradient on y direction
+        #    nn.InstanceNorm2d(1),
+        #    nn.Conv2d(1,width_grad,1,1,0),
+        #    nn.ReLU(),
+        #    nn.Conv2d(width_grad,width_grad,3,1,1),
+        #    nn.ReLU(),
+        #    nn.InstanceNorm2d(width_grad),
+        #    nn.Conv2d(width_grad,1,1,1,0)
+        #)
         #self.grad_l = nn.Sequential( # define the network for the gradient on y direction
         #    nn.InstanceNorm2d(1),
         #    nn.Conv2d(1,width_grad,1,1,0),
@@ -94,19 +94,19 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         dh_dt = dh_dt.expand(dh_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         dh_dt = dh_dt.view(dh_dt.size(0),1,x.size(2),x.size(3)) # resize 
 
-        di_dt = g_h_i[:,2].view(g_h_i.size(0),1,1) # resize 
-        di_dt = di_dt.expand(di_dt.size(0),1,x.size(2)*x.size(3)) # resize 
-        di_dt = di_dt.view(di_dt.size(0),1,x.size(2),x.size(3)) # resize 
+        #di_dt = g_h_i[:,2].view(g_h_i.size(0),1,1) # resize 
+        #di_dt = di_dt.expand(di_dt.size(0),1,x.size(2)*x.size(3)) # resize 
+        #di_dt = di_dt.view(di_dt.size(0),1,x.size(2),x.size(3)) # resize 
         
-        dk_dt = g_h_i[:,3].view(g_h_i.size(0),1,1) # resize 
-        dk_dt = dk_dt.expand(dk_dt.size(0),1,x.size(2)*x.size(3)) # resize 
-        dk_dt = dk_dt.view(dk_dt.size(0),1,x.size(2),x.size(3)) # resize 
+        #dk_dt = g_h_i[:,3].view(g_h_i.size(0),1,1) # resize 
+        #dk_dt = dk_dt.expand(dk_dt.size(0),1,x.size(2)*x.size(3)) # resize 
+        #dk_dt = dk_dt.view(dk_dt.size(0),1,x.size(2),x.size(3)) # resize 
 
         #dl_dt = g_h_i[:,4].view(g_h_i.size(0),1,1) # resize 
         #dl_dt = dl_dt.expand(dl_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         #dl_dt = dl_dt.view(dl_dt.size(0),1,x.size(2),x.size(3)) # resize
 
-        dp = torch.mul(self.grad_g(x),dg_dt) + torch.mul(self.grad_h(x),dh_dt) + torch.mul(self.grad_i(x),di_dt) + torch.mul(self.grad_k(x),dk_dt)# + torch.mul(self.grad_l(x),dl_dt) # calculate the change in p
+        dp = torch.mul(self.grad_g(x),dg_dt) + torch.mul(self.grad_h(x),dh_dt)# + torch.mul(self.grad_i(x),di_dt) + torch.mul(self.grad_k(x),dk_dt) + torch.mul(self.grad_l(x),dl_dt) # calculate the change in p
         #print(t.item())
         return dp
 
