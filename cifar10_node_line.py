@@ -367,11 +367,19 @@ def main():
         #print('The best accuracy is {:.4f}%\n'.format(accu))
         scheduler_grad.step()
     #test(args, grad_net, classifier_net, device, test_loader)
+<<<<<<< HEAD
     with open('train_loss_cifar_line_2d0.npy', 'wb') as f:
         np.save(f, np.asarray(loss_train))
     with open('test_loss_cifar_line_2d0.npy', 'wb') as f:
         np.save(f, np.asarray(loss_test))
     with open('accuracy_cifar_line_2d0.npy', 'wb') as f:
+=======
+    with open('train_loss_cifar_line_1d1.npy', 'wb') as f:
+        np.save(f, np.asarray(loss_train))
+    with open('test_loss_cifar_line_1d1.npy', 'wb') as f:
+        np.save(f, np.asarray(loss_test))
+    with open('accuracy_cifar_line_1d1.npy', 'wb') as f:
+>>>>>>> 4491760b9c660cd64cf1cecddc444166e9950abd
         np.save(f, np.asarray(accu))
 
 if __name__ == '__main__':
