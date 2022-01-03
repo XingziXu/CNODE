@@ -404,6 +404,13 @@ def main():
         scheduler_grad.step()
     #test(args, grad_net, classifier_net, device, test_loader)
 <<<<<<< HEAD
+    with open('train_loss_svhn_line_4d2.npy', 'wb') as f:
+        np.save(f, np.asarray(loss_train))
+    with open('test_loss_svhn_line_4d2.npy', 'wb') as f:
+        np.save(f, np.asarray(loss_test))
+    with open('accuracy_svhn_line_4d2.npy', 'wb') as f:
+=======
+<<<<<<< HEAD
     with open('train_loss_svhn_line_2d1.npy', 'wb') as f:
         np.save(f, np.asarray(loss_train))
     with open('test_loss_svhn_line_2d1.npy', 'wb') as f:
@@ -416,6 +423,7 @@ def main():
         np.save(f, np.asarray(loss_test))
     with open('accuracy_svhn_line_1d0.npy', 'wb') as f:
 >>>>>>> af9706d966df581fcfec112d1e298968a382c8e6
+>>>>>>> bba8db6d4afde297489ebb1fb0d6854fee38fc1d
         np.save(f, np.asarray(accu))
 
 if __name__ == '__main__':
