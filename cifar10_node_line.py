@@ -26,7 +26,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         nn.Softsign(),
         nn.Conv2d(width_path,3,1,1,0),
         nn.Flatten(),
-        nn.Linear(3072,3),
+        nn.Linear(3072,4),
         #nn.PReLU()
         )
         
@@ -72,6 +72,20 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
             nn.Conv2d(width_grad,3,1)
         )
 
+        self.grad_l = nn.Sequential( # define the network for the gradient on x direction
+            #nn.InstanceNorm2d(width_conv+width_aug+3),
+            nn.GroupNorm(3,3),
+            nn.Conv2d(3,width_grad, 3, padding=1, bias=False),
+            #nn.Softplus(),
+            nn.ReLU(),
+            nn.Conv2d(width_grad,width_grad, 3, padding=1, bias=False),
+            #nn.Softplus(),
+            nn.ReLU(),
+            #nn.InstanceNorm2d(width_grad),
+            nn.GroupNorm(width_grad,width_grad),
+            nn.Conv2d(width_grad,3,1)
+        )
+
     def forward(self, t, x):
         self.nfe+=1 # each time we evaluate the function, the number of evaluations adds one
 
@@ -96,7 +110,11 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         di_dt = di_dt.expand(di_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         di_dt = di_dt.view(di_dt.size(0),1,x.size(2),x.size(3)) # resize 
         
-        dp = torch.mul(self.grad_g(x),dg_dt) + torch.mul(self.grad_h(x),dh_dt) + torch.mul(self.grad_i(x),di_dt) # calculate the change in p
+        dl_dt = g_h_i[:,3].view(g_h_i.size(0),1,1) # resize 
+        dl_dt = dl_dt.expand(dl_dt.size(0),1,x.size(2)*x.size(3)) # resize 
+        dl_dt = dl_dt.view(dl_dt.size(0),1,x.size(2),x.size(3)) # resize 
+
+        dp = torch.mul(self.grad_g(x),dg_dt) + torch.mul(self.grad_h(x),dh_dt) + torch.mul(self.grad_i(x),di_dt) + torch.mul(self.grad_l(x),dl_dt) # calculate the change in p
         #print(t.item())
         return dp
 
@@ -367,11 +385,11 @@ def main():
         #print('The best accuracy is {:.4f}%\n'.format(accu))
         scheduler_grad.step()
     #test(args, grad_net, classifier_net, device, test_loader)
-    with open('train_loss_cifar_line_adj4.npy', 'wb') as f:
+    with open('train_loss_cifar_line_1d1.npy', 'wb') as f:
         np.save(f, np.asarray(loss_train))
-    with open('test_loss_cifar_line_adj4.npy', 'wb') as f:
+    with open('test_loss_cifar_line_1d1.npy', 'wb') as f:
         np.save(f, np.asarray(loss_test))
-    with open('accuracy_cifar_line_adj4.npy', 'wb') as f:
+    with open('accuracy_cifar_line_1d1.npy', 'wb') as f:
         np.save(f, np.asarray(accu))
 
 if __name__ == '__main__':
