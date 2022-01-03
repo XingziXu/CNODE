@@ -77,10 +77,10 @@ for i in range(0,length):
     ave_train[i] = average([train1[i],train2[i],train3[i],train4[i]])
 
 
-accu1 = np.append(svhn_line,np.load('accuracy_mnist_line2d0.npy'))
-accu2 = np.append(svhn_line,np.load('accuracy_mnist_line2d1.npy'))
-accu3 = np.append(svhn_line,np.load('accuracy_mnist_line2d2.npy'))
-accu4 = np.append(svhn_line,np.load('accuracy_mnist_line2d3.npy'))
+accu1 = np.append(svhn_line,np.load('accuracy_svhn_line_2d0.npy'))
+accu2 = np.append(svhn_line,np.load('accuracy_svhn_line_2d1.npy'))
+accu3 = np.append(svhn_line,np.load('accuracy_svhn_line_2d2.npy'))
+accu4 = np.append(svhn_line,np.load('accuracy_svhn_line_2d3.npy'))
 
 min_accu1 = np.zeros((length,1))
 max_accu1 = np.zeros((length,1))
@@ -91,10 +91,10 @@ for i in range(0,length):
     max_accu1[i] = max([accu1[i],accu2[i],accu3[i],accu4[i]])
     ave_accu1[i] = average([accu1[i],accu2[i],accu3[i],accu4[i]])
 
-test1 = np.append(svhn_line1,np.load('test_loss_mnist_line2d0.npy'))
-test2 = np.append(svhn_line1,np.load('test_loss_mnist_line2d1.npy'))
-test3 = np.append(svhn_line1,np.load('test_loss_mnist_line2d2.npy'))
-test4 = np.append(svhn_line1,np.load('test_loss_mnist_line2d3.npy'))
+test1 = np.append(svhn_line1,np.load('test_loss_svhn_line_2d0.npy'))
+test2 = np.append(svhn_line1,np.load('test_loss_svhn_line_2d1.npy'))
+test3 = np.append(svhn_line1,np.load('test_loss_svhn_line_2d2.npy'))
+test4 = np.append(svhn_line1,np.load('test_loss_svhn_line_2d3.npy'))
 
 min_test1 = np.zeros((length,1))
 max_test1 = np.zeros((length,1))
@@ -105,10 +105,10 @@ for i in range(0,length):
     max_test1[i] = max([test1[i],test2[i],test3[i],test4[i]])
     ave_test1[i] = average([test1[i],test2[i],test3[i],test4[i]])
 
-train1 = np.append(svhn_line1,np.load('train_loss_mnist_line2d0.npy'))
-train2 = np.append(svhn_line1,np.load('train_loss_mnist_line2d1.npy'))
-train3 = np.append(svhn_line1,np.load('train_loss_mnist_line2d2.npy'))
-train4 = np.append(svhn_line1,np.load('train_loss_mnist_line2d3.npy'))
+train1 = np.append(svhn_line1,np.load('train_loss_svhn_line_2d0.npy'))
+train2 = np.append(svhn_line1,np.load('train_loss_svhn_line_2d1.npy'))
+train3 = np.append(svhn_line1,np.load('train_loss_svhn_line_2d2.npy'))
+train4 = np.append(svhn_line1,np.load('train_loss_svhn_line_2d3.npy'))
 
 min_train1 = np.zeros((length,1))
 max_train1 = np.zeros((length,1))
@@ -119,10 +119,10 @@ for i in range(0,length):
     max_train1[i] = max([train1[i],train2[i],train3[i],train4[i]])
     ave_train1[i] = average([train1[i],train2[i],train3[i],train4[i]])
 
-accu1 = np.append(svhn_line,np.load('accuracy_mnist_line3d0.npy'))
-accu2 = np.append(svhn_line,np.load('accuracy_mnist_line3d1.npy'))
-accu3 = np.append(svhn_line,np.load('accuracy_mnist_line3d2.npy'))
-accu4 = np.append(svhn_line,np.load('accuracy_mnist_line3d3.npy'))
+accu1 = np.append(svhn_line,np.load('accuracy_svhn_line_adj2.npy'))
+accu2 = np.append(svhn_line,np.load('accuracy_svhn_line_adj3.npy'))
+accu3 = np.append(svhn_line,np.load('accuracy_svhn_line_adj4.npy'))
+accu4 = np.append(svhn_line,np.load('accuracy_svhn_line_adj7.npy'))
 
 min_accu2 = np.zeros((length,1))
 max_accu2 = np.zeros((length,1))
@@ -133,10 +133,10 @@ for i in range(0,length):
     max_accu2[i] = max([accu1[i],accu2[i],accu3[i],accu4[i]])
     ave_accu2[i] = average([accu1[i],accu2[i],accu3[i],accu4[i]])
 
-test1 = np.append(svhn_line1,np.load('test_loss_mnist_line3d0.npy'))
-test2 = np.append(svhn_line1,np.load('test_loss_mnist_line3d1.npy'))
-test3 = np.append(svhn_line1,np.load('test_loss_mnist_line3d2.npy'))
-test4 = np.append(svhn_line1,np.load('test_loss_mnist_line3d3.npy'))
+test1 = np.append(svhn_line1,np.load('test_loss_svhn_line_adj2.npy'))
+test2 = np.append(svhn_line1,np.load('test_loss_svhn_line_adj3.npy'))
+test3 = np.append(svhn_line1,np.load('test_loss_svhn_line_adj4.npy'))
+test4 = np.append(svhn_line1,np.load('test_loss_svhn_line_adj7.npy'))
 
 min_test2 = np.zeros((length,1))
 max_test2 = np.zeros((length,1))
@@ -147,10 +147,10 @@ for i in range(0,length):
     max_test2[i] = max([test1[i],test2[i],test3[i],test4[i]])
     ave_test2[i] = average([test1[i],test2[i],test3[i],test4[i]])
 
-train1 = np.append(svhn_line1,np.load('train_loss_mnist_line3d0.npy'))
-train2 = np.append(svhn_line1,np.load('train_loss_mnist_line3d1.npy'))
-train3 = np.append(svhn_line1,np.load('train_loss_mnist_line3d2.npy'))
-train4 = np.append(svhn_line1,np.load('train_loss_mnist_line3d3.npy'))
+train1 = np.append(svhn_line1,np.load('train_loss_svhn_line_adj2.npy'))
+train2 = np.append(svhn_line1,np.load('train_loss_svhn_line_adj3.npy'))
+train3 = np.append(svhn_line1,np.load('train_loss_svhn_line_adj4.npy'))
+train4 = np.append(svhn_line1,np.load('train_loss_svhn_line_adj7.npy'))
 
 min_train2 = np.zeros((length,1))
 max_train2 = np.zeros((length,1))
@@ -161,10 +161,10 @@ for i in range(0,length):
     max_train2[i] = max([train1[i],train2[i],train3[i],train4[i]])
     ave_train2[i] = average([train1[i],train2[i],train3[i],train4[i]])
 
-accu1 = np.append(svhn_line,np.load('accuracy_mnist_line4d0.npy'))
-accu2 = np.append(svhn_line,np.load('accuracy_mnist_line4d0.npy'))
-accu3 = np.append(svhn_line,np.load('accuracy_mnist_line4d2.npy'))
-accu4 = np.append(svhn_line,np.load('accuracy_mnist_line4d3.npy'))
+accu1 = np.append(svhn_line,np.load('accuracy_svhn_line_4d0.npy'))
+accu2 = np.append(svhn_line,np.load('accuracy_svhn_line_4d1.npy'))
+accu3 = np.append(svhn_line,np.load('accuracy_svhn_line_4d2.npy'))
+accu4 = np.append(svhn_line,np.load('accuracy_svhn_line_4d3.npy'))
 
 min_accu3 = np.zeros((length,1))
 max_accu3 = np.zeros((length,1))
@@ -175,10 +175,10 @@ for i in range(0,length):
     max_accu3[i] = max([accu1[i],accu2[i],accu3[i],accu4[i]])
     ave_accu3[i] = average([accu1[i],accu2[i],accu3[i],accu4[i]])
 
-test1 = np.append(svhn_line1,np.load('test_loss_mnist_line4d0.npy'))
-test2 = np.append(svhn_line1,np.load('test_loss_mnist_line4d0.npy'))
-test3 = np.append(svhn_line1,np.load('test_loss_mnist_line4d2.npy'))
-test4 = np.append(svhn_line1,np.load('test_loss_mnist_line4d3.npy'))
+test1 = np.append(svhn_line1,np.load('test_loss_svhn_line_4d0.npy'))
+test2 = np.append(svhn_line1,np.load('test_loss_svhn_line_4d1.npy'))
+test3 = np.append(svhn_line1,np.load('test_loss_svhn_line_4d2.npy'))
+test4 = np.append(svhn_line1,np.load('test_loss_svhn_line_4d3.npy'))
 
 min_test3 = np.zeros((length,1))
 max_test3 = np.zeros((length,1))
@@ -189,10 +189,10 @@ for i in range(0,length):
     max_test3[i] = max([test1[i],test2[i],test3[i],test4[i]])
     ave_test3[i] = average([test1[i],test2[i],test3[i],test4[i]])
 
-train1 = np.append(svhn_line1,np.load('train_loss_mnist_line4d0.npy'))
-train2 = np.append(svhn_line1,np.load('train_loss_mnist_line4d0.npy'))
-train3 = np.append(svhn_line1,np.load('train_loss_mnist_line4d2.npy'))
-train4 = np.append(svhn_line1,np.load('train_loss_mnist_line4d3.npy'))
+train1 = np.append(svhn_line1,np.load('train_loss_svhn_line_4d0.npy'))
+train2 = np.append(svhn_line1,np.load('train_loss_svhn_line_4d1.npy'))
+train3 = np.append(svhn_line1,np.load('train_loss_svhn_line_4d2.npy'))
+train4 = np.append(svhn_line1,np.load('train_loss_svhn_line_4d3.npy'))
 
 min_train3 = np.zeros((length,1))
 max_train3 = np.zeros((length,1))
@@ -203,10 +203,10 @@ for i in range(0,length):
     max_train3[i] = max([train1[i],train2[i],train3[i],train4[i]])
     ave_train3[i] = average([train1[i],train2[i],train3[i],train4[i]])
 
-accu1 = np.append(svhn_line,np.load('accuracy_mnist_line5d0.npy'))
-accu2 = np.append(svhn_line,np.load('accuracy_mnist_line5d1.npy'))
-accu3 = np.append(svhn_line,np.load('accuracy_mnist_line5d2.npy'))
-accu4 = np.append(svhn_line,np.load('accuracy_mnist_line5d3.npy'))
+accu1 = np.append(svhn_line,np.load('accuracy_svhn_line_4d0.npy'))
+accu2 = np.append(svhn_line,np.load('accuracy_svhn_line_4d1.npy'))
+accu3 = np.append(svhn_line,np.load('accuracy_svhn_line_4d2.npy'))
+accu4 = np.append(svhn_line,np.load('accuracy_svhn_line_4d3.npy'))
 
 min_accu4 = np.zeros((length,1))
 max_accu4 = np.zeros((length,1))
@@ -217,10 +217,10 @@ for i in range(0,length):
     max_accu4[i] = max([accu1[i],accu2[i],accu3[i],accu4[i]])
     ave_accu4[i] = average([accu1[i],accu2[i],accu3[i],accu4[i]])
 
-test1 = np.append(svhn_line1,np.load('test_loss_mnist_line5d0.npy'))
-test2 = np.append(svhn_line1,np.load('test_loss_mnist_line5d1.npy'))
-test3 = np.append(svhn_line1,np.load('test_loss_mnist_line5d2.npy'))
-test4 = np.append(svhn_line1,np.load('test_loss_mnist_line5d3.npy'))
+test1 = np.append(svhn_line1,np.load('test_loss_svhn_line_4d0.npy'))
+test2 = np.append(svhn_line1,np.load('test_loss_svhn_line_4d1.npy'))
+test3 = np.append(svhn_line1,np.load('test_loss_svhn_line_4d2.npy'))
+test4 = np.append(svhn_line1,np.load('test_loss_svhn_line_4d3.npy'))
 
 min_test4 = np.zeros((length,1))
 max_test4 = np.zeros((length,1))
@@ -231,10 +231,10 @@ for i in range(0,length):
     max_test4[i] = max([test1[i],test2[i],test3[i],test4[i]])
     ave_test4[i] = average([test1[i],test2[i],test3[i],test4[i]])
 
-train1 = np.append(svhn_line1,np.load('train_loss_mnist_line5d0.npy'))
-train2 = np.append(svhn_line1,np.load('train_loss_mnist_line5d1.npy'))
-train3 = np.append(svhn_line1,np.load('train_loss_mnist_line5d2.npy'))
-train4 = np.append(svhn_line1,np.load('train_loss_mnist_line5d3.npy'))
+train1 = np.append(svhn_line1,np.load('train_loss_svhn_line_4d0.npy'))
+train2 = np.append(svhn_line1,np.load('train_loss_svhn_line_4d1.npy'))
+train3 = np.append(svhn_line1,np.load('train_loss_svhn_line_4d2.npy'))
+train4 = np.append(svhn_line1,np.load('train_loss_svhn_line_4d3.npy'))
 
 min_train4 = np.zeros((length,1))
 max_train4 = np.zeros((length,1))
