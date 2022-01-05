@@ -12,7 +12,7 @@ from scipy.integrate import odeint as odeint_scipy
 from torch.autograd import Variable
 import numpy as np
 import matplotlib.pyplot as plt
-plt.rcParams.update({'font.size': 15})
+plt.rcParams.update({'font.size': 30})
 
 mnist_node = 10.24
 mnist_line = 10.13

@@ -42,6 +42,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         )
 
     def forward(self, t, x):
+        dim = 100
         self.nfe+=1 # each time we evaluate the function, the number of evaluations adds one
 
         t_input = t.expand(x.size(0),1) # resize
@@ -50,9 +51,9 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         g_h_i = self.path(path_input) # calculate the position of the integration path
 
 
-        m = g_h_i.view(256,100,1,1)
-        m = m.expand(m.size(0),100,1,x.size(2)*x.size(3))
-        m = m.view(m.size(0),100,x.size(2),x.size(3))
+        m = g_h_i.view(x.size(0),dim,1,1)
+        m = m.expand(m.size(0),dim,1,x.size(2)*x.size(3))
+        m = m.view(m.size(0),dim,x.size(2),x.size(3))
         #dg_dt = g_h_i[:,0].view(g_h_i.size(0),1,1) # resize 
         #dg_dt = dg_dt.expand(dg_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         #dg_dt = dg_dt.view(dg_dt.size(0),1,x.size(2),x.size(3)) # resize 
