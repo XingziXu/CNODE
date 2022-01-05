@@ -42,7 +42,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         )
 
     def forward(self, t, x):
-        dim = 100
+        dim = 1
         self.nfe+=1 # each time we evaluate the function, the number of evaluations adds one
 
         t_input = t.expand(x.size(0),1) # resize
