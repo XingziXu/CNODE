@@ -26,7 +26,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         nn.Hardtanh(),
         nn.Conv2d(width_path,3,1,1,0),
         nn.Flatten(),
-        nn.Linear(3072,8),
+        nn.Linear(3072,16),
         nn.ELU()
         )
 
@@ -42,11 +42,11 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
             nn.ReLU(),
             #nn.InstanceNorm2d(width_grad),
             nn.GroupNorm(width_grad,width_grad),
-            nn.Conv2d(width_grad,3*8,1)
+            nn.Conv2d(width_grad,3*16,1)
         )
 
     def forward(self, t, x):
-        dim = 8
+        dim = 16
         self.nfe+=1 # each time we evaluate the function, the number of evaluations adds one
 
         t_input = t.expand(x.size(0),1) # resize
@@ -336,11 +336,11 @@ def main():
         #print('The best accuracy is {:.4f}%\n'.format(accu))
         scheduler_grad.step()
     #test(args, grad_net, classifier_net, device, test_loader)
-    with open('train_loss_svhn_high_8d3.npy', 'wb') as f:
+    with open('train_loss_svhn_high_16d3.npy', 'wb') as f:
         np.save(f, np.asarray(loss_train))
-    with open('test_loss_svhn_high_8d3.npy', 'wb') as f:
+    with open('test_loss_svhn_high_16d3.npy', 'wb') as f:
         np.save(f, np.asarray(loss_test))
-    with open('accuracy_svhn_high_8d3.npy', 'wb') as f:
+    with open('accuracy_svhn_high_16d3.npy', 'wb') as f:
         np.save(f, np.asarray(accu))
 
 if __name__ == '__main__':
