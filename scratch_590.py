@@ -2,8 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torchvision
 from pylab import rcParams
-rcParams['figure.figsize'] = 10, 8
-rcParams['figure.dpi'] = 300
+#rcParams['figure.figsize'] = 10, 8
+#rcParams['figure.dpi'] = 300
 
 import torch
 from torch import nn
@@ -44,6 +44,9 @@ class RealNVP(nn.Module):
     
     def log_prob(self,x):
         z, logp = self.f(x)
+        #print(z.device)
+        #print(logp.device)
+        #print(self.prior.log_prob(z).device)
         return self.prior.log_prob(z) + logp
         
     def sample(self, batchSize): 
@@ -52,20 +55,25 @@ class RealNVP(nn.Module):
         x = self.g(z)
         return x
 
-nets = lambda: nn.Sequential(nn.Linear(256, 256), nn.LeakyReLU(), nn.Linear(256, 256), nn.LeakyReLU(), nn.Linear(256, 256), nn.Tanh())
-nett = lambda: nn.Sequential(nn.Linear(256, 256), nn.LeakyReLU(), nn.Linear(256, 256), nn.LeakyReLU(), nn.Linear(256, 256))
-masks = torch.arange(0, 256) % 2
-prior = distributions.MultivariateNormal(torch.zeros(256), torch.eye(256))
-flow = RealNVP(nets, nett, masks, prior)
+device = torch.device("cuda")
+
+length_width = 16
+
+nets = lambda: nn.Sequential(nn.Linear(length_width*length_width, 256), nn.LeakyReLU(), nn.Linear(length_width*length_width, length_width*length_width), nn.LeakyReLU(), nn.Linear(256, length_width*length_width), nn.Tanh()).to(device)
+nett = lambda: nn.Sequential(nn.Linear(length_width*length_width, 256), nn.LeakyReLU(), nn.Linear(length_width*length_width, length_width*length_width), nn.LeakyReLU(), nn.Linear(256, length_width*length_width)).to(device)
+masks = torch.arange(0, length_width*length_width) % 2
+masks = masks.to(device)
+prior = distributions.MultivariateNormal(torch.zeros(length_width*length_width).to(device), torch.eye(length_width*length_width).to(device))
+flow = RealNVP(nets, nett, masks, prior).to(device)
 
 train_kwargs = {'batch_size': 60000}
 test_kwargs = {'batch_size': 10000}
 transform=transforms.Compose([
-        transforms.Resize(16),
+        transforms.Resize(length_width),
         transforms.ToTensor()
         ])
-dataset1 = torchvision.datasets.KMNIST(root = '/Users/xingzixu/Documents/Class/ECE/590', train = True, download = True, transform=transform)
-dataset2 = torchvision.datasets.KMNIST(root = '/Users/xingzixu/Documents/Class/ECE/590', train = False, download = True, transform=transform)
+dataset1 = torchvision.datasets.KMNIST(root = '/scratch/xx84/NeuralPDE', train = True, download = True, transform=transform)
+dataset2 = torchvision.datasets.KMNIST(root = '/scratch/xx84/NeuralPDE', train = False, download = True, transform=transform)
 
 train_loader = torch.utils.data.DataLoader(dataset1,**train_kwargs)
 test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
@@ -76,21 +84,27 @@ for batch_idx, (data, target) in enumerate(train_loader):
 for batch_idx, (data, target) in enumerate(test_loader):
     test_data, test_target = data, target # assign data to device
 
-train_data = train_data.view(60000,256)
-test_data = test_data.view(10000,256)
+train_data = train_data.view(60000,length_width*length_width).to(device)
+test_data = test_data.view(10000,length_width*length_width).to(device)
 
-optimizer = torch.optim.Adam([p for p in flow.parameters() if p.requires_grad==True], lr=1e-4)
-for t in range(5001):    
-    noisy_moons = train_data[0:100,:]
-    loss = -flow.log_prob(noisy_moons).mean()
+optimizer = torch.optim.Adam([p for p in flow.parameters() if p.requires_grad==True], lr=1e-4, weight_decay=1e-4)
+for t in range(200):    
+    noisy_moons = train_data[0:3300,:].to(device)
+    loss = -flow.log_prob(noisy_moons).mean().to(device)
     
     optimizer.zero_grad()
     loss.backward(retain_graph=True)
     optimizer.step()
     
-    if t % 50 == 0:
+    if t % 1 == 0:
         print('iter %s:' % t, 'loss = %.3f' % loss)
-"""
+
+
+x = flow.sample(1)
+x = x.view(length_width,length_width)
+plt.imshow(x.cpu().detach().numpy(),cmap='gray')
+plt.savefig('590')
+
 noisy_moons = datasets.make_moons(n_samples=1000, noise=.05)[0].astype(np.float32)
 z = flow.f(torch.from_numpy(noisy_moons))[0].detach().numpy()
 
@@ -116,4 +130,4 @@ ax3.scatter(x[:, 0, 0], x[:, 0, 1], c='r')
 ax3.set_title(r'$X = g(z)$')
 
 plt.show()
-"""
+
