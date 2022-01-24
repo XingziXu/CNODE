@@ -89,7 +89,7 @@ test_data = test_data.view(10000,length_width*length_width).to(device)
 
 optimizer = torch.optim.Adam([p for p in flow.parameters() if p.requires_grad==True], lr=1e-4, weight_decay=1e-4)
 for t in range(200):    
-    noisy_moons = train_data[0:3300,:].to(device)
+    noisy_moons = train_data[0:3000,:].to(device)
     loss = -flow.log_prob(noisy_moons).mean().to(device)
     
     optimizer.zero_grad()

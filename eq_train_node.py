@@ -86,7 +86,7 @@ def update(args, grad_net, optimizer, data, target, device):
     target = target[indices].view(data.size(0),1)
     output = torch.empty(1,1)
     #output.requires_grad = True
-    t = torch.cat((torch.Tensor([0.]),data[indices,1]),0).to(device) # we look to integrate from t=0 to t=1
+    t = torch.cat((torch.Tensor([0.]).to(device),data[indices,1]),0).to(device) # we look to integrate from t=0 to t=1
     if args.adaptive_solver: # check if we are using the adaptive solver
         p = torch.squeeze(odeint_adjoint(grad_net, p, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
         print("The number of steps taken in this training itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
@@ -212,13 +212,13 @@ def main():
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=100, metavar='N',
+    parser.add_argument('--epochs', type=int, default=50, metavar='N',
                         help='number of epochs to train (default: 14)')
-    parser.add_argument('--gamma', type=float, default=0.9, metavar='M',
+    parser.add_argument('--gamma', type=float, default=0.2, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
     parser.add_argument('--step-size', type=int, default=5, metavar='M',
                         help='how many epochs to we change the learning rate, default is 5')
-    parser.add_argument('--no-cuda', action='store_true', default=True,
+    parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
@@ -230,7 +230,7 @@ def main():
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
-    parser.add_argument('--lr-grad', type=float, default=5e-3, metavar='LR',
+    parser.add_argument('--lr-grad', type=float, default=1e-2, metavar='LR',
                         help='learning rate for the gradients (default: 1e-3)')
     parser.add_argument('--tol', type=float, default=1e-5, metavar='LR',
                         help='learning rate (default: 1e-3)')
@@ -264,25 +264,30 @@ def main():
         test_kwargs.update(cuda_kwargs)
         validation_kwargs.update(cuda_kwargs)
 
-    a = 2*pi
-    x = torch.linspace(0,pi,1000)
-    t_train = torch.linspace(0.1,1.0,1000)
+    num_pts = 200000
+    a = 1
+    x = torch.rand(num_pts)*pi
+    t_train = torch.rand(num_pts)
+    while torch.unique(t_train).size(0) != num_pts:
+        t_train = torch.unique(t_train,sorted=False)
+        new_t_train = torch.rand(num_pts-torch.unique(t_train).size(0))
+        t_train = torch.cat((t_train,new_t_train),dim=0)
     x_t_train = x-a*t_train
-    input_data = torch.cat((x.view(1000,1),t_train.view(1000,1)),1)
-    output_data = torch.Tensor(torch.tanh(x_t_train)).view(1000,1)
+    input_data = torch.cat((x.view(num_pts,1),t_train.view(num_pts,1)),1)
+    output_data = torch.Tensor(torch.tanh(x_t_train)).view(num_pts,1)
     data_object_train = TensorDataset(input_data,output_data) # create your datset
     train_set = data_object_train
 
-    t_test = torch.linspace(0.1,1.0,1000)
+    t_test = torch.rand(num_pts)*3.0
     x_t_test = x-a*t_test
-    input_data_test = torch.cat((x.view(1000,1),t_test.view(1000,1)),1)
-    output_data_test = torch.Tensor(torch.tanh(x_t_test)).view(1000,1)
+    input_data_test = torch.cat((x.view(num_pts,1),t_test.view(num_pts,1)),1)
+    output_data_test = torch.Tensor(torch.tanh(x_t_test)).view(num_pts,1)
     data_object_test = TensorDataset(input_data_test,output_data_test) # create your datset
     test_set = data_object_test
     #train_set, val_set = torch.utils.data.random_split(data_object, [1000, 0])
     
     train_loader = DataLoader(train_set,batch_size=args.batch_size,shuffle=True)
-    test_loader = DataLoader(test_set,batch_size=1000,shuffle=True)
+    test_loader = DataLoader(test_set,batch_size=num_pts,shuffle=True)
 
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad, width_conv2=args.width_conv2).to(device) # define grad_net and assign to device
 

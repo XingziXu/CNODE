@@ -26,12 +26,12 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         self.nfe=0 # initialize the number of function evaluations
 
         self.path = nn.Sequential( # define the network for the integration path
-            nn.Linear(1,20),
+            nn.Linear(1,32),
             #nn.Hardsigmoid(),
             nn.ELU(),
-            nn.Linear(20,20),
+            nn.Linear(32,32),
             nn.ELU(),
-            nn.Linear(20,1)
+            nn.Linear(32,2)
         )
 
 
@@ -44,7 +44,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         )
         
         self.grad_h = nn.Sequential( # define the network for the gradient on y direction
-            nn.Linear(1,32),
+            nn.Linear(2,32),
             nn.Tanh(),
             nn.Linear(32,32),
             nn.Tanh(),
@@ -56,7 +56,10 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         t_input = t.expand(x.size(0),1) # resize
         g_h_i = self.path(t_input) # calculate the position of the integration path
         dg_dt = g_h_i[:,0].view(g_h_i[:,0].size(0),1)
-        dp = torch.mul(self.grad_g(x.float()),dg_dt) + self.grad_h(x.float())# + torch.mul(self.grad_g(x),di_dt) # calculate the change in p
+        dh_dt = g_h_i[:,1].view(g_h_i[:,0].size(0),1)
+        grad_g = self.grad_g(x.float())
+        grad_h = self.grad_h(torch.cat((x,grad_g),dim=1).float())
+        dp = torch.mul(grad_g,dg_dt) + torch.mul(grad_h,dh_dt)# + torch.mul(self.grad_g(x),di_dt) # calculate the change in p
         return dp
 
 def initialize_grad(m):
@@ -106,7 +109,7 @@ def update(args, grad_net, optimizer, data, target, device):
     target = target[indices].view(data.size(0),1)
     output = torch.empty(1,1)
     #output.requires_grad = True
-    t = torch.cat((torch.Tensor([0.]),data[indices,1]),0).to(device) # we look to integrate from t=0 to t=1
+    t = torch.cat((torch.Tensor([0.]).to(device),data[indices,1]),0).to(device) # we look to integrate from t=0 to t=1
     if args.adaptive_solver: # check if we are using the adaptive solver
         p = torch.squeeze(odeint_adjoint(grad_net, p, t,method="dopri5",rtol=args.tol,atol=args.tol)[1]) # solve the neural line integral with an adaptive ode solver
         print("The number of steps taken in this training itr is {}".format(grad_net.nfe)) # print the number of function evaluations we are using
@@ -232,13 +235,13 @@ def main():
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=100, metavar='N',
+    parser.add_argument('--epochs', type=int, default=50, metavar='N',
                         help='number of epochs to train (default: 14)')
-    parser.add_argument('--gamma', type=float, default=0.9, metavar='M',
+    parser.add_argument('--gamma', type=float, default=0.2, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
     parser.add_argument('--step-size', type=int, default=5, metavar='M',
                         help='how many epochs to we change the learning rate, default is 5')
-    parser.add_argument('--no-cuda', action='store_true', default=True,
+    parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
@@ -284,10 +287,14 @@ def main():
         test_kwargs.update(cuda_kwargs)
         validation_kwargs.update(cuda_kwargs)
 
-    num_pts = 2000
-    a = 2*pi
+    num_pts = 200000
+    a = 1
     x = torch.rand(num_pts)*pi
     t_train = torch.rand(num_pts)
+    while torch.unique(t_train).size(0) != num_pts:
+        t_train = torch.unique(t_train,sorted=False)
+        new_t_train = torch.rand(num_pts-torch.unique(t_train).size(0))
+        t_train = torch.cat((t_train,new_t_train),dim=0)
     x_t_train = x-a*t_train
     input_data = torch.cat((x.view(num_pts,1),t_train.view(num_pts,1)),1)
     output_data = torch.Tensor(torch.tanh(x_t_train)).view(num_pts,1)
