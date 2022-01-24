@@ -157,6 +157,7 @@ def train(args, grad_net, device, train_loader, optimizer_grad, epoch):
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss_grad.item()))
+    return loss_grad
 
 def test(args, grad_net, device, validation_loader):
     grad_net.eval() # set the network on evaluation mode
@@ -328,11 +329,10 @@ def main():
 
     print('setup complete')
 
-    accu = 0.0
-    #outer = torch.zeros((25,153,3))
-    #inner = torch.zeros((25,147,3))
+    loss_save = []
     for epoch in range(1, args.epochs + 1):
-        train(args, grad_net, device, train_loader, optimizer_grad, epoch)
+        current_loss = train(args, grad_net, device, train_loader, optimizer_grad, epoch)
+        loss_save.append(current_loss.item())
         #accu_new, o1 = validation(args, grad_net, device, test_loader)
         #outer[epoch-1,:,:] = o1[o1[:,2]==1.]
         #inner[epoch-1,:,:] = o1[o1[:,2]==0.]
@@ -342,6 +342,8 @@ def main():
         scheduler_grad.step()
     #test(args, grad_net, device, test_loader)
     a=2
+    with open('ode_cnode.npy','wb') as f:
+        np.save(f,loss_save)
     """for i in range(0,3):
         outer1 = outer[:,i,:]
         inner1 = inner[:,i,:]
