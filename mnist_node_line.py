@@ -174,6 +174,12 @@ def update(args, grad_net, classifier_net, optimizer, data, target, device):
     else:
         p = torch.squeeze(odeint(grad_net, p, t, method="euler")[1]) # solve the neural line integral with the euler's solver
         grad_net.nfe=0 # reset the number of function of evaluations
+    grad1 = grad_net.grad_g(p.view(p.size(0),1,p.size(1),p.size(2)))
+    grad2 = grad_net.grad_h(p.view(p.size(0),1,p.size(1),p.size(2)))
+    jacobian1 = torch.autograd.functional.jacobian(grad_net.grad_g, p.view(p.size(0),1,p.size(1),p.size(2)))
+    jacobian2 = torch.autograd.functional.jacobian(grad_net.grad_h, p.view(p.size(0),1,p.size(1),p.size(2)))
+
+
     output = classifier_net(grad_net.conv2(p.view(p.size(0),1,p.size(1),p.size(2)))) # classify the transformed images
     soft_max = nn.Softmax(dim=1) # define a soft max calculator
     output = soft_max(output) # get the prediction results by getting the most probable ones
@@ -287,7 +293,7 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
-    parser.add_argument('--adaptive-solver', action='store_true', default=True,
+    parser.add_argument('--adaptive-solver', action='store_true', default=False,
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
