@@ -19,11 +19,11 @@ class mu_net(nn.Module):
     def __init__(self):
         super().__init__()
         self.mu_f = nn.Sequential(
-        nn.Linear(2,8),
+        nn.Linear(2,16),
         nn.Tanh(),
-        nn.Linear(8,8),
+        nn.Linear(16,16),
         nn.Tanh(),
-        nn.Linear(8,1),
+        nn.Linear(16,1),
         nn.Tanh()
         )
     def forward(self,x,t):
@@ -34,11 +34,11 @@ class sigma_net(nn.Module):
     def __init__(self):
         super().__init__()
         self.sigma_f = nn.Sequential(
-        nn.Linear(2,8),
+        nn.Linear(2,16),
         nn.Tanh(),
-        nn.Linear(8,8),
+        nn.Linear(16,16),
         nn.Tanh(),
-        nn.Linear(8,1),
+        nn.Linear(16,1),
         nn.Tanh()
         )
     def forward(self,x,t):
@@ -49,22 +49,22 @@ class g_net(nn.Module):
     def __init__(self):
         super().__init__()
         self.g_f = nn.Sequential(
-        nn.Linear(1,16),
+        nn.Linear(1,32),
         nn.Tanh(),
-        nn.Linear(16,16),
+        nn.Linear(32,32),
         nn.Tanh(),
-        nn.Linear(16,1),
+        nn.Linear(32,1),
         nn.Tanh()
         )
     def forward(self,x):
         return(self.g_f(x))
 
-def rho_parabolic(mu2, mu, s, W, dt, dB = None):
+def rho_parabolic(mu2, mu, s, W, dt, device, dB = None):
     '''
     W is shape N x x-grid x time
     '''
     #f = W.view(500,100,80)
-    f = (mu2(W, torch.zeros(W.size())) - mu(W, torch.zeros(W.size())) / s(W, torch.zeros(W.size())))
+    f = (mu2(W, torch.zeros(W.size()).to(device)) - mu(W, torch.zeros(W.size()).to(device)) / s(W, torch.zeros(W.size()).to(device)))
     f = f.view(500,100,80)
     f_copy = torch.clone(f)
     f_copy[:,:,0] = 0
@@ -92,16 +92,20 @@ def train(mu2, s, g, data_train, B, optimizer, device, epoch, dt, dB, x_data_idx
     g.train()
     #torch.autograd.set_detect_anomaly(True)
     B = torch.tensor(B)
+    B = B.to(device)
     B=B.view(500*100*80,1)
     B = B.type(torch.float32)
     #a = g(B.type(torch.float32))
     dB = torch.tensor(dB)
+    dB = dB.to(device)
     #biased = ( torch.mul(torch.sin(3*B).view(500,100,80), (rho_parabolic(mu2, mu, s, B, dt, dB)))).mean(0)
-    biased = ( torch.mul(g(B).view(500,100,80), (rho_parabolic(mu2, mu, s, B, dt, dB)))).mean(0)
+    biased = ( torch.mul(g(B).view(500,100,80), (rho_parabolic(mu2, mu, s, B, dt, device, dB)))).mean(0)
     biased_chosen = biased[x_data_idx,t_data_idx]
-    loss = torch.norm(biased_chosen-data_train[:,2],p=2)
+    data_train = data_train.to(device)
+    loss = torch.norm(biased_chosen-data_train[:,2],p='fro')
     loss.backward(retain_graph=True) # backpropagate through the loss
     optimizer.step() # update the path network's parameters
+    torch.cuda.empty_cache()
     print('The loss in epoch {:.0f} is {:.4f}\n'.format(epoch,loss))
     return loss
 
@@ -110,18 +114,24 @@ def test(mu2, s, g, data_train, B, optimizer, device, epoch, dt, dB, x_data_idx,
     s.eval() # set network on training mode
     g.eval()
     B = torch.tensor(B)
+    B = B.to(device)
     B=B.view(500*100*80,1)
     B = B.type(torch.float32)
     #a = g(B.type(torch.float32))
     dB = torch.tensor(dB)
-    biased = ( torch.mul(g(B).view(500,100,80), (rho_parabolic(mu2, mu, s, B, dt, dB)))).mean(0)
+    dB = dB.to(device)
+    biased = ( torch.mul(g(B).view(500,100,80), (rho_parabolic(mu2, mu, s, B, dt, device, dB)))).mean(0)
     return biased
 
 def main():
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device('cpu')
     mu2 = mu_net()
     s = sigma_net()
     g = g_net()
+    mu2 = mu2.to(device)
+    s = s.to(device)
+    g = g.to(device)
     data = np.load('data.npy')
     T = 0.1
     n_K = 500
@@ -146,12 +156,12 @@ def main():
     #exs = g(B).mean(0)
     #biased = ( g(B) * (rho_parabolic(mu2, mu, s, B, dt, dB))).mean(0)
     
-    optimizer = optim.AdamW(list(mu2.parameters())+list(s.parameters())+list(g.parameters()), lr=5e-4, weight_decay=2e-4) # define optimizer on the gradients
+    optimizer = optim.AdamW(list(mu2.parameters())+list(s.parameters())+list(g.parameters()), lr=5e-5) # define optimizer on the gradients
     #optimizer = optim.AdamW(list(mu2.parameters())+list(g.parameters()), lr=1e-2) # define optimizer on the gradients
-    scheduler = StepLR(optimizer, step_size=30, gamma=0.1)
+    scheduler = StepLR(optimizer, step_size=30, gamma=0.2)
 
     loss = torch.zeros((150,1))
-    for epoch in range(1, 30 + 1):
+    for epoch in range(1, 150 + 1):
         #x_data_idx = np.asarray([random.randrange(0, 100, 1) for i in range(num_data)])
         #t_data_idx = np.asarray([random.randrange(0, 80, 1) for i in range(num_data)])
         #x_data = x[x_data_idx]
@@ -164,8 +174,10 @@ def main():
         #print('The best accuracy is {:.4f}%\n'.format(accu))
 
     result = test(mu2, s, g, data_train, B, optimizer, device, epoch, dt, dB, x_data_idx, t_data_idx)
-    plt.plot(loss)
+    #plt.plot(loss)
     plt.imshow(result.detach().numpy())
+    plt.savefig('pde.png')
     plt.imshow(data)
+    plt.savefig('pde_true.png')
 if __name__ == '__main__':
     main()
