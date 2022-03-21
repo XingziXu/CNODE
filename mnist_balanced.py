@@ -21,64 +21,30 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 
         self.path = nn.Sequential( # define the network for the integration path
         nn.Conv2d(2,width_path, 3, padding=1, bias=False),
-        nn.Hardtanh(),
+        #nn.Hardtanh(),
+        nn.ELU(),
         nn.Conv2d(width_path,width_path, 3, padding=1, bias=False),
-        nn.Hardtanh(),
+        #nn.Hardtanh(),
+        nn.ELU(),
         nn.Conv2d(width_path,3,1),
         nn.Flatten(),
-        nn.Linear(2352,2),
-        nn.ReLU6()
+        nn.Linear(2352,5),
+        #nn.ReLU6()
         )
 
 
-        self.grad_g = nn.Sequential( # define the network for the gradient on x direction
+        self.top_func = nn.Sequential( # define the network for the gradient on x direction
             nn.InstanceNorm2d(1),
-            nn.Conv2d(1,width_grad,1,1,0),
+            nn.Conv2d(5+1,width_grad,1,1,0),
             nn.ReLU(),
             nn.Conv2d(width_grad,width_grad,3,1,1),
             nn.ReLU(),
             nn.InstanceNorm2d(width_grad),
             nn.Conv2d(width_grad,1,1,1,0)
         )
-        
-        self.grad_h = nn.Sequential( # define the network for the gradient on y direction
-            nn.InstanceNorm2d(1),
-            nn.Conv2d(1,width_grad,1,1,0),
-            nn.ReLU(),
-            nn.Conv2d(width_grad,width_grad,3,1,1),
-            nn.ReLU(),
-            nn.InstanceNorm2d(width_grad),
-            nn.Conv2d(width_grad,1,1,1,0)
-        )
-        #self.grad_i = nn.Sequential( # define the network for the gradient on y direction
-        #    nn.InstanceNorm2d(1),
-        #    nn.Conv2d(1,width_grad,1,1,0),
-        #    nn.ReLU(),
-        #    nn.Conv2d(width_grad,width_grad,3,1,1),
-        #    nn.ReLU(),
-        #    nn.InstanceNorm2d(width_grad),
-        #    nn.Conv2d(width_grad,1,1,1,0)
-        #)
-        #self.grad_k = nn.Sequential( # define the network for the gradient on y direction
-        #    nn.InstanceNorm2d(1),
-        #    nn.Conv2d(1,width_grad,1,1,0),
-        #    nn.ReLU(),
-        #    nn.Conv2d(width_grad,width_grad,3,1,1),
-        #    nn.ReLU(),
-        #    nn.InstanceNorm2d(width_grad),
-        #    nn.Conv2d(width_grad,1,1,1,0)
-        #)
-        #self.grad_l = nn.Sequential( # define the network for the gradient on y direction
-        #    nn.InstanceNorm2d(1),
-        #    nn.Conv2d(1,width_grad,1,1,0),
-        #    nn.ReLU(),
-        #    nn.Conv2d(width_grad,width_grad,3,1,1),
-        #    nn.ReLU(),
-        #    nn.InstanceNorm2d(width_grad),
-        #    nn.Conv2d(width_grad,1,1,1,0)
-        #)
 
     def forward(self, t, x):
+        dim = 5
         self.nfe+=1 # each time we evaluate the function, the number of evaluations adds one
 
         t_input = t.expand(x.size(0),1) # resize
@@ -86,29 +52,21 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         path_input = torch.cat((t_channel, p_i),dim=1) # concatenate the time and the image
         g_h_i = self.path(path_input) # calculate the position of the integration path
 
-        dg_dt = g_h_i[:,0].view(g_h_i.size(0),1,1) # resize 
-        dg_dt = dg_dt.expand(dg_dt.size(0),1,x.size(2)*x.size(3)) # resize 
-        dg_dt = dg_dt.view(dg_dt.size(0),1,x.size(2),x.size(3)) # resize 
+        top_func_input = torch.cat((x,(g_h_i.view(x.shape[0],dim,1,1)).repeat(1,1,28,28)),dim=1)
+        top_func = self.top_func(top_func_input)
+        grad_g = torch.autograd.grad(top_func, top_func_input, torch.ones_like(top_func))[0][:,1:,:,:]
 
-        dh_dt = g_h_i[:,1].view(g_h_i.size(0),1,1) # resize 
-        dh_dt = dh_dt.expand(dh_dt.size(0),1,x.size(2)*x.size(3)) # resize 
-        dh_dt = dh_dt.view(dh_dt.size(0),1,x.size(2),x.size(3)) # resize 
+        m = g_h_i.view(x.size(0),dim,1,1)
+        m = m.expand(m.size(0),dim,1,x.size(2)*x.size(3))
+        m = m.view(m.size(0),dim,x.size(2),x.size(3))
+        #dg_dt = g_h_i[:,0].view(g_h_i.size(0),1,1) # resize 
+        #dg_dt = dg_dt.expand(dg_dt.size(0),1,x.size(2)*x.size(3)) # resize 
+        #dg_dt = dg_dt.view(dg_dt.size(0),1,x.size(2),x.size(3)) # resize 
 
-        #di_dt = g_h_i[:,2].view(g_h_i.size(0),1,1) # resize 
-        #di_dt = di_dt.expand(di_dt.size(0),1,x.size(2)*x.size(3)) # resize 
-        #di_dt = di_dt.view(di_dt.size(0),1,x.size(2),x.size(3)) # resize 
-        
-        #dk_dt = g_h_i[:,3].view(g_h_i.size(0),1,1) # resize 
-        #dk_dt = dk_dt.expand(dk_dt.size(0),1,x.size(2)*x.size(3)) # resize 
-        #dk_dt = dk_dt.view(dk_dt.size(0),1,x.size(2),x.size(3)) # resize 
 
-        #dl_dt = g_h_i[:,4].view(g_h_i.size(0),1,1) # resize 
-        #dl_dt = dl_dt.expand(dl_dt.size(0),1,x.size(2)*x.size(3)) # resize 
-        #dl_dt = dl_dt.view(dl_dt.size(0),1,x.size(2),x.size(3)) # resize
-
-        dp = torch.mul(self.grad_g(x),dg_dt) + torch.mul(self.grad_h(x),dh_dt)# + torch.mul(self.grad_i(x),di_dt) + torch.mul(self.grad_k(x),dk_dt) + torch.mul(self.grad_l(x),dl_dt) # calculate the change in p
+        dp = torch.sum(torch.mul(grad_g,m),dim=1)# + torch.mul(self.grad_i(x),di_dt) + torch.mul(self.grad_k(x),dk_dt) + torch.mul(self.grad_l(x),dl_dt) # calculate the change in p
         #print(t.item())
-        return dp
+        return dp.view(dp.size(0),1,28,28)
 
 class Classifier(nn.Module): # define the linear classifier
     def __init__(self, width_conv2: int, width_pool: int):
@@ -174,12 +132,6 @@ def update(args, grad_net, classifier_net, optimizer, data, target, device):
     else:
         p = torch.squeeze(odeint(grad_net, p, t, method="euler")[1]) # solve the neural line integral with the euler's solver
         grad_net.nfe=0 # reset the number of function of evaluations
-    #grad1 = grad_net.grad_g(p.view(p.size(0),1,p.size(1),p.size(2)))
-    #grad2 = grad_net.grad_h(p.view(p.size(0),1,p.size(1),p.size(2)))
-    #jacobian1 = torch.autograd.functional.jacobian(grad_net.grad_g, p.view(p.size(0),1,p.size(1),p.size(2)))
-    #jacobian2 = torch.autograd.functional.jacobian(grad_net.grad_h, p.view(p.size(0),1,p.size(1),p.size(2)))
-
-
     output = classifier_net(grad_net.conv2(p.view(p.size(0),1,p.size(1),p.size(2)))) # classify the transformed images
     soft_max = nn.Softmax(dim=1) # define a soft max calculator
     output = soft_max(output) # get the prediction results by getting the most probable ones
@@ -281,7 +233,7 @@ def main():
                         help='input batch size for validation (default: 1000)')
     parser.add_argument('--epochs', type=int, default=100, metavar='N',
                         help='number of epochs to train (default: 14)')
-    parser.add_argument('--gamma', type=float, default=0.9, metavar='M',
+    parser.add_argument('--gamma', type=float, default=0.5, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
     parser.add_argument('--step-size', type=int, default=5, metavar='M',
                         help='how many epochs to we change the learning rate, default is 5')
@@ -297,7 +249,7 @@ def main():
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
-    parser.add_argument('--lr-grad', type=float, default=1e-3, metavar='LR',
+    parser.add_argument('--lr-grad', type=float, default=5e-3, metavar='LR',
                         help='learning rate for the gradients (default: 1e-3)')
     parser.add_argument('--lr-path', type=float, default=1e-3, metavar='LR',
                         help='learning rate for the path (default: 1e-3)')
@@ -311,7 +263,7 @@ def main():
                         help='width of the gradient network')
     parser.add_argument('--width-path', type=int, default=4, metavar='LR',
                         help='width of the path network')
-    parser.add_argument('--width-conv2', type=int, default=6, metavar='LR',
+    parser.add_argument('--width-conv2', type=int, default=8, metavar='LR',
                         help='width of the convolution')
     parser.add_argument('--width-pool', type=int, default=8, metavar='LR',
                         help='width of the adaptive average pooling')
@@ -382,11 +334,11 @@ def main():
         #print('The best accuracy is {:.4f}%\n'.format(accu))
         scheduler_grad.step()
     #test(args, grad_net, classifier_net, device, test_loader)
-    with open('train_loss_mnist_line2d3.npy', 'wb') as f:
+    with open('train_loss_mnist_high_1024d3.npy', 'wb') as f:
         np.save(f, np.asarray(loss_train))
-    with open('test_loss_mnist_line2d3.npy', 'wb') as f:
+    with open('test_loss_mnist_high_1024d3.npy', 'wb') as f:
         np.save(f, np.asarray(loss_test))
-    with open('accuracy_mnist_line2d3.npy', 'wb') as f:
+    with open('accuracy_mnist_high_1024d3.npy', 'wb') as f:
         np.save(f, np.asarray(accu))
 
 if __name__ == '__main__':
