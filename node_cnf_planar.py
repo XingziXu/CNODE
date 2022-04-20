@@ -274,12 +274,12 @@ if __name__ == '__main__':
                 ax3.tricontourf(*z_t1.detach().cpu().numpy().T,
                                 np.exp(logp.detach().cpu().numpy()), 200)
 
-                plt.savefig(os.path.join(args.results_dir, f"cnf-viz-{int(t*1000):05d}.jpg"),
+                plt.savefig(os.path.join(args.results_dir, f"n-cnf-viz-{int(t*1000):05d}.jpg"),
                            pad_inches=0.2, bbox_inches='tight')
                 plt.close()
 
-            img, *imgs = [Image.open(f) for f in sorted(glob.glob(os.path.join(args.results_dir, f"cnf-viz-*.jpg")))]
+            img, *imgs = [Image.open(f) for f in sorted(glob.glob(os.path.join(args.results_dir, f"n-cnf-viz-*.jpg")))]
             img.save(fp=os.path.join(args.results_dir, "cnf-viz.gif"), format='GIF', append_images=imgs,
                      save_all=True, duration=250, loop=0)
 
-        print('Saved visualization animation at {}'.format(os.path.join(args.results_dir, "cnf-viz.gif")))
+        print('Saved visualization animation at {}'.format(os.path.join(args.results_dir, "n-cnf-viz.gif")))
