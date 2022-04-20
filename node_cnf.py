@@ -16,9 +16,9 @@ from torch.autograd.functional import jacobian
 parser = argparse.ArgumentParser()
 parser.add_argument('--adjoint', action='store_true')
 parser.add_argument('--viz', action='store_true', default=True)
-parser.add_argument('--niters', type=int, default=100)
+parser.add_argument('--niters', type=int, default=1000)
 parser.add_argument('--lr', type=float, default=1e-3)
-parser.add_argument('--num_samples', type=int, default=512)
+parser.add_argument('--num_samples', type=int, default=1024)
 parser.add_argument('--width', type=int, default=64)
 parser.add_argument('--hidden_dim', type=int, default=32)
 parser.add_argument('--gpu', type=int, default=0)
@@ -116,6 +116,7 @@ if __name__ == '__main__':
     t1 = 10
     device = torch.device('cuda:' + str(args.gpu)
                           if torch.cuda.is_available() else 'cpu')
+    print(device)
     # model
     func = CNF(in_out_dim=2, hidden_dim=args.hidden_dim, width=args.width).to(device)
     optimizer = optim.Adam(func.parameters(), lr=args.lr)
@@ -147,7 +148,7 @@ if __name__ == '__main__':
                 torch.tensor([t1, t0]).type(torch.float32).to(device),
                 atol=1e-5,
                 rtol=1e-5,
-                method='euler',
+                method='dopri5',
             )
 
             z_t0, logp_diff_t0 = z_t[-1], logp_diff_t[-1]
@@ -190,7 +191,7 @@ if __name__ == '__main__':
                 torch.tensor(np.linspace(t0, t1, viz_timesteps)).to(device),
                 atol=1e-5,
                 rtol=1e-5,
-                method='euler',
+                method='dopri5',
             )
 
             # Generate evolution of density
@@ -207,7 +208,7 @@ if __name__ == '__main__':
                 torch.tensor(np.linspace(t1, t0, viz_timesteps)).to(device),
                 atol=1e-5,
                 rtol=1e-5,
-                method='euler',
+                method='dopri5',
             )
 
             # Create plots for each timestep
@@ -244,7 +245,7 @@ if __name__ == '__main__':
                 ax3.tricontourf(*z_t1.detach().cpu().numpy().T,
                                 np.exp(logp.detach().cpu().numpy()), 200)
 
-                plt.savefig(os.path.join(args.results_dir, f"cnf-viz-{int(t*1000):05d}.jpg"),
+                plt.savefig(os.path.join(args.results_dir, f"n-cnf-viz-{int(t*1000):05d}.jpg"),
                            pad_inches=0.2, bbox_inches='tight')
                 plt.close()
 
@@ -252,4 +253,4 @@ if __name__ == '__main__':
             #img.save(fp=os.path.join(args.results_dir, "cnf-viz.gif"), format='GIF', append_images=imgs,
             #         save_all=True, duration=250, loop=0)
 
-        print('Saved visualization animation at {}'.format(os.path.join(args.results_dir, "cnf-viz.gif")))
+        print('Saved visualization animation at {}'.format(os.path.join(args.results_dir, "n-cnf-viz.gif")))

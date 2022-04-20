@@ -44,9 +44,9 @@ class CNF(nn.Module):
 
         self.path = nn.Sequential( # define the network for the integration path
         nn.Linear(2,16),
-        nn.ReLU6(),
+        nn.Tanh(),
         nn.Linear(16,16),
-        nn.ReLU6(),
+        nn.Tanh(),
         nn.Linear(16,8),
         #nn.Tanh()
         )
@@ -130,6 +130,7 @@ if __name__ == '__main__':
                           if torch.cuda.is_available() else 'cpu')
 
     # model
+    print(device)
     func = CNF(in_out_dim=2, hidden_dim=args.hidden_dim, width=args.width).to(device)
     optimizer = optim.Adam(func.parameters(), lr=args.lr)
     p_z0 = torch.distributions.MultivariateNormal(
@@ -160,7 +161,7 @@ if __name__ == '__main__':
                 torch.tensor([t1, t0]).type(torch.float32).to(device),
                 atol=1e-5,
                 rtol=1e-5,
-                method='euler',
+                method='dopri5',
             )
 
             z_t0, logp_diff_t0 = z_t[-1], logp_diff_t[-1]
@@ -203,7 +204,7 @@ if __name__ == '__main__':
                 torch.tensor(np.linspace(t0, t1, viz_timesteps)).to(device),
                 atol=1e-5,
                 rtol=1e-5,
-                method='euler',
+                method='dopri5',
             )
 
             # Generate evolution of density
@@ -220,7 +221,7 @@ if __name__ == '__main__':
                 torch.tensor(np.linspace(t1, t0, viz_timesteps)).to(device),
                 atol=1e-5,
                 rtol=1e-5,
-                method='euler',
+                method='dopri5',
             )
 
             # Create plots for each timestep
