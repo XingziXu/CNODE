@@ -263,7 +263,7 @@ def euler_parabolic(t, x0, m, s, dW, K=1000):
 def parabolic():
 
     def g(x):
-        return np.sin(0.2*x) #np.sin(x)
+        return np.sin(0.5*x) #np.sin(x)
 
     def mu(x,t):
         return 0
