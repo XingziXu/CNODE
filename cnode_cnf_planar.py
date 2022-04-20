@@ -19,7 +19,7 @@ parser.add_argument('--niters', type=int, default=1000)
 parser.add_argument('--lr', type=float, default=1e-3)
 parser.add_argument('--num_samples', type=int, default=512)
 parser.add_argument('--width', type=int, default=64)
-parser.add_argument('--hidden_dim', type=int, default=32)
+parser.add_argument('--hidden_dim', type=int, default=16)
 parser.add_argument('--gpu', type=int, default=0)
 parser.add_argument('--train_dir', type=str, default=None)
 parser.add_argument('--results_dir', type=str, default="./results")
@@ -44,9 +44,9 @@ class CNF(nn.Module):
         self.hyper_net2 = HyperNetwork(in_out_dim, hidden_dim, width)
         self.path = nn.Sequential( # define the network for the integration path
         nn.Linear(2,16),
-        nn.ReLU6(),
+        nn.Tanh(),
         nn.Linear(16,16),
-        nn.ReLU6(),
+        nn.Tanh(),
         nn.Linear(16,2),
         #nn.Tanh()
         )
