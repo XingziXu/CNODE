@@ -24,9 +24,9 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         nn.Hardtanh(),
         nn.Conv2d(width_path,width_path, 3, padding=1, bias=False),
         nn.Hardtanh(),
-        nn.Conv2d(width_path,3,1),
+        nn.Conv2d(width_path,1,1),
         nn.Flatten(),
-        nn.Linear(2352,1024),
+        nn.Linear(784,2),
         nn.ReLU6()
         )
 
@@ -38,11 +38,11 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
             nn.Conv2d(width_grad,width_grad,3,1,1),
             nn.ReLU(),
             nn.InstanceNorm2d(width_grad),
-            nn.Conv2d(width_grad,1024,1,1,0)
+            nn.Conv2d(width_grad,2,1,1,0)
         )
 
     def forward(self, t, x):
-        dim = 1024
+        dim = 2
         self.nfe+=1 # each time we evaluate the function, the number of evaluations adds one
 
         t_input = t.expand(x.size(0),1) # resize
@@ -226,7 +226,7 @@ def main():
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=100, metavar='N',
+    parser.add_argument('--epochs', type=int, default=40, metavar='N',
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--gamma', type=float, default=0.9, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
@@ -254,11 +254,11 @@ def main():
                         help='learning rate (default: 1e-3)')
     parser.add_argument('--training-frequency', type=int, default=1, metavar='LR',
                         help='how often do we optimize the path network')
-    parser.add_argument('--width-grad', type=int, default=64, metavar='LR',
+    parser.add_argument('--width-grad', type=int, default=4, metavar='LR',
                         help='width of the gradient network')
     parser.add_argument('--width-path', type=int, default=4, metavar='LR',
                         help='width of the path network')
-    parser.add_argument('--width-conv2', type=int, default=6, metavar='LR',
+    parser.add_argument('--width-conv2', type=int, default=4, metavar='LR',
                         help='width of the convolution')
     parser.add_argument('--width-pool', type=int, default=8, metavar='LR',
                         help='width of the adaptive average pooling')
@@ -329,11 +329,11 @@ def main():
         #print('The best accuracy is {:.4f}%\n'.format(accu))
         scheduler_grad.step()
     #test(args, grad_net, classifier_net, device, test_loader)
-    with open('train_loss_mnist_high_1024d3.npy', 'wb') as f:
+    with open('train_loss_mnist_4535_3.npy', 'wb') as f:
         np.save(f, np.asarray(loss_train))
-    with open('test_loss_mnist_high_1024d3.npy', 'wb') as f:
+    with open('test_loss_mnist_4535_3.npy', 'wb') as f:
         np.save(f, np.asarray(loss_test))
-    with open('accuracy_mnist_high_1024d3.npy', 'wb') as f:
+    with open('accuracy_mnist_4535_3.npy', 'wb') as f:
         np.save(f, np.asarray(accu))
 
 if __name__ == '__main__':

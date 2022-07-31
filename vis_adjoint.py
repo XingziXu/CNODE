@@ -12,7 +12,7 @@ from scipy.integrate import odeint as odeint_scipy
 from torch.autograd import Variable
 import numpy as np
 import matplotlib.pyplot as plt
-plt.rcParams.update({'font.size': 36})
+plt.rcParams.update({'font.size': 16})
 
 mnist_node = 10.24
 mnist_line = 10.13
@@ -473,4 +473,5 @@ ax9.set_xlabel('MNIST')
 ax9.fill_between(epochs, min_train1.reshape(length), max_train1.reshape(length), color='lightcoral')
 ax9.tick_params(top='on', bottom='on', left='on', right='on', labelleft='off', labelbottom='off')
 #ax9.legend()
+plt.savefig('something.png')
 plt.show()

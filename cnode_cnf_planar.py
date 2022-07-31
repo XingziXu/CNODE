@@ -24,9 +24,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--adjoint', action='store_true')
 parser.add_argument('--viz', action='store_true',default=True)
 parser.add_argument('--niters', type=int, default=1000)
-parser.add_argument('--lr', type=float, default=1e-3)
+parser.add_argument('--lr', type=float, default=6e-3)
 parser.add_argument('--num_samples', type=int, default=512)
-parser.add_argument('--width', type=int, default=64)
+parser.add_argument('--width', type=int, default=48)
 parser.add_argument('--hidden_dim', type=int, default=32)
 parser.add_argument('--gpu', type=int, default=0)
 parser.add_argument('--train_dir', type=str, default=None)
@@ -51,11 +51,11 @@ class CNF(nn.Module):
         self.hyper_net1 = HyperNetwork(in_out_dim, hidden_dim, width)
         self.hyper_net2 = HyperNetwork(in_out_dim, hidden_dim, width)
         self.path = nn.Sequential( # define the network for the integration path
-        nn.Linear(1,32),
+        nn.Linear(2,24),
         nn.Tanh(),
-        nn.Linear(32,32),
+        nn.Linear(24,24),
         nn.Tanh(),
-        nn.Linear(32,2),
+        nn.Linear(24,2),
         #nn.Tanh()
         )
     def forward(self, t, states):
@@ -77,7 +77,7 @@ class CNF(nn.Module):
             dz_dg = torch.matmul(h1, U1).mean(0)
             dz_dh = torch.matmul(h2, U2).mean(0)
             time_input = t.repeat([batchsize,1])
-            path = self.path(time_input)
+            path = self.path(z)
             dg_dt = path[:,0].view(path.size(0),1)
             dh_dt = path[:,1].view(path.size(0),1)
             

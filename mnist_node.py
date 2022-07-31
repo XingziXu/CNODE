@@ -198,7 +198,7 @@ def main():
                         help='input batch size for testing (default: 1000)')
     parser.add_argument('--validation-batch-size', type=int, default=1000, metavar='V',
                         help='input batch size for validation (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=100, metavar='N',
+    parser.add_argument('--epochs', type=int, default=40, metavar='N',
                         help='number of epochs to train (default: 14)')
     parser.add_argument('--gamma', type=float, default=0.9, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
@@ -212,7 +212,7 @@ def main():
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
-    parser.add_argument('--adaptive-solver', action='store_true', default=True,
+    parser.add_argument('--adaptive-solver', action='store_true', default=False,
                         help='do we use euler solver or do we use dopri5')
     parser.add_argument('--clipper', action='store_true', default=True,
                         help='do we force the integration path to be monotonically increasing')
@@ -226,11 +226,11 @@ def main():
                         help='learning rate (default: 1e-3)')
     parser.add_argument('--training-frequency', type=int, default=1, metavar='LR',
                         help='how often do we optimize the path network')
-    parser.add_argument('--width-grad', type=int, default=95, metavar='LR',
+    parser.add_argument('--width-grad', type=int, default=1, metavar='LR',
                         help='width of the gradient network')
-    parser.add_argument('--width-conv2', type=int, default=6, metavar='LR',
+    parser.add_argument('--width-conv2', type=int, default=1, metavar='LR',
                         help='width of the convolution')
-    parser.add_argument('--width-pool', type=int, default=8, metavar='LR',
+    parser.add_argument('--width-pool', type=int, default=4, metavar='LR',
                         help='width of the adaptive average pooling')
 
     args = parser.parse_args()
@@ -299,11 +299,11 @@ def main():
         #print('The best accuracy is {:.4f}%\n'.format(accu))
         scheduler_grad.step()
     #test(args, grad_net, classifier_net, device, test_loader)
-    with open('train_loss_mnist_node3.npy', 'wb') as f:
+    with open('train_loss_mnist_node_186_3.npy', 'wb') as f:
         np.save(f, np.asarray(loss_train))
-    with open('test_loss_mnist_node3.npy', 'wb') as f:
+    with open('test_loss_mnist_node_186_3.npy', 'wb') as f:
         np.save(f, np.asarray(loss_test))
-    with open('accuracy_mnist_node3.npy', 'wb') as f:
+    with open('accuracy_mnist_node_186_3.npy', 'wb') as f:
         np.save(f, np.asarray(accu))
 
 if __name__ == '__main__':
