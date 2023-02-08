@@ -48,7 +48,6 @@ class CNF(nn.Module):
         nn.Linear(16,16),
         nn.Tanh(),
         nn.Linear(16,8),
-        #nn.Tanh()
         )
 
 
@@ -61,7 +60,6 @@ class CNF(nn.Module):
         )
     def forward(self, t, states):
         z = states[0]
-        #logp_z = states[1]
 
         batchsize = z.shape[0]
 
@@ -69,14 +67,10 @@ class CNF(nn.Module):
             z.requires_grad_(True)
             
             dim = 8
-            #self.nfe+=1 # each time we evaluate the function, the number of evaluations adds one
-
-            #g_h_i = self.path(z) # calculate the position of the integration path
 
             grad = self.grad_g(z)
             dz_dt = torch.cat((torch.sum(torch.mul(grad[:,0:dim],self.path(z)),dim=1).view(batchsize, 1),torch.sum(torch.mul(grad[:,dim:],self.path(z)),dim=1).view(batchsize, 1)), dim=1)
 
-            #dz_dt = self.grad_t(z)
 
             dlogp_z_dt = -trace_df_dz(dz_dt, z).view(batchsize, 1)
 
@@ -116,7 +110,6 @@ class RunningAverageMeter(object):
 
 def get_batch(num_samples):
     points, _ = make_circles(n_samples=num_samples, noise=0.05, factor=0.5)
-    #points, _ = ds.make_moons(n_samples=num_samples, noise=0.05, random_state=None)
     x = torch.tensor(points).type(torch.float32).to(device)
     logp_diff_t1 = torch.zeros(num_samples, 1).type(torch.float32).to(device)
 

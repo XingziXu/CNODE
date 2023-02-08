@@ -51,7 +51,6 @@ class CNF(nn.Module):
         )
     def forward(self, t, states):
         z = states[0]
-        #logp_z = states[1]
 
         batchsize = z.shape[0]
 
@@ -63,11 +62,6 @@ class CNF(nn.Module):
             jac = torch.diagonal(jacobian(self.grad_t,z))
             
             dlogp_z_dt = torch.diagonal(jac, dim1=-2, dim2=-1).sum(-1)
-            # dlogp_z_dt = torch.zeros(batchsize,1)
-            #for i in range(0,batchsize):
-            #    dlogp_z_dt[i] = torch.trace(jac[i,:,i,:])
-
-            #dlogp_z_dt = trace_df_dz(dz_dt, z).view(batchsize, 1)
 
         return (dz_dt, dlogp_z_dt)
 
@@ -249,8 +243,5 @@ if __name__ == '__main__':
                            pad_inches=0.2, bbox_inches='tight')
                 plt.close()
 
-            #img, *imgs = [Image.open(f) for f in sorted(glob.glob(os.path.join(args.results_dir, f"cnf-viz-*.jpg")))]
-            #img.save(fp=os.path.join(args.results_dir, "cnf-viz.gif"), format='GIF', append_images=imgs,
-            #         save_all=True, duration=250, loop=0)
 
         print('Saved visualization animation at {}'.format(os.path.join(args.results_dir, "n-cnf-viz.gif")))

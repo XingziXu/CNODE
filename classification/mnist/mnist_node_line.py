@@ -50,33 +50,7 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
             nn.InstanceNorm2d(width_grad),
             nn.Conv2d(width_grad,1,1,1,0)
         )
-        #self.grad_i = nn.Sequential( # define the network for the gradient on y direction
-        #    nn.InstanceNorm2d(1),
-        #    nn.Conv2d(1,width_grad,1,1,0),
-        #    nn.ReLU(),
-        #    nn.Conv2d(width_grad,width_grad,3,1,1),
-        #    nn.ReLU(),
-        #    nn.InstanceNorm2d(width_grad),
-        #    nn.Conv2d(width_grad,1,1,1,0)
-        #)
-        #self.grad_k = nn.Sequential( # define the network for the gradient on y direction
-        #    nn.InstanceNorm2d(1),
-        #    nn.Conv2d(1,width_grad,1,1,0),
-        #    nn.ReLU(),
-        #    nn.Conv2d(width_grad,width_grad,3,1,1),
-        #    nn.ReLU(),
-        #    nn.InstanceNorm2d(width_grad),
-        #    nn.Conv2d(width_grad,1,1,1,0)
-        #)
-        #self.grad_l = nn.Sequential( # define the network for the gradient on y direction
-        #    nn.InstanceNorm2d(1),
-        #    nn.Conv2d(1,width_grad,1,1,0),
-        #    nn.ReLU(),
-        #    nn.Conv2d(width_grad,width_grad,3,1,1),
-        #    nn.ReLU(),
-        #    nn.InstanceNorm2d(width_grad),
-        #    nn.Conv2d(width_grad,1,1,1,0)
-        #)
+        
 
     def forward(self, t, x):
         self.nfe+=1 # each time we evaluate the function, the number of evaluations adds one
@@ -94,20 +68,8 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         dh_dt = dh_dt.expand(dh_dt.size(0),1,x.size(2)*x.size(3)) # resize 
         dh_dt = dh_dt.view(dh_dt.size(0),1,x.size(2),x.size(3)) # resize 
 
-        #di_dt = g_h_i[:,2].view(g_h_i.size(0),1,1) # resize 
-        #di_dt = di_dt.expand(di_dt.size(0),1,x.size(2)*x.size(3)) # resize 
-        #di_dt = di_dt.view(di_dt.size(0),1,x.size(2),x.size(3)) # resize 
-        
-        #dk_dt = g_h_i[:,3].view(g_h_i.size(0),1,1) # resize 
-        #dk_dt = dk_dt.expand(dk_dt.size(0),1,x.size(2)*x.size(3)) # resize 
-        #dk_dt = dk_dt.view(dk_dt.size(0),1,x.size(2),x.size(3)) # resize 
-
-        #dl_dt = g_h_i[:,4].view(g_h_i.size(0),1,1) # resize 
-        #dl_dt = dl_dt.expand(dl_dt.size(0),1,x.size(2)*x.size(3)) # resize 
-        #dl_dt = dl_dt.view(dl_dt.size(0),1,x.size(2),x.size(3)) # resize
 
         dp = torch.mul(self.grad_g(x),dg_dt) + torch.mul(self.grad_h(x),dh_dt)# + torch.mul(self.grad_i(x),di_dt) + torch.mul(self.grad_k(x),dk_dt) + torch.mul(self.grad_l(x),dl_dt) # calculate the change in p
-        #print(t.item())
         return dp
 
 class Classifier(nn.Module): # define the linear classifier
@@ -124,32 +86,18 @@ class Classifier(nn.Module): # define the linear classifier
 
 def initialize_grad(m):
     if isinstance(m, nn.Conv2d):
-        #nn.init.xavier_normal_(m.weight.data,gain=1.0)
-        #torch.nn.init.eye_(m.weight.data)
         nn.init.kaiming_normal_(m.weight.data,nonlinearity='relu')
-        #nn.init.sparse_(m.weight.data,sparsity=0.1)
     if isinstance(m, nn.Linear):
-        #nn.init.xavier_normal_(m.weight.data,gain=1.0)
         nn.init.kaiming_normal_(m.weight.data,nonlinearity='relu')
-        #nn.init.sparse_(m.weight.data,sparsity=0.1)
 
 def initialize_path(n):
     if isinstance(n, nn.Conv2d):
         nn.init.xavier_uniform_(n.weight.data,gain=0.7)
-        #nn.init.orthogonal_(n.weight.data,gain=1.0)
-        #nn.init.kaiming_uniform_(n.weight.data,nonlinearity='relu')
     if isinstance(n, nn.Linear):
         nn.init.xavier_uniform_(n.weight.data,gain=0.7)
-        #nn.init.kaiming_uniform_(n.weight.data,nonlinearity='relu')
-        #nn.init.orthogonal(n.weight.data,gain=1.0)
 
 def initialize_classifier(p):
-    #if isinstance(p, nn.Conv2d):
-    #    torch.nn.init.normal_(p.weight.data, mean=0.0, std=1.0)
-        #torch.nn.init.eye_(m.weight.data)
-        #nn.init.kaiming_uniform_(m.weight.data,nonlinearity='relu')
     if isinstance(p, nn.Linear):
-        #torch.nn.init.kaiming_uniform_(p.weight.data,nonlinearity='relu')
         torch.nn.init.orthogonal_(p.weight.data,gain=1.0)
 
 def get_n_params(model): # define a function to measure the number of parameters in a neural network
@@ -174,10 +122,6 @@ def update(args, grad_net, classifier_net, optimizer, data, target, device):
     else:
         p = torch.squeeze(odeint(grad_net, p, t, method="euler")[1]) # solve the neural line integral with the euler's solver
         grad_net.nfe=0 # reset the number of function of evaluations
-    #grad1 = grad_net.grad_g(p.view(p.size(0),1,p.size(1),p.size(2)))
-    #grad2 = grad_net.grad_h(p.view(p.size(0),1,p.size(1),p.size(2)))
-    #jacobian1 = torch.autograd.functional.jacobian(grad_net.grad_g, p.view(p.size(0),1,p.size(1),p.size(2)))
-    #jacobian2 = torch.autograd.functional.jacobian(grad_net.grad_h, p.view(p.size(0),1,p.size(1),p.size(2)))
 
 
     output = classifier_net(grad_net.conv2(p.view(p.size(0),1,p.size(1),p.size(2)))) # classify the transformed images
@@ -319,7 +263,6 @@ def main():
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available() # check if we have a GPU available
 
-    #torch.manual_seed(args.seed)
 
     device = torch.device("cuda" if use_cuda else "cpu") # check if we are using the GPU
 
@@ -350,11 +293,6 @@ def main():
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad, width_conv2=args.width_conv2).to(device) # define grad_net and assign to device
     classifier_net = Classifier(width_conv2=args.width_conv2, width_pool=args.width_pool).to(device) # define classifier network and assign to device
 
-    #grad_net.apply(initialize_grad)
-    #grad_net.grad_g.apply(initialize_grad)
-    #grad_net.grad_h.apply(initialize_grad)
-    #grad_net.path.apply(initialize_path)
-    #classifier_net.apply(initialize_classifier)
 
     optimizer_grad = optim.AdamW(list(grad_net.parameters())+list(classifier_net.parameters()), lr=args.lr_grad, weight_decay=5e-4) # define optimizer on the gradients
     
@@ -367,21 +305,13 @@ def main():
     loss_train = []
     loss_test = []
     accu = []
-    #outer = torch.zeros((25,153,3))
-    #inner = torch.zeros((25,147,3))
     for epoch in range(1, args.epochs + 1):
         train_loss = train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, epoch)
         test_loss,accu_new = validation(args, grad_net, classifier_net, device, test_loader)
-        #outer[epoch-1,:,:] = o1[o1[:,2]==1.]
-        #inner[epoch-1,:,:] = o1[o1[:,2]==0.]
         loss_train.append(train_loss)
         loss_test.append(test_loss)
         accu.append(accu_new)
-        #if accu_new > accu:
-        #    accu = accu_new
-        #print('The best accuracy is {:.4f}%\n'.format(accu))
         scheduler_grad.step()
-    #test(args, grad_net, classifier_net, device, test_loader)
     with open('train_loss_mnist_line2d3.npy', 'wb') as f:
         np.save(f, np.asarray(loss_train))
     with open('test_loss_mnist_line2d3.npy', 'wb') as f:

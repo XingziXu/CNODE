@@ -35,10 +35,8 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         self.nfe+=1 # each time we evaluate the function, the number of evaluations adds one
 
         device = torch.device("cuda") # determine if the device is the gpu or cpu
-        #device = torch.device("cpu")
 
         dp = self.grad_g(x) # calculate the change in p
-        #print(t.item())
         return dp
 
 class Classifier(nn.Module): # define the linear classifier
@@ -65,31 +63,18 @@ class WeightClipper(object): # define a clamp on the weights of a network
 
 def initialize_grad(m):
     if isinstance(m, nn.Conv2d):
-        #torch.nn.init.xavier_normal_(m.weight.data,gain=0.8)
-        #torch.nn.init.eye_(m.weight.data)
-        #nn.init.kaiming_uniform_(m.weight.data,nonlinearity='relu')
         nn.init.orthogonal_(m.weight.data,gain=0.2)
     if isinstance(m, nn.Linear):
-        #torch.nn.init.xavier_normal_(m.weight.data,gain=0.8)
-        #nn.init.kaiming_uniform_(m.weight.data,nonlinearity='relu')
         nn.init.orthogonal_(m.weight.data,gain=0.2)
 
 def initialize_path(n):
     if isinstance(n, nn.Conv2d):
-        #torch.nn.init.normal_(m.weight.data, mean=0.0, std=1.0)
-        #torch.nn.init.eye_(m.weight.data)
         nn.init.kaiming_normal_(n.weight.data,nonlinearity='relu')
     if isinstance(n, nn.Linear):
-        #torch.nn.init.normal_(m.weight.data, mean=0.0, std=1.0)
         nn.init.kaiming_normal_(n.weight.data,nonlinearity='relu')
 
 def initialize_classifier(p):
-    #if isinstance(p, nn.Conv2d):
-    #    torch.nn.init.normal_(p.weight.data, mean=0.0, std=1.0)
-        #torch.nn.init.eye_(m.weight.data)
-        #nn.init.kaiming_uniform_(m.weight.data,nonlinearity='relu')
     if isinstance(p, nn.Linear):
-        #torch.nn.init.kaiming_normal_(p.weight.data,nonlinearity='leaky_relu')
         torch.nn.init.sparse_(p.weight.data, sparsity=0.1)
 
 def get_n_params(model): # define a function to measure the number of parameters in a neural network
@@ -281,12 +266,6 @@ def main():
     grad_net = Grad_net(width_grad=args.width_grad, width_conv1=args.width_conv1, width_conv2=args.width_conv2).to(device) # define grad_net and assign to device
     classifier_net = Classifier(width_conv2=args.width_conv2, width_pool=args.width_pool).to(device) # define classifier network and assign to device
 
-    #grad_net.apply(initialize_grad)
-    #grad_net.grad_g.apply(initialize_grad)
-    #grad_net.grad_h.apply(initialize_grad)
-    #grad_net.path.apply(initialize_path)
-    #classifier_net.apply(initialize_classifier)
-
     optimizer_grad = optim.AdamW(list(grad_net.parameters())+list(classifier_net.parameters()), lr=args.lr_grad, weight_decay=5e-4) # define optimizer on the gradients
     
     print("The number of parameters used is {}".format(get_n_params(grad_net)+get_n_params(classifier_net))) # print the number of parameters in our model
@@ -303,7 +282,6 @@ def main():
             accu = accu_new
         print('The best accuracy is ({:.4f}%)\n'.format(accu))
         scheduler_grad.step()
-    #test(args, grad_net, classifier_net, device, test_loader)
 
 if __name__ == '__main__':
     main()

@@ -32,15 +32,11 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
 
 
         self.grad_g = nn.Sequential( # define the network for the gradient on x direction
-            #nn.InstanceNorm2d(width_conv+width_aug+3),
             nn.GroupNorm(3,3),
             nn.Conv2d(3,width_grad, 3, padding=1, bias=False),
-            #nn.Softplus(),
             nn.ReLU(),
             nn.Conv2d(width_grad,width_grad, 3, padding=1, bias=False),
-            #nn.Softplus(),
             nn.ReLU(),
-            #nn.InstanceNorm2d(width_grad),
             nn.GroupNorm(width_grad,width_grad),
             nn.Conv2d(width_grad,3*128,1)
         )
@@ -58,16 +54,12 @@ class Grad_net(nn.Module): # the Grad_net defines the networks for the path and 
         m = g_h_i.view(x.size(0),dim,1,1)
         m = m.expand(m.size(0),dim,1,x.size(2)*x.size(3))
         m = m.view(m.size(0),dim,x.size(2),x.size(3))
-        #dg_dt = g_h_i[:,0].view(g_h_i.size(0),1,1) # resize 
-        #dg_dt = dg_dt.expand(dg_dt.size(0),1,x.size(2)*x.size(3)) # resize 
-        #dg_dt = dg_dt.view(dg_dt.size(0),1,x.size(2),x.size(3)) # resize 
 
 
         dp1 = torch.sum(torch.mul(self.grad_g(x)[:,0:dim,:,:],m),dim=1)# + torch.mul(self.grad_i(x),di_dt) + torch.mul(self.grad_k(x),dk_dt) + torch.mul(self.grad_l(x),dl_dt) # calculate the change in p
         dp2 = torch.sum(torch.mul(self.grad_g(x)[:,dim:dim+dim,:,:],m),dim=1)# + torch.mul(self.grad_i(x),di_dt) + torch.mul(self.grad_k(x),dk_dt) + torch.mul(self.grad_l(x),dl_dt) # calculate the change in p
         dp3 = torch.sum(torch.mul(self.grad_g(x)[:,dim+dim:dim+dim+dim,:,:],m),dim=1)# + torch.mul(self.grad_i(x),di_dt) + torch.mul(self.grad_k(x),dk_dt) + torch.mul(self.grad_l(x),dl_dt) # calculate the change in p
         dp = torch.cat((dp1.view(x.size(0),1,32,32),dp2.view(x.size(0),1,32,32),dp3.view(x.size(0),1,32,32)),dim=1)
-        #print(t.item())
         return dp
 
 class Classifier(nn.Module): # define the linear classifier
@@ -84,32 +76,18 @@ class Classifier(nn.Module): # define the linear classifier
 
 def initialize_grad(m):
     if isinstance(m, nn.Conv2d):
-        #nn.init.xavier_normal_(m.weight.data,gain=1.0)
-        #torch.nn.init.eye_(m.weight.data)
         nn.init.kaiming_normal_(m.weight.data,nonlinearity='relu')
-        #nn.init.sparse_(m.weight.data,sparsity=0.1)
     if isinstance(m, nn.Linear):
-        #nn.init.xavier_normal_(m.weight.data,gain=1.0)
         nn.init.kaiming_normal_(m.weight.data,nonlinearity='relu')
-        #nn.init.sparse_(m.weight.data,sparsity=0.1)
 
 def initialize_path(n):
     if isinstance(n, nn.Conv2d):
         nn.init.xavier_uniform_(n.weight.data,gain=0.7)
-        #nn.init.orthogonal_(n.weight.data,gain=1.0)
-        #nn.init.kaiming_uniform_(n.weight.data,nonlinearity='relu')
     if isinstance(n, nn.Linear):
         nn.init.xavier_uniform_(n.weight.data,gain=0.7)
-        #nn.init.kaiming_uniform_(n.weight.data,nonlinearity='relu')
-        #nn.init.orthogonal(n.weight.data,gain=1.0)
 
 def initialize_classifier(p):
-    #if isinstance(p, nn.Conv2d):
-    #    torch.nn.init.normal_(p.weight.data, mean=0.0, std=1.0)
-        #torch.nn.init.eye_(m.weight.data)
-        #nn.init.kaiming_uniform_(m.weight.data,nonlinearity='relu')
     if isinstance(p, nn.Linear):
-        #torch.nn.init.kaiming_uniform_(p.weight.data,nonlinearity='relu')
         torch.nn.init.orthogonal_(p.weight.data,gain=1.0)
 
 def get_n_params(model): # define a function to measure the number of parameters in a neural network
@@ -304,12 +282,6 @@ def main():
     grad_net = Grad_net(width_path=args.width_path, width_grad=args.width_grad, width_conv2=args.width_conv2).to(device) # define grad_net and assign to device
     classifier_net = Classifier(width_conv2=args.width_conv2, width_pool=args.width_pool).to(device) # define classifier network and assign to device
 
-    #grad_net.apply(initialize_grad)
-    #grad_net.grad_g.apply(initialize_grad)
-    #grad_net.grad_h.apply(initialize_grad)
-    #grad_net.path.apply(initialize_path)
-    #classifier_net.apply(initialize_classifier)
-
     optimizer_grad = optim.AdamW(list(grad_net.parameters())+list(classifier_net.parameters()), lr=args.lr_grad, weight_decay=5e-4) # define optimizer on the gradients
     
     print("The number of parameters used is {}".format(get_n_params(grad_net)+get_n_params(classifier_net))) # print the number of parameters in our model
@@ -321,21 +293,13 @@ def main():
     loss_train = []
     loss_test = []
     accu = []
-    #outer = torch.zeros((25,153,3))
-    #inner = torch.zeros((25,147,3))
     for epoch in range(1, args.epochs + 1):
         train_loss = train(args, grad_net, classifier_net, device, train_loader, optimizer_grad, epoch)
         test_loss,accu_new = validation(args, grad_net, classifier_net, device, test_loader)
-        #outer[epoch-1,:,:] = o1[o1[:,2]==1.]
-        #inner[epoch-1,:,:] = o1[o1[:,2]==0.]
         loss_train.append(train_loss)
         loss_test.append(test_loss)
         accu.append(accu_new)
-        #if accu_new > accu:
-        #    accu = accu_new
-        #print('The best accuracy is {:.4f}%\n'.format(accu))
         scheduler_grad.step()
-    #test(args, grad_net, classifier_net, device, test_loader)
     with open('train_loss_svhn_high_128d3.npy', 'wb') as f:
         np.save(f, np.asarray(loss_train))
     with open('test_loss_svhn_high_128d3.npy', 'wb') as f:
